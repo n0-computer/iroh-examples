@@ -58,7 +58,7 @@ type EventHandler struct {
 func (h *EventHandler) Event(event *iroh.LiveEvent) *iroh.IrohError {
 	if event.Type() == iroh.LiveEventTypeInsertRemote {
 		insertEvent := event.AsInsertRemote()
-		if !bytes.HasPrefix(insertEvent.Entry.Key(), []byte("prompts:")) {
+		if !bytes.HasPrefix(insertEvent.Entry.Key(), []byte("prompt:")) {
 			fmt.Printf("ignoring key %q\n", string(insertEvent.Entry.Key()))
 			return nil
 		}
@@ -68,6 +68,7 @@ func (h *EventHandler) Event(event *iroh.LiveEvent) *iroh.IrohError {
 		var err error
 		for i := 0; i < 10; i++ {
 			time.Sleep(time.Second)
+
 			if content, err = h.doc.GetContentBytes(insertEvent.Entry); err != nil {
 				fmt.Println(".")
 			} else {
@@ -132,7 +133,7 @@ func (h *EventHandler) Event(event *iroh.LiveEvent) *iroh.IrohError {
 			return nil
 		}
 
-		resultKey := bytes.Replace(insertEvent.Entry.Key(), []byte("prompts:"), []byte("results:"), 1)
+		resultKey := bytes.Replace(insertEvent.Entry.Key(), []byte("prompt:"), []byte("result:"), 1)
 		resultKey = append(resultKey, []byte(".png")...)
 		if _, err = h.doc.SetFileBytes(h.author, resultKey, localPath); err != nil {
 			return nil
