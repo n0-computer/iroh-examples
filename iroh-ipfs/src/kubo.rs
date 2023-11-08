@@ -6,8 +6,10 @@ use bytes::Bytes;
 use cid::Cid;
 use hyper::StatusCode;
 use ipfs_api_prelude::response::{AddResponse, BlockPutResponse, IdResponse, PinLsResponse};
-use iroh::bytes::util::Hash;
-use iroh_sync::{AuthorId, NamespaceId};
+use iroh::{
+    sync::{AuthorId, NamespaceId},
+    bytes::util::Hash
+};
 use libipld::cbor::DagCborCodec;
 use libipld::raw::RawCodec;
 use serde::{Deserialize, Serialize};

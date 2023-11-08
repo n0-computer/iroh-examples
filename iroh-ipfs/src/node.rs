@@ -6,28 +6,21 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
-use iroh::client::quic::RPC_ALPN;
-use iroh::client::{self, Iroh};
-use iroh::net::derp::{DerpMap, DerpMode};
-use iroh::net::key::{PublicKey, SecretKey};
-use iroh::node::{Node, StaticTokenAuthHandler};
-use iroh::rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService};
-use iroh::util::path::IrohPaths;
-use iroh_bytes::protocol::RequestToken;
-use iroh_bytes::store::{flat, Store as BaoStore};
-use iroh_bytes::util::runtime;
-use iroh_bytes::Hash;
-use iroh_metrics::core::Metric;
-use iroh_sync::store::Store as DocStore;
-use iroh_sync::AuthorId;
+use iroh::{
+    client::{self, Iroh, quic::RPC_ALPN},
+    net::{key::{PublicKey, SecretKey},derp::{DerpMap, DerpMode}},
+    node::{Node, StaticTokenAuthHandler},
+    util::path::IrohPaths,
+    rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService},
+    sync::{AuthorId, store::Store as DocStore},
+    bytes::{protocol::RequestToken, store::{flat, Store as BaoStore}, util::runtime, Hash},
+};
 use quic_rpc::transport::flume::FlumeConnection;
 use quic_rpc::transport::quinn::QuinnServerEndpoint;
 use quic_rpc::ServiceEndpoint;
-use sentry::{Hub, SentryFutureExt};
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot::Sender;
-use tracing::{info_span, Instrument};
 
 use crate::config::iroh_ipfs_data_dir;
 use crate::AppState;
@@ -42,7 +35,7 @@ pub async fn start_node(
     let tpc = tokio_util::task::LocalPoolHandle::new(num_cpus::get());
     let rt = iroh::bytes::util::runtime::Handle::new(tokio, tpc);
     let rpc_port = ProviderRpcPort::Enabled(rpc_port);
-    let derp_map = iroh_net::defaults::default_derp_map();
+    let derp_map = iroh::net::defaults::default_derp_map();
 
     let opts = ProvideOptions {
         addr,
@@ -65,7 +58,7 @@ pub async fn start_node(
     tracing::debug!("Starting iroh node config...");
     let key = Some(repo_root.join(IrohPaths::SecretKey));
     tracing::debug!("Starting iroh node config: got key");
-    let store = iroh_sync::store::fs::Store::new(repo_root.join(IrohPaths::DocsDatabase))
+    let store = iroh::sync::store::fs::Store::new(repo_root.join(IrohPaths::DocsDatabase))
         .context("no fs store")?;
     tracing::debug!("Starting iroh node config: got store");
     let provider = provide(db.clone(), store, &rt, key, peer_data_path, opts).await?;
@@ -386,31 +379,6 @@ pub struct PublicListResponse {
     pub path: PathBuf,
     pub hash: String,
     pub size: u64,
-}
-
-pub fn init_metrics_collection(
-    metrics_addr: Option<SocketAddr>,
-) -> Option<tokio::task::JoinHandle<()>> {
-    iroh_metrics::core::Core::init(|reg, metrics| {
-        metrics.insert(iroh_sync::metrics::Metrics::new(reg));
-        metrics.insert(iroh_gossip::metrics::Metrics::new(reg));
-    });
-    // doesn't start the server if the address is None
-    if let Some(metrics_addr) = metrics_addr {
-        return Some(tokio::spawn(
-            async move {
-                iroh_metrics::metrics::start_metrics_server(metrics_addr)
-                    .await
-                    .unwrap_or_else(|e| {
-                        eprintln!("Failed to start metrics server: {}", e);
-                    });
-            }
-            .instrument(info_span!("metrics"))
-            .bind_hub(Hub::new_from_top(Hub::current())),
-        ));
-    }
-    tracing::info!("Metrics server not started, no address provided");
-    None
 }
 
 pub async fn get_author(

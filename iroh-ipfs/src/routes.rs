@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::routing::{get, post};
 use axum::Router;
-use iroh_sync::AuthorId;
+use iroh::sync::AuthorId;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use url::Url;

@@ -4,10 +4,11 @@ use std::str::{self, FromStr};
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt};
-use iroh::rpc_protocol::{DocTicket, ShareMode};
-use iroh::sync_engine::LiveEvent;
-use iroh_sync::store::Query;
-use iroh_sync::{Entry, NamespaceId};
+use iroh::{
+    rpc_protocol::{DocTicket, ShareMode},
+    sync_engine::LiveEvent,
+    sync::{Entry, NamespaceId, store::Query },
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, error};
 
@@ -144,12 +145,12 @@ pub(crate) async fn subscribe_for_kubo_replication(
                 }
 
                 match content_status {
-                    iroh_sync::ContentStatus::Missing | iroh_sync::ContentStatus::Incomplete => {
+                    iroh::sync::ContentStatus::Missing | iroh::sync::ContentStatus::Incomplete => {
                         // wait for the data, store the entry
                         tracing::info!("subscribe_for_kubo_replication: missing/incomplete");
                         awaiting_content.insert(entry.content_hash(), entry);
                     }
-                    iroh_sync::ContentStatus::Complete => {
+                    iroh::sync::ContentStatus::Complete => {
                         // we have the data, skip the map & go straight to replication
                         let msg = AddToKuboMessage {
                             doc_id,
