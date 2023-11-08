@@ -112,13 +112,11 @@ pub fn is_replicate_prefix(key: &[u8]) -> bool {
     key.starts_with(REPLICATION_PREFIX)
 }
 
-pub fn ipfs_hash_from_key(key: &[u8]) -> Result<&[u8]> {
+pub fn ipfs_hash_from_key(key: &[u8]) -> Result<cid::Cid> {
     // trim off REPLICATION_PREFIX & return a new array
     let bytes = &key[REPLICATION_PREFIX.len()..];
     // confirm the resulting array is a valid IPFS hash by parsing it as a CID
-    cid::Cid::try_from(bytes)
-        .map(|_| bytes)
-        .map_err(|_| anyhow::anyhow!("invalid IPFS hash"))
+    cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS hash"))
 }
 
 pub(crate) async fn subscribe_for_kubo_replication(
@@ -143,9 +141,8 @@ pub(crate) async fn subscribe_for_kubo_replication(
 
     while let Some(entry) = replicated_keys.next().await {
         let entry = entry?;
-        let key = entry.key();
-        if let Ok(ipfs_hash) = ipfs_hash_from_key(key.clone()) {
-            replicated.insert(entry.clone().content_hash().clone(), ipfs_hash);
+        if let Ok(ipfs_hash) = ipfs_hash_from_key(entry.key()) {
+            replicated.insert(entry.content_hash(), ipfs_hash);
         }
     }
 
