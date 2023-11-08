@@ -6,8 +6,8 @@ use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt};
 use iroh::{
     rpc_protocol::{DocTicket, ShareMode},
+    sync::{store::Query, Entry, NamespaceId},
     sync_engine::LiveEvent,
-    sync::{Entry, NamespaceId, store::Query },
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, error};
@@ -104,14 +104,21 @@ pub async fn create_doc(app_state: &AppState) -> Result<DocDetails, AppError> {
         ticket: ticket.to_string(),
         data: None,
     })
-
-    // TODO(arqu) record doc name, ticket and id in db?
 }
 
-const REPLICATION_PREFIX: &[u8] = b"rep:iroh:";
+const REPLICATION_PREFIX: &[u8] = b"ipfs:";
 
 pub fn is_replicate_prefix(key: &[u8]) -> bool {
     key.starts_with(REPLICATION_PREFIX)
+}
+
+pub fn ipfs_hash_from_key(key: &[u8]) -> Result<&[u8]> {
+    // trim off REPLICATION_PREFIX & return a new array
+    let bytes = &key[REPLICATION_PREFIX.len()..];
+    // confirm the resulting array is a valid IPFS hash by parsing it as a CID
+    cid::Cid::try_from(bytes)
+        .map(|_| bytes)
+        .map_err(|_| anyhow::anyhow!("invalid IPFS hash"))
 }
 
 pub(crate) async fn subscribe_for_kubo_replication(
@@ -125,8 +132,22 @@ pub(crate) async fn subscribe_for_kubo_replication(
         .await?
         .context("doc not found")?;
 
+    // map of iroh content hashes -> IPFS content hash
+    let mut replicated = BTreeMap::new();
     let mut awaiting_content = BTreeMap::new();
     let kubo_replicate_tx = app_state.kubo_replicator.tx();
+
+    let mut replicated_keys = doc
+        .get_many(Query::all().key_prefix(REPLICATION_PREFIX))
+        .await?;
+
+    while let Some(entry) = replicated_keys.next().await {
+        let entry = entry?;
+        let key = entry.key();
+        if let Ok(ipfs_hash) = ipfs_hash_from_key(key.clone()) {
+            replicated.insert(entry.clone().content_hash().clone(), ipfs_hash);
+        }
+    }
 
     let mut stream = doc.subscribe().await?;
     tracing::info!("subscribe_for_kubo_replication: subscribed");
@@ -139,7 +160,7 @@ pub(crate) async fn subscribe_for_kubo_replication(
                 ..
             } => {
                 // ignore everything that isn't a replicate prefix
-                if !is_replicate_prefix(entry.key()) {
+                if is_replicate_prefix(entry.key()) {
                     tracing::info!("ignoring key {:?}", str::from_utf8(entry.key()).unwrap());
                     continue;
                 }
