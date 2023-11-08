@@ -7,6 +7,15 @@ You can *announce* to a tracker that you believe some host has some content.
 The tracker will then periodically *verify* that the content is present.
 Finally, you can *query* a tracker for hosts for a content.
 
+## Building from source
+
+Make sure you have an up to date version of [rust](https://www.rust-lang.org/) installed. Use the
+[rustup](https://rustup.rs/) tool to get the rust compiler `rustc` and build tool
+`cargo` for your platform.
+
+Then run `cargo build --release` from the root directory. The resulting binary
+will be in `target/release/tracker`
+
 ## Running the tracker
 
 ```sh

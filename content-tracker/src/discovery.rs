@@ -15,7 +15,7 @@ use pkarr::{
     url::Url,
     Keypair, PkarrClient, SignedPacket,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::NodeId;
 
@@ -132,7 +132,11 @@ impl iroh::net::magicsock::Discovery for PkarrRelayDiscovery {
         let relay = self.relay.clone();
         tokio::spawn(async move {
             let res = client.relay_put(&relay, signed_packet).await;
-            info!("done publishing, ok:{}", res.is_ok());
+            if let Err(e) = res {
+                warn!("error publishing: {}", e);
+            } else {
+                info!("done publishing");
+            }
         });
     }
 

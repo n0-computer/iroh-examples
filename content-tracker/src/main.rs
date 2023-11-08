@@ -88,9 +88,7 @@ pub async fn accept_conn(
     mut conn: quinn::Connecting,
 ) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
     let alpn = get_alpn(&mut conn).await?;
-    tracing::info!("awaiting conn");
     let conn = conn.await?;
-    tracing::info!("got conn");
     let peer_id = get_peer_id(&conn)?;
     Ok((peer_id, alpn, conn))
 }
@@ -137,11 +135,12 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
         tracing::info!("got connecting");
         let db = db.clone();
         tokio::spawn(async move {
-            let Ok((pk, h, conn)) = accept_conn(connecting).await else {
+            let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
                 tracing::error!("error accepting connection");
                 return;
             };
-            tracing::info!("got connection from {} {}", pk, h);
+            // if we were supporting multiple protocols, we'd need to check the ALPN here.
+            tracing::info!("got connection from {} {}", remote_node_id, alpn);
             if let Err(cause) = db.handle_connection(conn).await {
                 tracing::error!("error handling connection: {}", cause);
             }

@@ -168,13 +168,13 @@ impl Tracker {
         match request {
             Request::Announce(announce) => {
                 log!("got announce: {:?}", announce);
-                self.handle_announce(announce).await?;
+                self.handle_announce(announce)?;
                 send.finish().await?;
             }
 
             Request::Query(query) => {
                 log!("handle query: {:?}", query);
-                let response = self.handle_query(query).await?;
+                let response = self.handle_query(query)?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_stdvec(&response)?;
                 send.write_all(&response).await?;
@@ -297,7 +297,7 @@ impl Tracker {
         Ok(stats)
     }
 
-    async fn handle_announce(&self, announce: Announce) -> anyhow::Result<()> {
+    fn handle_announce(&self, announce: Announce) -> anyhow::Result<()> {
         let mut state = self.0.state.write().unwrap();
         for content in announce.content {
             let entry = state.announce_data.entry(content).or_default();
@@ -317,7 +317,7 @@ impl Tracker {
         Ok(())
     }
 
-    async fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
+    fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
         let state = self.0.state.read().unwrap();
         let entry = state.announce_data.get(&query.content);
         let options = &self.0.options;
