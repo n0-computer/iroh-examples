@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
-use iroh_bytes::{get::Stats, HashAndFormat};
+use iroh::bytes::{get::Stats, HashAndFormat};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing_subscriber::{prelude::*, EnvFilter};
 

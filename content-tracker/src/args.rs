@@ -1,7 +1,7 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
+use iroh::bytes::{Hash, HashAndFormat};
 use iroh::ticket::blob::Ticket;
-use iroh_bytes::{Hash, HashAndFormat};
 use std::{fmt::Display, str::FromStr};
 
 use crate::NodeId;

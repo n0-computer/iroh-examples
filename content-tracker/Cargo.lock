@@ -1702,8 +1702,9 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "iroh"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1291ca5df5580a718d5f4bdc1a1016a10e3d5cfe7e49513de7e020ab50ab47a4"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -1772,8 +1773,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-bytes"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "680d97457001823a3378d03abba93741f5a82c0de45b52d0c7ff03d8697859f5"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -1806,9 +1808,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "iroh-content-tracker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bao-tree",
+ "bytes",
+ "clap",
+ "derive_more",
+ "dirs-next",
+ "futures",
+ "hex",
+ "humantime",
+ "iroh",
+ "pkarr",
+ "postcard",
+ "quinn",
+ "rand",
+ "serde",
+ "serde_json",
+ "simple-mdns",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "toml 0.7.8",
+ "tracing",
+ "tracing-subscriber",
+ "ttl_cache",
+]
+
+[[package]]
 name = "iroh-gossip"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee5612d03bae65e891dbe9436a1b623c63eea5093e6f874f96410591f424e4fa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1847,8 +1880,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99471ac28a915891586cd23c09810ff4162e1e5756a48bd544b89e2294784f36"
 dependencies = [
  "erased_set",
  "hyper",
@@ -1860,8 +1894,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf9aa3e09b825b124117b6e710f9dfc97f7dadaee00d6501a4156953afa0a2ec"
 dependencies = [
  "aead",
  "anyhow",
@@ -1930,8 +1965,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-sync"
-version = "0.9.0"
-source = "git+https://github.com/n0-computer/iroh?branch=tracker#39d91dc0fa6d385ff7358613eb9b35baa53a7771"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca5b874bd84584be4a8eaf1c9765e27ce150b55e299df084e25215455db2a04e"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4404,38 +4440,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "tracker"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bao-tree",
- "bytes",
- "clap",
- "derive_more",
- "dirs-next",
- "futures",
- "hex",
- "humantime",
- "iroh",
- "iroh-bytes",
- "iroh-net",
- "pkarr",
- "postcard",
- "quinn",
- "rand",
- "serde",
- "serde_json",
- "simple-mdns",
- "tempfile",
- "tokio",
- "tokio-util",
- "toml 0.7.8",
- "tracing",
- "tracing-subscriber",
- "ttl_cache",
 ]
 
 [[package]]

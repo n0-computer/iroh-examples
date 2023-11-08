@@ -7,13 +7,13 @@ use std::{
 
 use bao_tree::{ByteNum, ChunkNum};
 use futures::StreamExt;
-use iroh_bytes::{
+use iroh::bytes::{
     get::{fsm::EndBlobNext, Stats},
     hashseq::HashSeq,
     protocol::GetRequest,
     BlobFormat, Hash, HashAndFormat,
 };
-use iroh_net::MagicEndpoint;
+use iroh::net::MagicEndpoint;
 use rand::Rng;
 
 use crate::{
@@ -268,9 +268,9 @@ impl Tracker {
                         .join(", ");
                     log!("Seq probing {} using {}", cap, text);
                     let request = GetRequest::new(*hash, ranges);
-                    let request = iroh_bytes::get::fsm::start(connection.clone(), request);
+                    let request = iroh::bytes::get::fsm::start(connection.clone(), request);
                     let connected = request.next().await?;
-                    let iroh_bytes::get::fsm::ConnectedNext::StartChild(child) =
+                    let iroh::bytes::get::fsm::ConnectedNext::StartChild(child) =
                         connected.next().await?
                     else {
                         unreachable!("request does not include root");
@@ -409,7 +409,7 @@ impl Tracker {
     )> {
         let t0 = Instant::now();
         let res = endpoint
-            .connect_by_node_id(&host, &iroh_bytes::protocol::ALPN)
+            .connect_by_node_id(&host, &iroh::bytes::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
         let connection = match res {

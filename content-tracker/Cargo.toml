@@ -1,5 +1,5 @@
 [package]
-name = "tracker"
+name = "iroh-content-tracker"
 version = "0.1.0"
 edition = "2021"
 description = "Simple content tracker server for iroh"
@@ -17,9 +17,7 @@ dirs-next = "2"
 futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
-iroh = { git = "https://github.com/n0-computer/iroh", branch = "tracker" }
-iroh-bytes = { git = "https://github.com/n0-computer/iroh", branch = "tracker" }
-iroh-net = { git = "https://github.com/n0-computer/iroh", branch = "tracker" }
+iroh = "0.10.0"
 pkarr = "0.3.0"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 quinn = "0.10"

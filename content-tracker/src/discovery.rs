@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::Result;
 use futures::{future, future::BoxFuture, FutureExt};
-use iroh_net::{AddrInfo, NodeAddr};
+use iroh::net::{AddrInfo, NodeAddr};
 use pkarr::{
     dns::rdata::{RData, A, AAAA, TXT},
     dns::{Name, Packet, ResourceRecord, CLASS},
@@ -114,7 +114,7 @@ pub struct PkarrRelayDiscovery {
 
 impl PkarrRelayDiscovery {
     #[allow(dead_code)]
-    pub fn new(secret_key: iroh_net::key::SecretKey, relay: Url) -> Self {
+    pub fn new(secret_key: iroh::net::key::SecretKey, relay: Url) -> Self {
         let keypair = pkarr::Keypair::from_secret_key(&secret_key.to_bytes());
         Self {
             keypair,
@@ -124,7 +124,7 @@ impl PkarrRelayDiscovery {
     }
 }
 
-impl iroh_net::magicsock::Discovery for PkarrRelayDiscovery {
+impl iroh::net::magicsock::Discovery for PkarrRelayDiscovery {
     fn publish(&self, info: &AddrInfo) {
         info!("publishing {:?} via {}", info, self.relay);
         let signed_packet = node_addr_to_packet(&self.keypair, info, 0).unwrap();
@@ -165,7 +165,7 @@ impl HardcodedRegionDiscovery {
     }
 }
 
-impl iroh_net::magicsock::Discovery for HardcodedRegionDiscovery {
+impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
     fn publish(&self, _info: &AddrInfo) {}
 
     fn resolve<'a>(&'a self, _node_id: &'a NodeId) -> BoxFuture<'a, Result<AddrInfo>> {

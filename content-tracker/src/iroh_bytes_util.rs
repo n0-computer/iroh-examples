@@ -1,9 +1,9 @@
-//! Utilities for advanced use of iroh_bytes.
+//! Utilities for advanced use of iroh::bytes.
 use std::sync::Arc;
 
 use bao_tree::{ByteNum, ChunkNum, ChunkRanges};
 use bytes::Bytes;
-use iroh_bytes::{
+use iroh::bytes::{
     get::{
         fsm::{BlobContentNext, EndBlobNext},
         Stats,
@@ -24,13 +24,13 @@ pub async fn unverified_size(
     connection: &quinn::Connection,
     hash: &Hash,
 ) -> anyhow::Result<(u64, Stats)> {
-    let request = iroh_bytes::protocol::GetRequest::new(
+    let request = iroh::bytes::protocol::GetRequest::new(
         *hash,
         RangeSpecSeq::from_ranges(vec![ChunkRanges::from(ChunkNum(u64::MAX)..)]),
     );
-    let request = iroh_bytes::get::fsm::start(connection.clone(), request);
+    let request = iroh::bytes::get::fsm::start(connection.clone(), request);
     let connected = request.next().await?;
-    let iroh_bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
+    let iroh::bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
         unreachable!("expected start root");
     };
     let at_blob_header = start.next();
@@ -48,13 +48,13 @@ pub async fn verified_size(
     hash: &Hash,
 ) -> anyhow::Result<(u64, Stats)> {
     log!("Getting verified size of {}", hash.to_hex());
-    let request = iroh_bytes::protocol::GetRequest::new(
+    let request = iroh::bytes::protocol::GetRequest::new(
         *hash,
         RangeSpecSeq::from_ranges(vec![ChunkRanges::from(ChunkNum(u64::MAX)..)]),
     );
-    let request = iroh_bytes::get::fsm::start(connection.clone(), request);
+    let request = iroh::bytes::get::fsm::start(connection.clone(), request);
     let connected = request.next().await?;
-    let iroh_bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
+    let iroh::bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
         unreachable!("expected start root");
     };
     let header = start.next();
@@ -89,16 +89,16 @@ pub async fn get_hash_seq_and_sizes(
 ) -> anyhow::Result<(HashSeq, Arc<[u64]>)> {
     let content = HashAndFormat::hash_seq(*hash);
     log!("Getting hash seq and children sizes of {}", content);
-    let request = iroh_bytes::protocol::GetRequest::new(
+    let request = iroh::bytes::protocol::GetRequest::new(
         *hash,
         RangeSpecSeq::from_ranges_infinite([
             ChunkRanges::all(),
             ChunkRanges::from(ChunkNum(u64::MAX)..),
         ]),
     );
-    let at_start = iroh_bytes::get::fsm::start(connection.clone(), request);
+    let at_start = iroh::bytes::get::fsm::start(connection.clone(), request);
     let at_connected = at_start.next().await?;
-    let iroh_bytes::get::fsm::ConnectedNext::StartRoot(start) = at_connected.next().await? else {
+    let iroh::bytes::get::fsm::ConnectedNext::StartRoot(start) = at_connected.next().await? else {
         unreachable!("query includes root");
     };
     let at_start_root = start.next();
@@ -144,9 +144,9 @@ pub async fn chunk_probe(
     let ranges = ChunkRanges::from(chunk..chunk + 1);
     let ranges = RangeSpecSeq::from_ranges([ranges]);
     let request = GetRequest::new(*hash, ranges);
-    let request = iroh_bytes::get::fsm::start(connection.clone(), request);
+    let request = iroh::bytes::get::fsm::start(connection.clone(), request);
     let connected = request.next().await?;
-    let iroh_bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
+    let iroh::bytes::get::fsm::ConnectedNext::StartRoot(start) = connected.next().await? else {
         unreachable!("query includes root");
     };
     let header = start.next();

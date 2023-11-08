@@ -14,11 +14,11 @@ use std::{
 
 use clap::Parser;
 use io::CONFIG_DEFAULTS_FILE;
-use iroh::util::fs::load_secret_key;
-use iroh_net::{
+use iroh::net::{
     magic_endpoint::{get_alpn, get_peer_id},
     AddrInfo, MagicEndpoint, NodeAddr,
 };
+use iroh::util::fs::load_secret_key;
 use tokio_util::task::LocalPoolHandle;
 
 use crate::{
@@ -32,7 +32,7 @@ use crate::{
     tracker::Tracker,
 };
 
-pub type NodeId = iroh_net::key::PublicKey;
+pub type NodeId = iroh::net::key::PublicKey;
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -70,12 +70,12 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
 }
 
 async fn create_endpoint(
-    key: iroh_net::key::SecretKey,
+    key: iroh::net::key::SecretKey,
     port: u16,
 ) -> anyhow::Result<MagicEndpoint> {
     // let pkarr_relay_discovery = discovery::PkarrRelayDiscovery::new(key.clone(), PKARR_RELAY_URL.parse().unwrap());
     let region_discover = discovery::HardcodedRegionDiscovery::new(2);
-    iroh_net::MagicEndpoint::builder()
+    iroh::net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(region_discover))
         .alpns(vec![TRACKER_ALPN.to_vec()])
@@ -106,7 +106,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let rt = tokio::runtime::Handle::current();
     let tpc = LocalPoolHandle::new(2);
-    let rt = iroh_bytes::util::runtime::Handle::new(rt, tpc);
+    let rt = iroh::bytes::util::runtime::Handle::new(rt, tpc);
     let home = tracker_home()?;
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
@@ -155,7 +155,7 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh_net::key::SecretKey::generate();
+    let key = iroh::net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, 11112).await?;
     log!("announce {:?}", args);
     log!("trying to connect to {:?}", args.tracker);
@@ -210,7 +210,7 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh_net::key::SecretKey::generate();
+    let key = iroh::net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, args.port.unwrap_or_default()).await?;
     let query = Query {
         content: args.content.hash_and_format(),
