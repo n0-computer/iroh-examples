@@ -1,11 +1,8 @@
-use axum::{
-    extract::State,
-    Json,
-};
+use axum::{extract::State, Json};
 use bytes::Bytes;
 
-
-use crate::iroh::{join_doc, subscribe_for_kubo_replication, DocDetails, DocJoin};
+use crate::iroh::{join_doc, DocDetails, DocJoin};
+use crate::kubo::KuboReplicator;
 use crate::{error::AppError, AppState};
 
 pub async fn join_doc_handler(
@@ -15,10 +12,17 @@ pub async fn join_doc_handler(
     tracing::info!("joining doc: {:?}", &import);
     let doc = join_doc(&app_state, import.ticket).await?;
 
-    let app_state_2 = app_state.clone();
+    let state = app_state.clone();
+    let doc_id = doc.doc_id;
     tokio::task::spawn(async move {
         tracing::info!("subscibing for kubo replication");
-        if let Err(e) = subscribe_for_kubo_replication(&app_state_2, doc.doc_id).await {
+        let client = state.iroh().unwrap();
+        let kubo_url = url::Url::parse(&state.config.kubo_url).unwrap();
+        let mut replicator =
+            KuboReplicator::new(doc_id, state.author_id.unwrap(), kubo_url, client)
+                .await
+                .unwrap();
+        if let Err(e) = replicator.start().await {
             tracing::error!("Failed to subscribe for kubo replication: {:#}", e);
         }
     });

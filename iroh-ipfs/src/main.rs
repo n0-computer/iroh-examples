@@ -69,7 +69,6 @@ async fn main_impl() -> Result<()> {
     let author_id = get_author(&iroh).await?;
     state.set_iroh_client(Some(iroh));
     state.set_author_id(author_id);
-    state.start_kubo_replication()?;
 
     let addr = state.listen_addr();
 

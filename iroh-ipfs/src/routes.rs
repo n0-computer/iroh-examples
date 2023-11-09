@@ -8,11 +8,9 @@ use axum::Router;
 use iroh::sync::AuthorId;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use url::Url;
 
 use crate::config::Config;
 use crate::handlers;
-use crate::kubo::KuboReplicator;
 use crate::node::{get_provider_peer_id, ProviderInfo};
 
 #[derive(Debug, Clone)]
@@ -32,7 +30,6 @@ pub struct Inner {
     pub(crate) provider_details: ProviderInfo,
     pub(crate) iroh_client: Arc<Option<iroh::client::mem::Iroh>>,
     pub(crate) author_id: Option<AuthorId>,
-    pub(crate) kubo_replicator: KuboReplicator,
 }
 
 impl AppState {
@@ -51,15 +48,11 @@ impl AppState {
 
         tracing::debug!("connected to postgres");
 
-        let kubo_url = Url::parse(&config.kubo_url)?;
-        let kubo_replicator = KuboReplicator::new(kubo_url);
-
         Ok(Self(Inner {
             provider_details,
             config: Arc::new(config),
             iroh_client: Arc::new(None),
             author_id: None,
-            kubo_replicator,
         }))
     }
 
@@ -77,15 +70,11 @@ impl AppState {
 
     pub fn set_iroh_client(&mut self, client: Option<iroh::client::mem::Iroh>) {
         self.0.iroh_client = Arc::new(client);
-        if let Some(iroh_client) = self.0.iroh_client.as_ref() {
-            self.0.kubo_replicator.set_iroh(iroh_client.clone());
-        }
     }
 
     pub fn set_author_id(&mut self, author_id: AuthorId) {
         self.0.author_id = Some(author_id);
         self.0.provider_details.author_id = Some(author_id.to_string());
-        self.0.kubo_replicator.set_author_id(author_id);
     }
 
     pub fn get_author_id(&self) -> AuthorId {
@@ -98,10 +87,6 @@ impl AppState {
             .as_ref()
             .clone()
             .ok_or_else(|| anyhow::anyhow!("iroh client not initialized"))
-    }
-
-    pub fn start_kubo_replication(&mut self) -> Result<()> {
-        self.0.kubo_replicator.start()
     }
 
     pub async fn create_app(&self) -> Result<Router> {

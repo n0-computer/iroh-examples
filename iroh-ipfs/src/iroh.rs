@@ -1,18 +1,15 @@
-use std::collections::BTreeMap;
 use std::str::{self, FromStr};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt};
 use iroh::{
     rpc_protocol::{DocTicket, ShareMode},
     sync::{store::Query, Entry, NamespaceId},
-    sync_engine::LiveEvent,
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, error};
 
-use crate::kubo::AddToKuboMessage;
 use crate::{
     error::AppError,
     node::{Blake3Cid, PublicListResponse},
@@ -112,103 +109,11 @@ pub fn is_replicate_prefix(key: &[u8]) -> bool {
     key.starts_with(REPLICATION_PREFIX)
 }
 
-pub fn ipfs_hash_from_key(key: &[u8]) -> Result<cid::Cid> {
+pub fn ipfs_cid_from_key(key: &[u8]) -> Result<cid::Cid> {
     // trim off REPLICATION_PREFIX & return a new array
     let bytes = &key[REPLICATION_PREFIX.len()..];
     // confirm the resulting array is a valid IPFS hash by parsing it as a CID
-    cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS hash"))
-}
-
-pub(crate) async fn subscribe_for_kubo_replication(
-    app_state: &AppState,
-    doc_id: NamespaceId,
-) -> Result<(), AppError> {
-    let doc = app_state
-        .iroh()?
-        .docs
-        .open(doc_id)
-        .await?
-        .context("doc not found")?;
-
-    // map of iroh content hashes -> IPFS content hash
-    let mut replicated = BTreeMap::new();
-    let mut awaiting_content = BTreeMap::new();
-    let kubo_replicate_tx = app_state.kubo_replicator.tx();
-
-    let mut replicated_keys = doc
-        .get_many(Query::all().key_prefix(REPLICATION_PREFIX))
-        .await?;
-
-    while let Some(entry) = replicated_keys.next().await {
-        let entry = entry?;
-        if let Ok(ipfs_hash) = ipfs_hash_from_key(entry.key()) {
-            replicated.insert(entry.content_hash(), ipfs_hash);
-        }
-    }
-
-    let mut stream = doc.subscribe().await?;
-    tracing::info!("subscribe_for_kubo_replication: subscribed");
-    while let Some(event) = stream.next().await {
-        let event = event?;
-        match event {
-            LiveEvent::InsertRemote {
-                entry,
-                content_status,
-                ..
-            } => {
-                // ignore everything that isn't a replicate prefix
-                if is_replicate_prefix(entry.key()) {
-                    tracing::info!("ignoring key {:?}", str::from_utf8(entry.key()).unwrap());
-                    continue;
-                }
-
-                match content_status {
-                    iroh::sync::ContentStatus::Missing | iroh::sync::ContentStatus::Incomplete => {
-                        // wait for the data, store the entry
-                        tracing::info!("subscribe_for_kubo_replication: missing/incomplete");
-                        awaiting_content.insert(entry.content_hash(), entry);
-                    }
-                    iroh::sync::ContentStatus::Complete => {
-                        // we have the data, skip the map & go straight to replication
-                        let msg = AddToKuboMessage {
-                            doc_id,
-                            iroh_hash: entry.content_hash(),
-                        };
-                        let tx = kubo_replicate_tx.clone();
-                        tokio::task::spawn(async move {
-                            tracing::info!("subscribe_for_kubo_replication: complete. sending");
-                            if let Err(e) = tx.send(msg).await {
-                                error!("failed to send entry to kubo: {}", e);
-                            }
-                        });
-                    }
-                }
-            }
-            LiveEvent::ContentReady { hash } => {
-                // we have data! check to see if it needs replicating
-                if let Some(entry) = awaiting_content.get(&hash) {
-                    let msg = AddToKuboMessage {
-                        doc_id,
-                        iroh_hash: entry.content_hash(),
-                    };
-                    let tx = kubo_replicate_tx.clone();
-                    tokio::task::spawn(async move {
-                        tracing::info!("subscribe_for_kubo_replication: ContentReady. sending");
-                        if let Err(e) = tx.send(msg).await {
-                            error!("failed to send entry to kubo: {}", e);
-                        }
-                    });
-                    awaiting_content.remove(&hash);
-                }
-            }
-            _ => {} // LiveEvent::ContentReady { hash } => {
-                    // }
-                    // LiveEvent::SyncFinished(..) => ()
-                    // LiveEvent::NeighborUp(..) => ()
-                    // LiveEvent::NeighborDown(..) => ()
-        };
-    }
-    Ok(())
+    cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS CID"))
 }
 
 pub async fn get_docs(app_state: &AppState) -> Result<Vec<DocDetails>, AppError> {

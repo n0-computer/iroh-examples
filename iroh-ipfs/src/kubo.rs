@@ -1,99 +1,163 @@
+use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::str;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, ensure, Context, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use cid::Cid;
+use futures::StreamExt;
 use hyper::StatusCode;
 use ipfs_api_prelude::response::{AddResponse, BlockPutResponse, IdResponse, PinLsResponse};
 use iroh::{
-    sync::{AuthorId, NamespaceId},
-    bytes::util::Hash
+    bytes::util::Hash,
+    client::Doc,
+    rpc_protocol::{ProviderRequest, ProviderResponse},
+    sync::{store::Query, AuthorId, NamespaceId},
+    sync_engine::LiveEvent,
 };
-use libipld::cbor::DagCborCodec;
-use libipld::raw::RawCodec;
+use libipld::{cbor::DagCborCodec, raw::RawCodec};
+use quic_rpc::transport::flume::FlumeConnection;
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime as DateTime;
-use tokio::io::AsyncRead;
-use tokio::sync::mpsc;
+use tokio::{io::AsyncRead, sync::mpsc};
+use tracing::error;
 use url::Url;
-
-use crate::node::Blake3Cid;
 
 /// Kubo max block size: 1MB
 const KUBO_MAX_BLOCK_SIZE: u64 = 1024 * 1000;
 /// don't replicate files larger than 1 Gig
 const KUBO_MAX_REPLICATION_SIZE: u64 = 1024 * 1000 * 100;
 
-#[derive(Debug)]
-pub(crate) struct AddToKuboMessage {
-    pub doc_id: NamespaceId,
-    pub iroh_hash: Hash,
+const REPLICATION_PREFIX: &str = "ipfs:";
+
+pub fn is_replicate_prefix(key: &[u8]) -> bool {
+    key.starts_with(REPLICATION_PREFIX.as_bytes())
+}
+
+pub fn ipfs_cid_from_key(key: &[u8]) -> Result<cid::Cid> {
+    // trim off REPLICATION_PREFIX & return a new array
+    let bytes = &key[REPLICATION_PREFIX.len()..];
+    // confirm the resulting array is a valid IPFS hash by parsing it as a CID
+    cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS CID"))
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct KuboReplicator {
-    iroh_client: Option<iroh::client::mem::Iroh>,
-    kubo_url: Url,
-    kubo_tx: mpsc::Sender<AddToKuboMessage>,
-    author_id: Option<AuthorId>,
+    doc: Doc<FlumeConnection<ProviderResponse, ProviderRequest>>,
+    kubo_tx: mpsc::Sender<Hash>,
 }
 
 impl KuboReplicator {
-    pub(crate) fn new(kubo_url: Url) -> Self {
-        // fake channel to start. the real one is allocated when iroh_client is set
-        let (kubo_tx, _) = mpsc::channel::<AddToKuboMessage>(10000);
+    pub(crate) async fn new(
+        doc_id: NamespaceId,
+        author_id: AuthorId,
+        kubo_url: Url,
+        iroh_client: iroh::client::mem::Iroh,
+    ) -> Result<Self> {
+        let (kubo_tx, mut rx) = mpsc::channel::<Hash>(10000);
 
-        Self {
-            iroh_client: None,
-            kubo_url,
-            kubo_tx,
-            author_id: None,
+        let doc = iroh_client
+            .docs
+            .open(doc_id)
+            .await?
+            .context("doc not found")?;
+
+        let replicated = Arc::new(Mutex::new(BTreeMap::new()));
+        let mut replicated_keys = doc
+            .get_many(Query::all().key_prefix(REPLICATION_PREFIX))
+            .await?;
+        while let Some(entry) = replicated_keys.next().await {
+            let entry = entry?;
+            if let Ok(ipfs_cid) = ipfs_cid_from_key(entry.key()) {
+                replicated
+                    .lock()
+                    .unwrap()
+                    .insert(entry.content_hash(), ipfs_cid);
+            }
         }
-    }
 
-    pub(crate) fn set_author_id(&mut self, author_id: AuthorId) {
-        self.author_id = Some(author_id);
-    }
-
-    pub(crate) fn set_iroh(&mut self, iroh_client: iroh::client::mem::Iroh) {
-        self.iroh_client = Some(iroh_client);
-    }
-
-    pub(crate) fn start(&mut self) -> Result<()> {
-        let (kubo_tx, mut rx) = mpsc::channel::<AddToKuboMessage>(10000);
-        self.kubo_tx = kubo_tx;
-        let url_2 = self.kubo_url.clone();
-        let iroh = self.iroh_client.clone().context("iroh client is missing")?;
-        let author_id = self.author_id.context("author id is missing")?;
+        // build receive task
+        let url_2 = kubo_url.clone();
+        let iroh = iroh_client.clone();
+        let doc_2 = doc.clone();
+        let iroh_2 = iroh.clone();
+        let replicated_2 = replicated.clone();
         tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                let iroh = iroh.clone();
-                tracing::info!("replicating {} {}", msg.doc_id, msg.iroh_hash);
+            while let Some(iroh_hash) = rx.recv().await {
+                tracing::info!("replicating {}", iroh_hash);
                 let kubo_client = &mut KuboClient::new(&url_2).unwrap();
-                let (kubo_cid, size) = replicate_to_kubo(&iroh, kubo_client, msg.iroh_hash)
+                let (kubo_cid, size) = replicate_to_kubo(&iroh_2, kubo_client, iroh_hash)
                     .await
                     .unwrap();
 
-                let doc = iroh.docs.open(msg.doc_id).await.unwrap().unwrap();
-                let key = format!("map:iroh:{}:kubo:{}", msg.iroh_hash, kubo_cid);
-
-                doc.set_hash(author_id, key, msg.iroh_hash, size)
+                let key = [String::from(REPLICATION_PREFIX), kubo_cid.to_string()].concat();
+                doc_2
+                    .set_hash(author_id, key, iroh_hash, size)
                     .await
                     .unwrap();
-                tracing::info!(
-                    "replicated doc: {} iroh: {} kubo: {}",
-                    msg.doc_id,
-                    msg.iroh_hash,
-                    kubo_cid
-                );
+                tracing::info!("replicated iroh hash: {} to kubo: {}", iroh_hash, kubo_cid);
+                replicated_2.lock().unwrap().insert(iroh_hash, kubo_cid);
             }
         });
-        Ok(())
+
+        Ok(Self { doc, kubo_tx })
     }
 
-    pub(crate) fn tx(&self) -> mpsc::Sender<AddToKuboMessage> {
-        self.kubo_tx.clone()
+    pub(crate) async fn start(&mut self) -> Result<()> {
+        let mut awaiting_content = BTreeMap::new();
+        let mut stream = self.doc.subscribe().await?;
+        tracing::info!("subscribe_for_kubo_replication: subscribed");
+
+        while let Some(event) = stream.next().await {
+            let event = event?;
+            match event {
+                LiveEvent::InsertRemote {
+                    entry,
+                    content_status,
+                    ..
+                } => {
+                    // ignore any changes that have the replication prefix
+                    if is_replicate_prefix(entry.key()) {
+                        tracing::info!("ignoring key {:?}", str::from_utf8(entry.key()).unwrap());
+                        continue;
+                    }
+
+                    match content_status {
+                        iroh::sync::ContentStatus::Missing
+                        | iroh::sync::ContentStatus::Incomplete => {
+                            // wait for the data, store the entry
+                            tracing::info!("subscribe_for_kubo_replication: missing/incomplete");
+                            awaiting_content.insert(entry.content_hash(), entry);
+                        }
+                        iroh::sync::ContentStatus::Complete => {
+                            // we have the data, skip the map & go straight to replication
+                            let tx = self.kubo_tx.clone();
+                            tokio::task::spawn(async move {
+                                tracing::info!("subscribe_for_kubo_replication: complete. sending");
+                                if let Err(e) = tx.send(entry.content_hash()).await {
+                                    error!("failed to send entry to kubo: {}", e);
+                                }
+                            });
+                        }
+                    }
+                }
+                LiveEvent::ContentReady { hash } => {
+                    // we have data! check to see if it needs replicating
+                    if let Some(entry) = awaiting_content.get(&hash) {
+                        let tx = self.kubo_tx.clone();
+                        if let Err(e) = tx.send(entry.content_hash()).await {
+                            error!("failed to send entry to kubo: {}", e);
+                        }
+                        awaiting_content.remove(&hash);
+                    }
+                }
+                _ => {} // LiveEvent::SyncFinished(..) => ()
+                        // LiveEvent::NeighborUp(..) => ()
+                        // LiveEvent::NeighborDown(..) => ()
+            };
+        }
+        Ok(())
     }
 }
 
@@ -105,222 +169,28 @@ pub enum ReplicationStatus {
     Replicated, /* at least one replica has ACK'd having this content */
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct KuboReplication {
-    iroh_cid: String,         // TODO - better type
-    kubo_cid: Option<String>, // TODO - better type
-    created_at: DateTime,
-    updated_at: DateTime,
-    replica_kubo_id: Option<String>, // TODO - better type
-    status: ReplicationStatus,
-    creator_pub_key: Option<String>, // TODO - better type
-    signature: Option<String>,       // TODO - better type
-    size: i64,
-}
-
-// /// Retrieve the replication status (if any) for a given iroh hash
-async fn get_kubo_replication(_iroh_hash: Hash) -> Result<KuboReplication> {
-    Err(anyhow!("not implemented"))
-    // match sqlx::query_as!(
-    //     KuboReplication,
-    //     r#"SELECT
-    //         anchor_id,
-    //         created_at,
-    //         updated_at,
-    //         iroh_cid,
-    //         kubo_cid,
-    //         replica_kubo_id,
-    //         status as "status: _",
-    //         creator_pub_key,
-    //         signature,
-    //         size
-    //     FROM kubo_replications
-    //     WHERE iroh_cid = $1
-    //     "#,
-    //     iroh_hash.to_string()
-    // )
-    // .fetch_one(db)
-    // .await
-    // {
-    //     Ok(replication) => Ok(replication),
-    //     Err(e) => Err(anyhow!("error getting kubo replication: {}", e)),
-    // }
-}
-
-// async fn upsert_replication(
-//     db: &PgPool,
-//     replication: KuboReplication,
-//     prev: Option<KuboReplication>,
-// ) -> Result<KuboReplication> {
-//     match prev {
-//         Some(_prev) => update_replication(db, replication).await,
-//         None => insert_replication(db, replication).await,
-//     }
-// }
-
-// async fn insert_replication(db: &PgPool, replication: KuboReplication) -> Result<KuboReplication> {
-//     match sqlx::query_as!(
-//         KuboReplication,
-//         r#"INSERT INTO kubo_replications (anchor_id, iroh_cid, kubo_cid, replica_kubo_id, status, creator_pub_key, signature, size)
-//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-//         RETURNING
-//             anchor_id,
-//             created_at,
-//             updated_at,
-//             iroh_cid,
-//             kubo_cid,
-//             replica_kubo_id,
-//             status as "status: _",
-//             creator_pub_key,
-//             signature,
-//             size
-//         "#,
-//         replication.anchor_id,
-//         replication.iroh_cid,
-//         replication.kubo_cid,
-//         replication.replica_kubo_id,
-//         replication.status as _,
-//         replication.creator_pub_key,
-//         replication.signature,
-//         replication.size as i64,
-//     ).fetch_one(db).await {
-//         Ok(replication) => Ok(replication),
-//         Err(e) => Err(anyhow!("error inserting kubo replication: {}", e))
-//     }
-// }
-
-// async fn update_replication(db: &PgPool, replication: KuboReplication) -> Result<KuboReplication> {
-//     match sqlx::query_as!(
-//         KuboReplication,
-//         // language=PostgreSQL
-//         r#"UPDATE kubo_replications
-//         SET
-//             updated_at = now(),
-//             anchor_id = $1,
-//             iroh_cid = $2,
-//             kubo_cid = $3,
-//             replica_kubo_id = $4,
-//             status = $5,
-//             creator_pub_key = $6,
-//             signature = $7,
-//             size = $8
-//         WHERE iroh_cid = $2
-//         RETURNING
-//             anchor_id,
-//             created_at,
-//             updated_at,
-//             iroh_cid,
-//             kubo_cid,
-//             replica_kubo_id,
-//             status as "status: _",
-//             creator_pub_key,
-//             signature,
-//             size
-//         "#,
-//         replication.anchor_id,
-//         replication.iroh_cid,
-//         replication.kubo_cid,
-//         replication.replica_kubo_id,
-//         replication.status as _,
-//         replication.creator_pub_key,
-//         replication.signature,
-//         replication.size as i64,
-//     )
-//     .fetch_one(db)
-//     .await
-//     {
-//         Ok(replication) => Ok(replication),
-//         Err(e) => Err(anyhow!("error updating kubo replication: {}", e)),
-//     }
-// }
-
 async fn replicate_to_kubo(
     iroh: &iroh::client::mem::Iroh,
     kubo_client: &mut KuboClient,
     iroh_hash: Hash,
 ) -> Result<(cid::Cid, u64)> {
-    tracing::debug!("checking replication status for {}", Blake3Cid(iroh_hash));
-    let _prev_replication = match get_kubo_replication(iroh_hash).await {
-        Ok(replication) => {
-            match replication.status {
-                ReplicationStatus::None | ReplicationStatus::Failed => Some(replication),
-                ReplicationStatus::Invalid => {
-                    tracing::info!("iroh cid {} is invalid, replicating again", iroh_hash);
-                    Some(replication)
-                }
-                ReplicationStatus::Replicated => {
-                    // TODO(b5) - check updated-at, if it's older than, say 24 hours,
-                    // do a confirmation that the given kubo replica still has
-                    // the CID
-                    if let Some(cid_string) = replication.kubo_cid {
-                        // we're already replicated, early return
-                        let cid = Cid::try_from(cid_string)?;
-                        return Ok((cid, replication.size as u64));
-                    }
-
-                    tracing::info!("iroh cid {} is replicated, but no kubo cid exists in the db, replicating again", iroh_hash);
-                    Some(replication)
-                }
-            }
-        }
-        Err(_) => None,
-    };
-
     // get size of file at path
     let mut reader = iroh.blobs.read(iroh_hash).await?;
     let size = reader.size();
 
-    // TODO(b5): increase this limit
     if size > KUBO_MAX_REPLICATION_SIZE {
         return Err(anyhow!("file too large"));
     }
 
     if size < KUBO_MAX_BLOCK_SIZE {
-        // put_equivelant_block(kubo_client, iroh, iroh_hash).await?;
-        // println!("putting {:?}. path: {:?}", &hash, &path);
         let cid = Cid::try_from(crate::node::Blake3Cid(iroh_hash).to_string())?;
         let data = reader.read_to_bytes().await?;
         kubo_client.put_block(&cid, data).await?;
-        // upsert_replication(
-        //     db,
-        //     KuboReplication {
-        //         anchor_id: Some(anchor_id),
-        //         iroh_cid: iroh_hash.to_string(),
-        //         kubo_cid: Some(cid.to_string()),
-        //         created_at: DateTime::now_utc(),
-        //         updated_at: DateTime::now_utc(),
-        //         replica_kubo_id: None,
-        //         status: ReplicationStatus::Replicated,
-        //         creator_pub_key: None,
-        //         signature: None,
-        //         size: size as i64,
-        //     },
-        //     prev_replication,
-        // )
-        // .await?;
         Ok((cid, size))
     } else {
         // bigger than a block, use unixfs add
         let data = reader.read_to_bytes().await?;
         let cid = kubo_client.unixfs_add(data).await?;
-        // upsert_replication(
-        //     db,
-        //     KuboReplication {
-        //         anchor_id: Some(anchor_id),
-        //         iroh_cid: iroh_hash.to_string(),
-        //         kubo_cid: Some(cid.to_string()),
-        //         created_at: DateTime::now_utc(),
-        //         updated_at: DateTime::now_utc(),
-        //         replica_kubo_id: None,
-        //         status: ReplicationStatus::Replicated,
-        //         creator_pub_key: None,
-        //         signature: None,
-        //         size: size as i64,
-        //     },
-        //     prev_replication,
-        // )
-        // .await?;
-
         Ok((cid, size))
     }
 }
