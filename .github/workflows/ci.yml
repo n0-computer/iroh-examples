@@ -95,7 +95,9 @@ jobs:
           for i in ${GO_EXAMPLES_LIST//,/ }
           do
             echo "Checking $i"
-            go build -o $i $i/main.go
+            cd $i
+            go build
+            cd ..
           done
       env:
         XDG_CACHE_HOME: /root/.cache
