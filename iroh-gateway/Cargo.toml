@@ -20,3 +20,4 @@ mime_classifier = "0.0.1"
 derive_more = { version = "1.0.0-beta.1", features = ["debug"] }
 mime = "0.3.17"
 quinn = "0.10.2"
+url = "2.4.1"

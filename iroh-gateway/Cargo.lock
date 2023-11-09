@@ -1898,6 +1898,7 @@ dependencies = [
  "tokio",
  "tower-http 0.4.4",
  "tracing",
+ "url",
 ]
 
 [[package]]
