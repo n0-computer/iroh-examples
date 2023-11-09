@@ -92,6 +92,7 @@ jobs:
     
     - name: go
       run: |
+          git clone https://github.com/n0-computer/iroh-ffi.git
           for i in ${GO_EXAMPLES_LIST//,/ }
           do
             echo "Checking $i"
