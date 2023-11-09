@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ubuntu-latest, macOS-arm-latest]
+        name: [ubuntu-latest]
         rust: [nightly, stable]
         include:
           - name: ubuntu-latest
@@ -35,11 +35,6 @@ jobs:
             release-os: linux
             release-arch: amd64
             runner: [self-hosted, linux, X64]
-          - name: macOS-arm-latest
-            os: macOS-latest
-            release-os: darwin
-            release-arch: aarch64
-            runner: [self-hosted, macOS, ARM64]
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"

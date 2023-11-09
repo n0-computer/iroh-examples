@@ -7,13 +7,21 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
 use iroh::{
-    client::{self, Iroh, quic::RPC_ALPN},
-    net::{key::{PublicKey, SecretKey},derp::{DerpMap, DerpMode}},
+    bytes::{
+        protocol::RequestToken,
+        store::{flat, Store as BaoStore},
+        util::runtime,
+        Hash,
+    },
+    client::{self, quic::RPC_ALPN, Iroh},
+    net::{
+        derp::{DerpMap, DerpMode},
+        key::{PublicKey, SecretKey},
+    },
     node::{Node, StaticTokenAuthHandler},
-    util::path::IrohPaths,
     rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService},
-    sync::{AuthorId, store::Store as DocStore},
-    bytes::{protocol::RequestToken, store::{flat, Store as BaoStore}, util::runtime, Hash},
+    sync::{store::Store as DocStore, AuthorId},
+    util::path::IrohPaths,
 };
 use quic_rpc::transport::flume::FlumeConnection;
 use quic_rpc::transport::quinn::QuinnServerEndpoint;
