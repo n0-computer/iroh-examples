@@ -8,7 +8,7 @@ pub struct Config {
     /// Address on which the HTTP server is bound.
     pub listen_addr: SocketAddr,
     /// The address on which iroh provider is bound.
-    pub provider_address: String,
+    pub provider_address: SocketAddr,
     /// URL for the kubo RPC HTTP API
     pub kubo_url: String,
 }
@@ -21,7 +21,9 @@ impl Config {
             .expect("listen address is invalid");
 
         let provider_address = std::env::var("IROH_IPFS_PROVIDER_ADDRESS")
-            .unwrap_or_else(|_| "127.0.0.1:4433".to_string());
+            .unwrap_or_else(|_| "127.0.0.1:4433".to_string())
+            .parse()
+            .expect("provider address is invalid");
 
         let kubo_url = std::env::var("IROH_IPFS_KUBO_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:5001".to_string());

@@ -28,14 +28,20 @@ impl Deref for AppState {
 pub struct Inner {
     pub(crate) config: Arc<Config>,
     pub(crate) provider_details: ProviderInfo,
-    pub(crate) iroh_client: Arc<Option<iroh::client::mem::Iroh>>,
-    pub(crate) author_id: Option<AuthorId>,
+    pub(crate) iroh_client: iroh::client::mem::Iroh,
+    pub(crate) author_id: AuthorId,
+}
+
+pub fn load_config() -> Config {
+    Config::new()
 }
 
 impl AppState {
-    pub async fn new() -> Result<Self> {
-        let config = Config::new();
-
+    pub async fn new(
+        config: Config,
+        iroh_client: iroh::client::mem::Iroh,
+        author_id: AuthorId,
+    ) -> Result<Self> {
         let provider_peer_id = get_provider_peer_id().await.unwrap();
         let provider_details = ProviderInfo {
             author_id: None,
@@ -51,8 +57,8 @@ impl AppState {
         Ok(Self(Inner {
             provider_details,
             config: Arc::new(config),
-            iroh_client: Arc::new(None),
-            author_id: None,
+            iroh_client,
+            author_id,
         }))
     }
 
@@ -65,28 +71,15 @@ impl AppState {
     }
 
     pub fn provider_addr(&self) -> SocketAddr {
-        self.config.provider_address.parse().unwrap()
-    }
-
-    pub fn set_iroh_client(&mut self, client: Option<iroh::client::mem::Iroh>) {
-        self.0.iroh_client = Arc::new(client);
-    }
-
-    pub fn set_author_id(&mut self, author_id: AuthorId) {
-        self.0.author_id = Some(author_id);
-        self.0.provider_details.author_id = Some(author_id.to_string());
+        self.config.provider_address
     }
 
     pub fn get_author_id(&self) -> AuthorId {
-        self.0.author_id.unwrap()
+        self.0.author_id
     }
 
-    pub fn iroh(&self) -> Result<iroh::client::mem::Iroh> {
-        self.0
-            .iroh_client
-            .as_ref()
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("iroh client not initialized"))
+    pub fn iroh(&self) -> &iroh::client::mem::Iroh {
+        &self.0.iroh_client
     }
 
     pub async fn create_app(&self) -> Result<Router> {

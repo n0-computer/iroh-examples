@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::str;
-use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, ensure, Context, Result};
 use async_trait::async_trait;
@@ -20,7 +19,7 @@ use iroh::{
 use libipld::{cbor::DagCborCodec, raw::RawCodec};
 use quic_rpc::transport::flume::FlumeConnection;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncRead, sync::mpsc};
+use tokio::{io::AsyncRead, sync::mpsc, task::JoinHandle};
 use tracing::error;
 use url::Url;
 
@@ -42,10 +41,17 @@ pub fn ipfs_cid_from_key(key: &[u8]) -> Result<cid::Cid> {
     cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS CID"))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct KuboReplicator {
     doc: Doc<FlumeConnection<ProviderResponse, ProviderRequest>>,
     kubo_tx: mpsc::Sender<Hash>,
+    handle: JoinHandle<()>,
+}
+
+impl Drop for KuboReplicator {
+    fn drop(&mut self) {
+        self.handle.abort();
+    }
 }
 
 impl KuboReplicator {
@@ -63,45 +69,42 @@ impl KuboReplicator {
             .await?
             .context("doc not found")?;
 
-        let replicated = Arc::new(Mutex::new(BTreeMap::new()));
+        let mut replicated = BTreeMap::new();
         let mut replicated_keys = doc
             .get_many(Query::all().key_prefix(REPLICATION_PREFIX))
             .await?;
         while let Some(entry) = replicated_keys.next().await {
             let entry = entry?;
             if let Ok(ipfs_cid) = ipfs_cid_from_key(entry.key()) {
-                replicated
-                    .lock()
-                    .unwrap()
-                    .insert(entry.content_hash(), ipfs_cid);
+                replicated.insert(entry.content_hash(), ipfs_cid);
             }
         }
 
         // build receive task
-        let url_2 = kubo_url.clone();
         let iroh = iroh_client.clone();
         let doc_2 = doc.clone();
         let iroh_2 = iroh.clone();
-        let replicated_2 = replicated.clone();
-        tokio::spawn(async move {
-            while let Some(iroh_hash) = rx.recv().await {
-                tracing::info!("replicating {}", iroh_hash);
-                let kubo_client = &mut KuboClient::new(&url_2).unwrap();
-                let (kubo_cid, size) = replicate_to_kubo(&iroh_2, kubo_client, iroh_hash)
-                    .await
-                    .unwrap();
+        let mut kubo_client = KuboClient::new(&kubo_url);
 
-                let key = [String::from(REPLICATION_PREFIX), kubo_cid.to_string()].concat();
-                doc_2
-                    .set_hash(author_id, key, iroh_hash, size)
-                    .await
-                    .unwrap();
-                tracing::info!("replicated iroh hash: {} to kubo: {}", iroh_hash, kubo_cid);
-                replicated_2.lock().unwrap().insert(iroh_hash, kubo_cid);
+        let handle = tokio::spawn(async move {
+            while let Some(iroh_hash) = rx.recv().await {
+                match replicate(&iroh_2, &mut kubo_client, iroh_hash, author_id, &doc_2).await {
+                    Ok(kubo_cid) => {
+                        tracing::info!("replicated iroh hash: {} to kubo: {}", iroh_hash, kubo_cid);
+                        replicated.insert(iroh_hash, kubo_cid);
+                    }
+                    Err(err) => {
+                        tracing::warn!("failed to replicate {}: {:?}", iroh_hash, err);
+                    }
+                }
             }
         });
 
-        Ok(Self { doc, kubo_tx })
+        Ok(Self {
+            doc,
+            kubo_tx,
+            handle,
+        })
     }
 
     pub(crate) async fn start(&mut self) -> Result<()> {
@@ -119,7 +122,7 @@ impl KuboReplicator {
                 } => {
                     // ignore any changes that have the replication prefix
                     if is_replicate_prefix(entry.key()) {
-                        tracing::info!("ignoring key {:?}", str::from_utf8(entry.key()).unwrap());
+                        tracing::info!("ignoring key {:?}", str::from_utf8(entry.key()));
                         continue;
                     }
 
@@ -163,10 +166,30 @@ impl KuboReplicator {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum ReplicationStatus {
-    None,       /* this content is not replicated */
-    Invalid,    /* this content cannot be replicated  */
-    Failed,     /* tried to replicate this content, but it failed */
-    Replicated, /* at least one replica has ACK'd having this content */
+    /// This content is not replicated
+    None,
+    /// This content cannot be replicated  
+    Invalid,
+    /// Tried to replicate this content, but it failed
+    Failed,
+    /// At least one replica has ACK'd having this content
+    Replicated,
+}
+
+async fn replicate(
+    iroh: &iroh::client::mem::Iroh,
+    kubo_client: &mut KuboClient,
+    iroh_hash: Hash,
+    author_id: AuthorId,
+    doc: &Doc<FlumeConnection<ProviderResponse, ProviderRequest>>,
+) -> Result<cid::Cid> {
+    tracing::info!("replicating {}", iroh_hash);
+    let (kubo_cid, size) = replicate_to_kubo(iroh, kubo_client, iroh_hash).await?;
+
+    let key = [String::from(REPLICATION_PREFIX), kubo_cid.to_string()].concat();
+    doc.set_hash(author_id, key, iroh_hash, size).await?;
+
+    Ok(kubo_cid)
 }
 
 async fn replicate_to_kubo(
@@ -261,13 +284,12 @@ pub struct KuboClient {
 }
 
 impl KuboClient {
-    // TODO: This probably doesn't need to return a result
-    pub fn new(api_url: &Url) -> Result<Self> {
+    pub fn new(api_url: &Url) -> Self {
         let client = reqwest::Client::new();
-        Ok(KuboClient {
+        KuboClient {
             client,
             api_url: api_url.clone(),
-        })
+        }
     }
 }
 

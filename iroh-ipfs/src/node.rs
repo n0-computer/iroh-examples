@@ -7,13 +7,21 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
 use iroh::{
-    client::{self, Iroh, quic::RPC_ALPN},
-    net::{key::{PublicKey, SecretKey},derp::{DerpMap, DerpMode}},
+    bytes::{
+        protocol::RequestToken,
+        store::{flat, Store as BaoStore},
+        util::runtime,
+        Hash,
+    },
+    client::{self, quic::RPC_ALPN, Iroh},
+    net::{
+        derp::{DerpMap, DerpMode},
+        key::{PublicKey, SecretKey},
+    },
     node::{Node, StaticTokenAuthHandler},
-    util::path::IrohPaths,
     rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService},
-    sync::{AuthorId, store::Store as DocStore},
-    bytes::{protocol::RequestToken, store::{flat, Store as BaoStore}, util::runtime, Hash},
+    sync::{store::Store as DocStore, AuthorId},
+    util::path::IrohPaths,
 };
 use quic_rpc::transport::flume::FlumeConnection;
 use quic_rpc::transport::quinn::QuinnServerEndpoint;
@@ -23,10 +31,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot::Sender;
 
 use crate::config::iroh_ipfs_data_dir;
-use crate::AppState;
 
 pub async fn start_node(
-    _state: AppState,
     addr: SocketAddr,
     rpc_port: u16,
     tx_rpc_client: Sender<client::mem::RpcClient>,
@@ -295,15 +301,13 @@ impl Blake3Cid {
 impl fmt::Display for Blake3Cid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // result will be 58 bytes plus prefix
-        let mut res = [b'b'; 59];
+        let mut res = "b".to_string();
         // write the encoded bytes
-        data_encoding::BASE32_NOPAD.encode_mut(&self.as_bytes(), &mut res[1..]);
-        // convert to string, this is guaranteed to succeed
-        let t = std::str::from_utf8_mut(res.as_mut()).unwrap();
+        data_encoding::BASE32_NOPAD.encode_append(&self.as_bytes(), &mut res);
         // hack since data_encoding doesn't have BASE32LOWER_NOPAD as a const
-        t.make_ascii_lowercase();
+        res.make_ascii_lowercase();
         // write the str, no allocations
-        f.write_str(t)
+        f.write_str(&res)
     }
 }
 
@@ -360,7 +364,7 @@ pub type Event = iroh::node::Event;
 pub struct ProviderInfo {
     pub author_id: Option<String>,
     pub peer_id: String,
-    pub addr: String,
+    pub addr: SocketAddr,
     // TODO(b5): hack to work with auth token for the moment
     pub auth_token: String,
 }
