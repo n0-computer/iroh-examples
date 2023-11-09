@@ -1885,10 +1885,15 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
+ "clap",
+ "derive_more",
  "flume 0.11.0",
  "headers",
  "hyper",
  "iroh",
+ "mime",
+ "mime_classifier",
+ "quinn",
  "range-collections",
  "tokio",
  "tower-http 0.4.4",
@@ -2225,6 +2230,16 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "mime_classifier"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e817cb34c89e147fcfbb8a4e88e4c1c064c1c9fcdab80191f94b55921b3cbbd4"
+dependencies = [
+ "mime",
+ "serde",
+]
 
 [[package]]
 name = "minimal-lexical"

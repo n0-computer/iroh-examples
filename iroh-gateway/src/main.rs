@@ -1,3 +1,4 @@
+mod args;
 use axum::{
     body::Body,
     extract::Path,
@@ -7,6 +8,8 @@ use axum::{
     Extension, Router,
 };
 use bytes::Bytes;
+use clap::Parser;
+use derive_more::Deref;
 use headers::{HeaderMapExt, Range};
 use iroh::bytes::store::bao_tree::{ByteNum, ChunkNum};
 use iroh::{
@@ -18,8 +21,35 @@ use iroh::{
     },
     net::{key::PublicKey, AddrInfo, MagicEndpoint, NodeAddr},
 };
+use mime::Mime;
+use mime_classifier::MimeClassifier;
 use range_collections::{range_set::RangeSetRange, RangeSet2};
-use std::{net::SocketAddr, ops::Bound, result};
+use std::{net::SocketAddr, ops::Bound, result, sync::{Arc, RwLock}, collections::BTreeMap};
+
+// Make our own error that wraps `anyhow::Error`.
+struct AppError(anyhow::Error);
+
+// Tell axum how to convert `AppError` into a response.
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
+// `Result<_, AppError>`. That way you don't need to do that manually.
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
 
 /// Given a range specified as arbitrary range bounds, normalize it into a range
 /// that has inclusive start and exclusive end.
@@ -85,14 +115,6 @@ fn slice(offset: u64, data: Bytes, ranges: RangeSet2<u64>) -> Vec<Bytes> {
         .collect()
 }
 
-/// Convert an `anyhow::Error` into an `axum::http::Response`.
-///
-/// Not sure if this is supposed to work automatically, but I could not get it to work.
-fn anyhow_error_to_response(err: anyhow::Error) -> impl IntoResponse {
-    let text = format!("{:?}", err);
-    (StatusCode::INTERNAL_SERVER_ERROR, text).into_response()
-}
-
 async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
     Ok(match req.headers().typed_get::<Range>() {
         Some(range) => {
@@ -110,48 +132,90 @@ async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Op
 }
 
 #[derive(Debug, Clone)]
-struct Gateway {
-    endpoint: MagicEndpoint,
-    default_node: NodeAddr,
+struct Gateway(Arc<Inner>);
+
+impl Deref for Gateway {
+    type Target = Inner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
+#[derive(derive_more::Debug)]
+struct Inner {
+    /// Endpoint to connect to nodes
+    endpoint: MagicEndpoint,
+    /// Default node to connect to when not specified in the url
+    default_node: Option<NodeAddr>,
+    /// Mime classifier
+    #[debug("MimeClassifier")]
+    mime_classifier: MimeClassifier,
+    /// Cache of hashes to mime types
+    mime_cache: RwLock<BTreeMap<Hash, Mime>>,
+}
+
+/// Handle a request for a range of bytes from an explicitly specified node.
 async fn handle_remote_range_request(
     gateway: Extension<Gateway>,
     path: Path<(PublicKey, Hash)>,
     req: Request<Body>,
-) -> impl IntoResponse {
-    let inner = || async move {
-        let endpoint = &gateway.endpoint;
-        let Path((node_id, hash)) = path;
-        let node_addr = NodeAddr {
-            node_id,
-            info: AddrInfo {
-                derp_region: Some(2),
-                direct_addresses: Default::default(),
-            },
-        };
-        let byte_range = parse_byte_range(req).await?;
-        forward_range(endpoint, node_addr, hash, byte_range).await
+) -> std::result::Result<Response<Body>, AppError> {
+    let Path((node_id, hash)) = path;
+    let node_addr = NodeAddr {
+        node_id,
+        info: AddrInfo {
+            derp_region: Some(2),
+            direct_addresses: Default::default(),
+        },
     };
-    inner().await.map_err(anyhow_error_to_response)
+    let byte_range = parse_byte_range(req).await?;
+    let res = forward_range(&gateway, node_addr, hash, byte_range).await?;
+    Ok(res)
 }
 
+/// Handle a request for a range of bytes from the default node.
 async fn handle_local_range_request(
     gateway: Extension<Gateway>,
     Path(blake3_hash): Path<Hash>,
     req: Request<Body>,
-) -> impl IntoResponse {
-    let inner = || async move {
-        let endpoint = &gateway.endpoint;
-        let byte_range = parse_byte_range(req).await?;
-        let node_addr = gateway.default_node.clone();
-        forward_range(endpoint, node_addr, blake3_hash, byte_range).await
+) -> std::result::Result<Response<Body>, AppError> {
+    let Some(node_addr) = gateway.default_node.clone() else {
+        return Err(anyhow::anyhow!("no default node").into());
     };
-    inner().await.map_err(anyhow_error_to_response)
+    let byte_range = parse_byte_range(req).await?;
+    let res = forward_range(&gateway, node_addr, blake3_hash, byte_range).await?;
+    Ok(res)
+}
+
+/// Get the mime type for a hash, either from the cache or by requesting it from the node.
+async fn get_mime_type(gateway: &Gateway, hash: &Hash, connection: &quinn::Connection) -> anyhow::Result<Mime> {
+    if let Some(mime) = gateway.mime_cache.read().unwrap().get(hash) {
+        return Ok(mime.clone());
+    }
+    let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ChunkNum(16))));
+    let request = iroh::bytes::protocol::GetRequest::new(*hash, range);
+    let req = iroh::bytes::get::fsm::start(connection.clone(), request);
+    let connected = req.next().await?;
+    let ConnectedNext::StartRoot(x) = connected.next().await? else {
+        anyhow::bail!("unexpected response");
+    };
+    let (at_end, data) = x.next().concatenate_into_vec().await?;
+    let EndBlobNext::Closing(at_closing) = at_end.next() else {
+        anyhow::bail!("unexpected response");
+    };
+    let _stats = at_closing.next().await?;
+    let context = mime_classifier::LoadContext::Browsing;
+    let no_sniff_flag = mime_classifier::NoSniffFlag::Off;
+    let apache_bug_flag = mime_classifier::ApacheBugFlag::On;
+    let supplied_type = None;
+    let mime = gateway.mime_classifier.classify(context, no_sniff_flag, apache_bug_flag, &supplied_type, &data);
+    gateway.mime_cache.write().unwrap().insert(*hash, mime.clone());
+    Ok(mime)
 }
 
 async fn forward_range(
-    endpoint: &MagicEndpoint,
+    gateway: &Gateway,
     node_addr: NodeAddr,
     hash: Hash,
     (start, end): (Option<u64>, Option<u64>),
@@ -162,9 +226,11 @@ async fn forward_range(
 
     let byte_ranges = to_byte_range(start, end);
     let chunk_ranges = to_chunk_range(start, end);
-    let connection = endpoint
+    let connection = gateway.endpoint
         .connect(node_addr, &iroh::bytes::protocol::ALPN)
         .await?;
+    let mime = get_mime_type(gateway, &hash, &connection).await?;
+    println!("mime: {}", mime);
     let chunk_ranges = RangeSpecSeq::from_ranges(vec![chunk_ranges]);
     let request = iroh::bytes::protocol::GetRequest::new(hash, chunk_ranges.clone());
     let status_code = if byte_ranges.is_all() {
@@ -216,7 +282,8 @@ async fn forward_range(
     let body = Body::wrap_stream(recv.into_stream());
     let builder = Response::builder()
         .status(status_code)
-        .header(header::ACCEPT_RANGES, "bytes");
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_TYPE, mime.to_string());
     let builder = if start.is_some() || end.is_some() {
         let content_range_value = format!(
             "bytes {}-{}/{}",
@@ -236,12 +303,21 @@ async fn forward_range(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args = args::Args::parse();
     let endpoint = MagicEndpoint::builder().bind(0).await?;
-    let rt = iroh::bytes::util::runtime::Handle::from_current(1)?;
-    let gateway = Gateway {
+    let default_node = args.default_node.map(|default_node| NodeAddr {
+        node_id: default_node,
+        info: AddrInfo {
+            derp_region: Some(args.derp_region),    
+            direct_addresses: Default::default(),
+        }
+    });
+    let gateway = Gateway(Arc::new(Inner {
         endpoint,
-        default_node: todo!(),
-    };
+        default_node,
+        mime_classifier: MimeClassifier::new(),
+        mime_cache: RwLock::new(BTreeMap::new()),
+    }));
 
     // Build our application by composing routes
     let app = Router::new()
@@ -254,7 +330,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Run our application with hyper
     // We'll bind to 127.0.0.1:3000
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
     println!("listening on {}", addr);
 
     axum::Server::bind(&addr)

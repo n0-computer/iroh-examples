@@ -15,3 +15,8 @@ anyhow = "1.0.75"
 flume = "0.11.0"
 tracing = "0.1.40"
 tower-http = "0.4.4"
+clap = { version = "4.4.7", features = ["derive"] }
+mime_classifier = "0.0.1"
+derive_more = { version = "1.0.0-beta.1", features = ["debug"] }
+mime = "0.3.17"
+quinn = "0.10.2"
