@@ -346,14 +346,12 @@ impl Serialize for Blake3Cid {
         S: serde::Serializer,
     {
         // result will be 58 bytes plus prefix
-        let mut res = [b'b'; 59];
+        let mut res = "b".to_string();
         // write the encoded bytes
-        data_encoding::BASE32_NOPAD.encode_mut(&self.as_bytes(), &mut res[1..]);
-        // convert to string, this is guaranteed to succeed
-        let t = std::str::from_utf8_mut(res.as_mut()).unwrap();
+        data_encoding::BASE32_NOPAD.encode_append(&self.as_bytes(), &mut res);
         // hack since data_encoding doesn't have BASE32LOWER_NOPAD as a const
-        t.make_ascii_lowercase();
-        serializer.serialize_str(t)
+        res.make_ascii_lowercase();
+        serializer.serialize_str(&res)
     }
 }
 
