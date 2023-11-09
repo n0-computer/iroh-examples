@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: -Dwarnings
+  RUSTDOCFLAGS: -Dwarnings
+  MSRV: "1.72"
+  RS_EXAMPLES_LIST: "content-tracker,iroh-ipfs"
+  GO_EXAMPLES_LIST: "dall_e_worker"
+
+jobs:
+  build_and_test_nix:
+    timeout-minutes: 30
+    name: Build and test (Nix)
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [ubuntu-latest, macOS-arm-latest]
+        rust: [nightly, stable]
+        include:
+          - name: ubuntu-latest
+            os: ubuntu-latest
+            release-os: linux
+            release-arch: amd64
+            runner: [self-hosted, linux, X64]
+          - name: macOS-arm-latest
+            os: macOS-latest
+            release-os: darwin
+            release-arch: aarch64
+            runner: [self-hosted, macOS, ARM64]
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+      with:
+        submodules: recursive
+
+    - name: Install ${{ matrix.rust }}
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        components: clippy,rustfmt
+    
+    - uses: actions/setup-go@v4
+      with:
+          go-version: 'stable'
+      env:
+        XDG_CACHE_HOME: /root/.cache
+        HOME: /root #added based on https://github.com/actions/setup-go/issues/116
+    
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.3
+
+    - name: check
+      run: |
+        for i in ${RS_EXAMPLES_LIST//,/ }
+        do
+          echo "Checking $i"
+          cargo check --manifest-path $i/Cargo.toml --all-features
+        done
+      env:
+        RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+
+    - name: fmt
+      run: |
+          for i in ${RS_EXAMPLES_LIST//,/ }
+          do
+            echo "Checking $i"
+            cargo fmt --all --manifest-path $i/Cargo.toml -- --check
+          done
+      env:
+          RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+    
+    - name: clippy
+      run: |
+          for i in ${RS_EXAMPLES_LIST//,/ }
+          do
+            echo "Checking $i"
+            cargo clippy --manifest-path $i/Cargo.toml
+          done
+      env:
+          RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+    
+    - name: go
+      run: |
+          for i in ${GO_EXAMPLES_LIST//,/ }
+          do
+            echo "Checking $i"
+            go build -o $i $i/main.go
+          done
+      env:
+        XDG_CACHE_HOME: /root/.cache
+        HOME: /root #added based on https://github.com/actions/setup-go/issues/116
