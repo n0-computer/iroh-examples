@@ -11,6 +11,10 @@ use axum::{
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
+use futures::{
+    future::{self, BoxFuture},
+    FutureExt,
+};
 use headers::{HeaderMapExt, Range};
 use iroh::{
     bytes::store::bao_tree::{ByteNum, ChunkNum},
@@ -203,21 +207,46 @@ impl Inner {
 async fn get_collection_inner(
     hash: &Hash,
     connection: &quinn::Connection,
-) -> anyhow::Result<Collection> {
-    let spec = RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()]);
+    headers: bool,
+) -> anyhow::Result<(Collection, Vec<(Hash, Vec<u8>)>)> {
+    let spec = if headers {
+        RangeSpecSeq::from_ranges_infinite(vec![
+            RangeSet2::all(),
+            RangeSet2::all(),
+            RangeSet2::from(..ByteNum(2048).chunks()),
+        ])
+    } else {
+        RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
+    };
     let request = iroh::bytes::protocol::GetRequest::new(*hash, spec);
     let req = iroh::bytes::get::fsm::start(connection.clone(), request);
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(at_start_root) = connected.next().await? else {
         anyhow::bail!("unexpected response");
     };
-    let (end_blob_next, _hash_seq, collection) =
+    let (mut curr, hash_seq, collection) =
         iroh::collection::Collection::read_fsm(at_start_root).await?;
-    let EndBlobNext::Closing(at_closing) = end_blob_next else {
-        anyhow::bail!("unexpected response");
+
+    let mut headers = Vec::new();
+    let at_closing = loop {
+        match curr {
+            EndBlobNext::Closing(at_closing) => {
+                break at_closing;
+            }
+            EndBlobNext::MoreChildren(at_start_child) => {
+                let Some(hash) = hash_seq.get(at_start_child.child_offset() as usize) else {
+                    break at_start_child.finish();
+                };
+                let at_blob_header = at_start_child.next(hash);
+                let (at_end_blob, data) = at_blob_header.concatenate_into_vec().await?;
+                curr = at_end_blob.next();
+                headers.push((hash, data));
+            }
+        }
     };
     let _stats = at_closing.next().await?;
-    Ok(collection)
+
+    Ok((collection, headers))
 }
 
 /// Get the mime type for a hash, either from the cache or by requesting it from the node.
@@ -229,7 +258,22 @@ async fn get_collection(
     if let Some(res) = gateway.collection_cache.read().unwrap().get(hash) {
         return Ok(res.clone());
     }
-    let collection = get_collection_inner(hash, connection).await?;
+    let (collection, headers) = get_collection_inner(hash, connection, true).await?;
+    let mimes = headers
+        .into_iter()
+        .map(|(hash, header)| {
+            let mime = gateway.mime_classifier.classify(
+                mime_classifier::LoadContext::Browsing,
+                mime_classifier::NoSniffFlag::Off,
+                mime_classifier::ApacheBugFlag::On,
+                &None,
+                &header,
+            );
+            (hash, mime)
+        })
+        .collect::<Vec<_>>();
+    gateway.mime_cache.write().unwrap().extend(mimes);
+
     gateway
         .collection_cache
         .write()
@@ -390,12 +434,24 @@ async fn collection_index(
     //     ));
     // }
 
-    for Blob { name, .. } in collection.blobs() {
+    for Blob {
+        name,
+        hash: child_hash,
+    } in collection.blobs()
+    {
         let url = format!("{}/collection/{}/{}", link_prefix, hash, name);
-        println!("url={}", url);
         let url = encode_relative_url(&url)?;
-        println!("url={}", url);
-        res.push_str(&format!("<a href=\"{}\">{}</a><br>\n", url, name,));
+        let mime = gateway
+            .mime_cache
+            .read()
+            .unwrap()
+            .get(&child_hash)
+            .map(|x| x.to_string());
+        res.push_str(&format!("<a href=\"{}\">{}</a>", url, name,));
+        if let Some(mime) = mime {
+            res.push_str(&format!(" ({})", mime));
+        }
+        res.push_str("<br>\n");
     }
     res.push_str("</body>\n</html>\n");
     let response = Response::builder()
@@ -522,10 +578,39 @@ async fn forward_range(
     Ok(response)
 }
 
+/// A discovery method that just uses a hardcoded region.
+#[derive(Debug)]
+pub struct HardcodedRegionDiscovery {
+    region: u16,
+}
+
+impl HardcodedRegionDiscovery {
+    /// Create a new discovery method that always returns the given region.
+    pub fn new(region: u16) -> Self {
+        Self { region }
+    }
+}
+
+impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
+    fn publish(&self, _info: &AddrInfo) {}
+
+    fn resolve<'a>(&'a self, _node_id: &'a PublicKey) -> BoxFuture<'a, anyhow::Result<AddrInfo>> {
+        future::ok(AddrInfo {
+            derp_region: Some(self.region),
+            direct_addresses: Default::default(),
+        })
+        .boxed()
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = args::Args::parse();
-    let endpoint = MagicEndpoint::builder().bind(0).await?;
+    let discovery = HardcodedRegionDiscovery::new(args.derp_region);
+    let endpoint = MagicEndpoint::builder()
+        .discovery(Box::new(discovery))
+        .bind(0)
+        .await?;
     let default_node = args.default_node.map(|default_node| NodeAddr {
         node_id: default_node,
         info: AddrInfo {

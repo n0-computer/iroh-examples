@@ -1888,6 +1888,7 @@ dependencies = [
  "clap",
  "derive_more",
  "flume 0.11.0",
+ "futures",
  "headers",
  "hyper",
  "iroh",
