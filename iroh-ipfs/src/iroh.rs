@@ -92,7 +92,7 @@ pub struct DocKV {
 }
 
 pub async fn create_doc(app_state: &AppState) -> Result<DocDetails, AppError> {
-    let doc = app_state.iroh()?.docs.create().await?;
+    let doc = app_state.iroh().docs.create().await?;
     let doc_id = doc.id();
     let ticket = doc.share(ShareMode::Write).await?;
 
@@ -117,10 +117,10 @@ pub fn ipfs_cid_from_key(key: &[u8]) -> Result<cid::Cid> {
 }
 
 pub async fn get_docs(app_state: &AppState) -> Result<Vec<DocDetails>, AppError> {
-    let mut stream = app_state.iroh()?.docs.list().await?;
+    let mut stream = app_state.iroh().docs.list().await?;
     let mut doc_details = Vec::new();
     while let Some((id, _)) = stream.try_next().await? {
-        let doc = app_state.iroh()?.docs.open(id).await?;
+        let doc = app_state.iroh().docs.open(id).await?;
         if let Some(d) = doc {
             let doc_id = d.id();
             let ticket = d.share(ShareMode::Write).await?;
@@ -137,7 +137,7 @@ pub async fn get_docs(app_state: &AppState) -> Result<Vec<DocDetails>, AppError>
 pub async fn get_doc(app_state: &AppState, doc_id: String) -> Result<DocDetails, AppError> {
     let namespace_id = NamespaceId::from_str(&doc_id)?;
     let doc = app_state
-        .iroh()?
+        .iroh()
         .docs
         .open(namespace_id)
         .await?
@@ -186,7 +186,7 @@ pub async fn doc_del(
 ) -> Result<DocMutationResult, AppError> {
     let namespace_id = NamespaceId::from_str(&doc_id)?;
     let doc = app_state
-        .iroh()?
+        .iroh()
         .docs
         .open(namespace_id)
         .await?
@@ -205,7 +205,7 @@ pub async fn doc_del(
 pub async fn doc_drop(app_state: &AppState, doc_id: String) -> Result<(), AppError> {
     let namespace_id = NamespaceId::from_str(&doc_id)?;
     app_state
-        .iroh()?
+        .iroh()
         .docs
         .drop_doc(namespace_id)
         .await
@@ -224,7 +224,7 @@ pub async fn update_doc(
 ) -> Result<DocDetails, AppError> {
     let namespace_id = NamespaceId::from_str(&doc_id)?;
     let doc = app_state
-        .iroh()?
+        .iroh()
         .docs
         .open(namespace_id)
         .await?
@@ -257,7 +257,7 @@ pub async fn get_blobs(
     pagination: Pagination,
 ) -> Result<Vec<PublicListResponse>, AppError> {
     let mut offset = pagination.offset;
-    let mut response = app_state.iroh()?.blobs.list().await?;
+    let mut response = app_state.iroh().blobs.list().await?;
     let mut blobs = Vec::new();
     debug!("offset: {}, limit: {}", offset, pagination.limit);
     while let Some(item) = response.next().await {
@@ -285,7 +285,7 @@ pub async fn get_blobs(
 }
 
 pub async fn join_doc(app_state: &AppState, ticket: DocTicket) -> Result<DocDetails, AppError> {
-    let doc = app_state.iroh()?.docs.import(ticket.clone()).await?;
+    let doc = app_state.iroh().docs.import(ticket.clone()).await?;
     let doc_id = doc.id();
 
     Ok(DocDetails {
@@ -302,7 +302,7 @@ pub async fn get_doc_item_bytes(
 ) -> Result<Bytes, AppError> {
     let namespace_id = NamespaceId::from_str(&doc_id)?;
     let doc = app_state
-        .iroh()?
+        .iroh()
         .docs
         .open(namespace_id)
         .await?

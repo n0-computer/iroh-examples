@@ -10,7 +10,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use iroh_ipfs::node::{self, get_author, IROH_IPFS_DEFAULT_RPC_PORT};
-use iroh_ipfs::AppState;
+use iroh_ipfs::{AppState, routes::load_config};
 
 fn main() -> Result<()> {
     dotenv().ok();
@@ -38,28 +38,24 @@ async fn main_impl() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // provision app state
-    let mut state = AppState::new().await?;
+    let config = load_config();
 
     // create a oneshot channel to return the rpc client
     let (rpc_client_tx, rpc_client_rx) = oneshot::channel();
 
     // start iroh node
-    let iroh_addr = state.provider_addr();
-    {
-        let state = state.clone();
-        tokio::spawn(
-            async move {
-                if let Err(err) =
-                    node::start_node(state, iroh_addr, IROH_IPFS_DEFAULT_RPC_PORT, rpc_client_tx)
-                        .await
-                {
-                    error!("Iroh node failed: {err:#}")
-                }
+    let iroh_addr = config.provider_address;
+    let _node_handle = tokio::spawn(
+        async move {
+            if let Err(err) =
+                node::start_node(iroh_addr, IROH_IPFS_DEFAULT_RPC_PORT, rpc_client_tx)
+                .await
+            {
+                error!("Iroh node failed: {err:#}")
             }
-            .instrument(info_span!("node")),
-        );
-    }
+        }
+        .instrument(info_span!("node")),
+    );
 
     // wait for the rpc client to be ready
     let rpc_client = rpc_client_rx
@@ -67,11 +63,16 @@ async fn main_impl() -> Result<()> {
         .context("did not receive rpc client from node")?;
     let iroh = Iroh::new(rpc_client, rt);
     let author_id = get_author(&iroh).await?;
-    state.set_iroh_client(Some(iroh));
-    state.set_author_id(author_id);
+
+    // provision app state
+    let state = AppState::new(
+        config,
+        iroh,
+        author_id,
+    ).await?;
+
 
     let addr = state.listen_addr();
-
     let app = state.create_app().await?;
 
     let version = env!("IROH_IPFS_GIT_HASH")
