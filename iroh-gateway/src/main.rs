@@ -17,8 +17,8 @@ use futures::{
 };
 use headers::{HeaderMapExt, Range};
 use iroh::{
-    bytes::store::bao_tree::{ByteNum, ChunkNum},
-    collection::{Blob, Collection},
+    bytes::{store::bao_tree::{ByteNum, ChunkNum}, BlobFormat},
+    collection::{Blob, Collection}, ticket::blob::Ticket,
 };
 use iroh::{
     bytes::{
@@ -392,6 +392,23 @@ async fn handle_remote_collection_request(
     Ok(res)
 }
 
+async fn handle_ticket_request(
+    gateway: Extension<Gateway>,
+    Path(ticket): Path<Ticket>,
+    req: Request<Body>,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    println!("handle_remote_collection_request");
+    let byte_range = parse_byte_range(req).await?;
+    let connection = gateway.endpoint.connect(ticket.node_addr().clone(), &iroh::bytes::protocol::ALPN).await?;
+    let hash = ticket.hash();
+    let prefix = format!("/node/{}", ticket.node_addr().node_id);
+    let res = match ticket.format() {
+        BlobFormat::Raw => forward_range(&gateway, connection, &hash, byte_range).await?.into_response(),
+        BlobFormat::HashSeq => collection_index(&gateway, connection, &hash, &prefix).await?.into_response(),
+    };
+    Ok(res)
+}
+
 async fn handle_local_collection_index(
     gateway: Extension<Gateway>,
     Path(hash): Path<Hash>,
@@ -635,6 +652,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/node/:node_id/blob/:blake3_hash", get(handle_remote_blob_request))
         .route("/node/:node_id/collection/:blake3_hash", get(handle_remote_collection_index))
         .route("/node/:node_id/collection/:blake3_hash/*path",get(handle_remote_collection_request))
+        .route("/ticket/:ticket", get(handle_ticket_request))
         .layer(Extension(gateway));
 
     // Run our application with hyper
