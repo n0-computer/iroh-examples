@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Iroh - IPFS Bridge" />
+    <title>Iroh-to-IPFS</title>
+    <style>
+      html { font-family: sans-serif; color: #222; }
+      body { background: #252525; }
+      textarea { resize: none; }
+
+      #form {
+        margin: 40px auto;
+        max-width: 300px;
+        border-radius: 3px;
+        background: #efefef;
+        padding: 10px;
+      }
+    </style>
+    <script>
+      // Function to handle form submission
+      function submitForm(event) {
+          event.preventDefault(); // Prevent the default form submission
+          // POST request with JSON data
+          fetch('/api/docs/join', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ticket: document.getElementById("ticket").value,
+              })
+          })
+          .then(response => response.json())
+          .then(data => console.log(data))
+          .catch((error) => {
+              console.error('Error:', error);
+          });
+      }
+  </script>
+  </head>
+  <body>
+    <div id="form">
+      <h3>Replicate to IPFS</h3>
+      <p></p>
+      <form onsubmit="submitForm(event)">
+        <textarea id="ticket" type="password" name="ticket" rows="10" cols="30" placeholder="paste write ticket here"></textarea>
+        <button type="submit">Replicate to IPFS</button>
+      </form>
+    </div>
+  </body>
+</html>

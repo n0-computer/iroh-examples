@@ -1,10 +1,14 @@
-use axum::{extract::State, Json};
+use axum::{extract::State, response::Html, Json};
 use bytes::Bytes;
 use iroh::sync::NamespaceId;
 
 use crate::iroh::{join_doc, DocDetails, DocJoin};
 use crate::kubo::KuboReplicator;
 use crate::{error::AppError, AppState};
+
+pub async fn join_doc_page_handler() -> Html<&'static str> {
+    Html(include_str!("../static/index.html"))
+}
 
 pub async fn join_doc_handler(
     State(app_state): State<AppState>,

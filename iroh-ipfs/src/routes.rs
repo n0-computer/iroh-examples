@@ -84,6 +84,7 @@ impl AppState {
 
     pub async fn create_app(&self) -> Result<Router> {
         let app = Router::new()
+            .route("/", get(handlers::iroh::join_doc_page_handler))
             .route("/api/health", get(|| async { "iroh-kubo" }))
             .route("/api/node/status", get(handlers::node::node_status_handler))
             .route("/api/docs/join", post(handlers::iroh::join_doc_handler))
