@@ -452,7 +452,7 @@ async fn collection_index(
         Ok(joined_url[url::Position::BeforePath..].to_string())
     }
 
-    let collection = get_collection(gateway, &hash, &connection).await?;
+    let collection = get_collection(gateway, hash, &connection).await?;
     let mut res = String::new();
     res.push_str("<html>\n<head></head>\n");
     // for Blob { name, hash } in collection.blobs() {
@@ -473,7 +473,7 @@ async fn collection_index(
             .mime_cache
             .read()
             .unwrap()
-            .get(&child_hash)
+            .get(child_hash)
             .map(|x| x.to_string());
         res.push_str(&format!("<a href=\"{}\">{}</a>", url, name,));
         if let Some(mime) = mime {
@@ -497,9 +497,9 @@ async fn forward_collection_range(
     suffix: &str,
     range: (Option<u64>, Option<u64>),
 ) -> anyhow::Result<impl IntoResponse> {
-    let suffix = suffix.strip_prefix("/").unwrap_or(suffix);
+    let suffix = suffix.strip_prefix('/').unwrap_or(suffix);
     println!("suffix {}", suffix);
-    let collection = get_collection(gateway, &hash, &connection).await?;
+    let collection = get_collection(gateway, hash, &connection).await?;
     for Blob { name, hash } in collection.blobs() {
         if name == suffix {
             let res = forward_range(gateway, connection, hash, range).await?;
@@ -538,7 +538,7 @@ async fn forward_range(
     let byte_ranges = to_byte_range(start, end);
     let chunk_ranges = to_chunk_range(start, end);
     println!("got connection");
-    let mime = get_mime_type(gateway, &hash, &connection).await?;
+    let mime = get_mime_type(gateway, hash, &connection).await?;
     println!("mime: {}", mime);
     let chunk_ranges = RangeSpecSeq::from_ranges(vec![chunk_ranges]);
     let request = iroh::bytes::protocol::GetRequest::new(*hash, chunk_ranges.clone());
