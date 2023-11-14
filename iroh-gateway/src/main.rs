@@ -17,10 +17,6 @@ use futures::{
 };
 use headers::{HeaderMapExt, Range};
 use iroh::{
-    bytes::{store::bao_tree::{ByteNum, ChunkNum}, BlobFormat},
-    collection::{Blob, Collection}, ticket::blob::Ticket,
-};
-use iroh::{
     bytes::{
         get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
         protocol::RangeSpecSeq,
@@ -28,6 +24,14 @@ use iroh::{
         Hash,
     },
     net::{key::PublicKey, AddrInfo, MagicEndpoint, NodeAddr},
+};
+use iroh::{
+    bytes::{
+        store::bao_tree::{ByteNum, ChunkNum},
+        BlobFormat,
+    },
+    collection::{Blob, Collection},
+    ticket::blob::Ticket,
 };
 use mime::Mime;
 use mime_classifier::MimeClassifier;
@@ -399,12 +403,19 @@ async fn handle_ticket_request(
 ) -> std::result::Result<impl IntoResponse, AppError> {
     println!("handle_remote_collection_request");
     let byte_range = parse_byte_range(req).await?;
-    let connection = gateway.endpoint.connect(ticket.node_addr().clone(), &iroh::bytes::protocol::ALPN).await?;
+    let connection = gateway
+        .endpoint
+        .connect(ticket.node_addr().clone(), &iroh::bytes::protocol::ALPN)
+        .await?;
     let hash = ticket.hash();
     let prefix = format!("/node/{}", ticket.node_addr().node_id);
     let res = match ticket.format() {
-        BlobFormat::Raw => forward_range(&gateway, connection, &hash, byte_range).await?.into_response(),
-        BlobFormat::HashSeq => collection_index(&gateway, connection, &hash, &prefix).await?.into_response(),
+        BlobFormat::Raw => forward_range(&gateway, connection, &hash, byte_range)
+            .await?
+            .into_response(),
+        BlobFormat::HashSeq => collection_index(&gateway, connection, &hash, &prefix)
+            .await?
+            .into_response(),
     };
     Ok(res)
 }
