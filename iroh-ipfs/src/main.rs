@@ -10,7 +10,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use iroh_ipfs::node::{self, get_author, IROH_IPFS_DEFAULT_RPC_PORT};
-use iroh_ipfs::{AppState, routes::load_config};
+use iroh_ipfs::{routes::load_config, AppState};
 
 fn main() -> Result<()> {
     dotenv().ok();
@@ -48,8 +48,7 @@ async fn main_impl() -> Result<()> {
     let _node_handle = tokio::spawn(
         async move {
             if let Err(err) =
-                node::start_node(iroh_addr, IROH_IPFS_DEFAULT_RPC_PORT, rpc_client_tx)
-                .await
+                node::start_node(iroh_addr, IROH_IPFS_DEFAULT_RPC_PORT, rpc_client_tx).await
             {
                 error!("Iroh node failed: {err:#}")
             }
@@ -65,12 +64,7 @@ async fn main_impl() -> Result<()> {
     let author_id = get_author(&iroh).await?;
 
     // provision app state
-    let state = AppState::new(
-        config,
-        iroh,
-        author_id,
-    ).await?;
-
+    let state = AppState::new(config, iroh, author_id).await?;
 
     let addr = state.listen_addr();
     let app = state.create_app().await?;
