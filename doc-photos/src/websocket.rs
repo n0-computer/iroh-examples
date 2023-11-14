@@ -5,7 +5,7 @@ use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::response::IntoResponse;
 use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, StreamExt, TryStreamExt};
+use futures::{SinkExt, StreamExt};
 use iroh::bytes::Hash;
 use iroh::net::key::PublicKey;
 use iroh::sync::{ContentStatus, NamespaceId};
@@ -36,8 +36,6 @@ pub(crate) async fn ws_handler(
 enum ClientMessage {
     DocSubscribe(DocSubscribeMessage),
     DocUnsubscribe(DocSubscribeMessage),
-    TestSubscribe(TestSubscribeMessage),
-    TestHeartbeat(TestHeartbeatMessage),
 }
 
 #[serde_as]
@@ -46,12 +44,6 @@ struct DocSubscribeMessage {
     #[serde_as(as = "DisplayFromStr")]
     doc_id: NamespaceId,
 }
-
-#[derive(Debug, Deserialize)]
-struct TestSubscribeMessage {}
-
-#[derive(Debug, Deserialize)]
-struct TestHeartbeatMessage {}
 
 /// The set of possible mesages the server will send to clients.
 ///
@@ -67,7 +59,6 @@ enum ServerMessage {
     DocumentSyncFinished(SyncFinishedMessage),
     DocumentNeighborUp(DocNeighborMessage),
     DocumentNeighborDown(DocNeighborMessage),
-    NodeConnections(Vec<ConnectionInfoMsg>),
 }
 
 #[serde_as]
@@ -330,8 +321,6 @@ async fn handle_ws_messages(
                             None => error!("DocUnsubscibe task AbortHandle not found"),
                         }
                     }
-                    ClientMessage::TestSubscribe(_) => warn!("ignoring TestSubscribe"),
-                    ClientMessage::TestHeartbeat(_) => warn!("ignoring TestHeartbeat"),
                 }
             }
             Message::Binary(msg) => warn!("Received binary message: {msg:02X?}"),
@@ -360,32 +349,10 @@ async fn run_doc_subscription(
     funnel: mpsc::Sender<ServerMessage>,
     doc_id: NamespaceId,
 ) -> Result<()> {
-    let conninfo_sender = send_conninfo(state.clone(), funnel.clone());
     let doc_events_sender = proxy_doc_events(state, funnel, doc_id);
     tokio::select! {
         biased;
         res = doc_events_sender => res,
-        res = conninfo_sender => res,
-    }
-}
-
-/// Future which sends [`ConnectionInfoMsg`]s at 1 second intervals.
-///
-/// Normal termination is by cancelling the future.
-async fn send_conninfo(state: AppState, funnel: mpsc::Sender<ServerMessage>) -> Result<()> {
-    const CONNINFO_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_secs(1);
-
-    let client = state.iroh();
-    loop {
-        let conns: Vec<ConnectionInfoMsg> = client
-            .node
-            .connections()
-            .await?
-            .map_ok(ConnectionInfoMsg::from)
-            .try_collect()
-            .await?;
-        funnel.send(ServerMessage::NodeConnections(conns)).await?;
-        tokio::time::sleep(CONNINFO_INTERVAL).await;
     }
 }
 

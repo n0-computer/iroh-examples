@@ -7,12 +7,12 @@ use axum::routing::{get, post};
 use axum::Router;
 use iroh::sync::AuthorId;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tokio::sync::broadcast;
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::config::Config;
-use crate::{handlers, websocket};
 use crate::node::{get_provider_peer_id, Event, ProviderInfo};
+use crate::{handlers, websocket};
 
 #[derive(Debug, Clone)]
 pub struct AppState(Inner);
@@ -88,10 +88,12 @@ impl AppState {
 
     pub async fn create_app(&self) -> Result<Router> {
         let app = Router::new()
-            .route("/", get(handlers::frontend_handler))
+            .route("/", get(handlers::home_handler))
+            .route("/gallery/:doc_id", get(handlers::doc_photos_html_handler))
             .route("/ws", get(websocket::ws_handler))
-            // .route("/blobs/:hash", get())
+            .route("/blobs/:hash", get(handlers::blob_handler))
             .route("/docs/join", post(handlers::join_doc_handler))
+            .route("/doc-photos/:doc_id", get(handlers::doc_photos_handler))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(DefaultMakeSpan::default().include_headers(true)),

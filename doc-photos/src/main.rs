@@ -10,8 +10,8 @@ use tracing::{error, info_span, Instrument};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use iroh_ipfs::node::{self, Event, get_author, IROH_IPFS_DEFAULT_RPC_PORT};
-use iroh_ipfs::{AppState, routes::load_config};
+use doc_photos::node::{self, Event, get_author, DOC_PHOTOS_DEFAULT_RPC_PORT};
+use doc_photos::{AppState, routes::load_config};
 
 fn main() -> Result<()> {
     dotenv().ok();
@@ -53,7 +53,7 @@ async fn main_impl() -> Result<()> {
     let _node_handle = tokio::spawn(
         async move {
             if let Err(err) =
-                node::start_node(iroh_addr, IROH_IPFS_DEFAULT_RPC_PORT, rpc_client_tx, sender_2)
+                node::start_node(iroh_addr, DOC_PHOTOS_DEFAULT_RPC_PORT, rpc_client_tx, sender_2)
                 .await
             {
                 error!("Iroh node failed: {err:#}")

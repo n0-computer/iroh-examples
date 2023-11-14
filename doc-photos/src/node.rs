@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{broadcast, oneshot::Sender};
 
-use crate::config::iroh_ipfs_data_dir;
+use crate::config::doc_photos_data_dir;
 
 pub async fn start_node(
     addr: SocketAddr,
@@ -52,7 +52,7 @@ pub async fn start_node(
         derp_map: Some(derp_map),
     };
 
-    let repo_root = iroh_ipfs_data_dir()?;
+    let repo_root = doc_photos_data_dir()?;
     let meta_dir = repo_root.join(IrohPaths::BaoFlatStoreMeta);
     let blob_dir = repo_root.join(IrohPaths::BaoFlatStoreComplete);
     let partial_blob_dir = repo_root.join(IrohPaths::BaoFlatStorePartial);
@@ -71,7 +71,7 @@ pub async fn start_node(
     let provider = provide(db.clone(), store, &rt, key, peer_data_path, opts).await?;
     tracing::debug!("Subscribing to node events");
     provider
-    .subscribe(move |event| {
+        .subscribe(move |event| {
             let sender = provider_events_sender.clone();
             Box::pin(async move {
                 sender.send(event).unwrap();
@@ -94,7 +94,7 @@ pub async fn start_node(
     Ok(())
 }
 
-pub const IROH_IPFS_DEFAULT_RPC_PORT: u16 = 0x1339; // NOTE: intentionally different from default iroh RPC port
+pub const DOC_PHOTOS_DEFAULT_RPC_PORT: u16 = 0x1340; // NOTE: intentionally different from default iroh RPC port
 pub const MAX_RPC_CONNECTIONS: u32 = 16;
 pub const MAX_RPC_STREAMS: u64 = 1024;
 
@@ -365,7 +365,7 @@ pub struct ProviderInfo {
 }
 
 pub async fn get_provider_peer_id() -> Result<PublicKey> {
-    let repo_root = iroh_ipfs_data_dir()?;
+    let repo_root = doc_photos_data_dir()?;
     let key = Some(repo_root.join(IrohPaths::SecretKey));
     let secret_key = get_secret_key(key).await?;
     let peer_id: PublicKey = secret_key.public();

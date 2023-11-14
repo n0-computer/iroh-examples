@@ -14,7 +14,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         let listen_addr: SocketAddr = std::env::var("IROH_IPFS_LISTEN_ADDR")
-            .unwrap_or_else(|_| "127.0.0.1:8002".to_string())
+            .unwrap_or_else(|_| "127.0.0.1:8003".to_string())
             .parse()
             .expect("listen address is invalid");
 
@@ -36,14 +36,14 @@ impl Default for Config {
     }
 }
 
-const IROH_IPFS_DIR: &str = "iroh-ipfs";
+const DOC_PHOTOS_DIR: &str = "iroh-ipfs";
 
-pub fn iroh_ipfs_data_dir() -> Result<PathBuf> {
-    if let Some(val) = std::env::var_os("IROH_IPFS_DATA_DIR") {
+pub fn doc_photos_data_dir() -> Result<PathBuf> {
+    if let Some(val) = std::env::var_os("DOC_PHOTOS_DIR") {
         return Ok(PathBuf::from(val));
     }
     let path = dirs_next::data_dir().ok_or_else(|| {
         anyhow!("operating environment provides no directory for application data")
     })?;
-    Ok(path.join(IROH_IPFS_DIR))
+    Ok(path.join(DOC_PHOTOS_DIR))
 }

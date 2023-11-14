@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Iroh - IPFS Bridge" />
-    <title>Iroh-to-IPFS</title>
+    <title>Document Photo Viewer</title>
     <style>
       html { font-family: sans-serif; color: #222; }
       body { background: #252525; }
@@ -25,7 +25,7 @@
       function submitForm(event) {
           event.preventDefault(); // Prevent the default form submission
           // POST request with JSON data
-          fetch('/api/docs/join', {
+          fetch('/docs/join', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -42,11 +42,11 @@
   </head>
   <body>
     <div id="form">
-      <h3>Replicate to IPFS</h3>
+      <h3>Doc Photo Viewer</h3>
       <p></p>
       <form onsubmit="submitForm(event)">
         <textarea id="ticket" type="password" name="ticket" rows="10" cols="30" placeholder="paste write ticket here"></textarea>
-        <button type="submit">Replicate to IPFS</button>
+        <button type="submit">Join Doc</button>
       </form>
     </div>
   </body>

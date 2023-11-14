@@ -1,5 +1,18 @@
-use axum::{extract::State, response::Html, Json};
+use std::str::FromStr;
+
+use anyhow::Context;
+use axum::{
+    extract::{Path, State},
+    response::{Html, IntoResponse},
+    Json,
+};
 use bytes::Bytes;
+use futures::TryStreamExt;
+use iroh::{
+    rpc_protocol::Hash,
+    sync::{store::Query, NamespaceId},
+};
+use serde::Serialize;
 
 use crate::iroh::{join_doc, DocDetails, DocJoin};
 use crate::{error::AppError, node::ProviderInfo, AppState};
@@ -11,8 +24,12 @@ pub async fn node_status_handler(
     Ok(Json(provider_details))
 }
 
-pub async fn frontend_handler() -> Html<&'static str> {
+pub async fn home_handler() -> Html<&'static str> {
     Html(include_str!("./static/index.html"))
+}
+
+pub async fn doc_photos_html_handler() -> Html<&'static str> {
+    Html(include_str!("./static/gallery.html"))
 }
 
 pub async fn join_doc_handler(
@@ -24,6 +41,56 @@ pub async fn join_doc_handler(
     Ok(doc.into())
 }
 
+#[derive(Serialize)]
+pub struct DocPhoto {
+    pub key: String,
+    pub url: String,
+}
+
+pub async fn doc_photos_handler(
+    State(app_state): State<AppState>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<Vec<DocPhoto>>, AppError> {
+    let doc_id = NamespaceId::from_str(&doc_id)?;
+    let doc = app_state
+        .iroh()
+        .docs
+        .open(doc_id)
+        .await?
+        .context("doc not found")?;
+    let mut doc_entries_stream = doc.get_many(Query::all()).await?;
+    let mut photos = Vec::new();
+    while let Some(entry) = doc_entries_stream.try_next().await? {
+        let key = match String::from_utf8(entry.key().to_vec()) {
+            Ok(s) => s,
+            Err(..) => continue,
+        };
+        let hash = entry.content_hash();
+        if entry.key().ends_with(b".jpg")
+            || entry.key().ends_with(b".jpeg")
+            || entry.key().ends_with(b".png")
+        {
+            let header = app_state.iroh().blobs.read(hash).await?;
+            if header.is_complete() {
+                photos.push(DocPhoto {
+                    key,
+                    url: format!("/blobs/{}", entry.content_hash()),
+                });
+            }
+        }
+    }
+    Ok(photos.into())
+}
+
+pub async fn blob_handler(
+    State(app_state): State<AppState>,
+    Path(hash): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let hash = Hash::from_str(&hash)?;
+    let mut header = app_state.iroh().blobs.read(hash).await?;
+    let data = header.read_to_bytes().await?;
+    Ok(data)
+}
 
 #[derive(Debug)]
 pub struct DataResponse {
