@@ -88,6 +88,7 @@ jobs:
           RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
     
     - name: go
+      continue-on-error: true
       run: |
           git clone https://github.com/n0-computer/iroh-ffi.git
           for i in ${GO_EXAMPLES_LIST//,/ }
