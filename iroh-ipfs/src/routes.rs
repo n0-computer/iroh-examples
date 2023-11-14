@@ -46,7 +46,7 @@ impl AppState {
         let provider_details = ProviderInfo {
             author_id: None,
             peer_id: provider_peer_id.to_string(),
-            addr: config.provider_address.clone(),
+            addr: config.provider_address,
             // Use the empty string as a sentinel value, real value is
             // set in the "provider" api handler
             auth_token: "".to_string(),
