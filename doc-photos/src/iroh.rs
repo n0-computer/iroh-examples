@@ -26,7 +26,7 @@ pub struct Pagination {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocDetails {
     /// The document ID from iroh for the document.
-    pub doc_id: NamespaceId,
+    pub doc_id: String,
     /// A ticket which can be used to join this document.
     pub ticket: String,
     /// The data in this document.  Possibly maybe?
@@ -91,31 +91,6 @@ pub struct DocKV {
     pub value: String,
 }
 
-pub async fn create_doc(app_state: &AppState) -> Result<DocDetails, AppError> {
-    let doc = app_state.iroh().docs.create().await?;
-    let doc_id = doc.id();
-    let ticket = doc.share(ShareMode::Write).await?;
-
-    Ok(DocDetails {
-        doc_id,
-        ticket: ticket.to_string(),
-        data: None,
-    })
-}
-
-const REPLICATION_PREFIX: &[u8] = b"ipfs:";
-
-pub fn is_replicate_prefix(key: &[u8]) -> bool {
-    key.starts_with(REPLICATION_PREFIX)
-}
-
-pub fn ipfs_cid_from_key(key: &[u8]) -> Result<cid::Cid> {
-    // trim off REPLICATION_PREFIX & return a new array
-    let bytes = &key[REPLICATION_PREFIX.len()..];
-    // confirm the resulting array is a valid IPFS hash by parsing it as a CID
-    cid::Cid::try_from(bytes).map_err(|_| anyhow::anyhow!("invalid IPFS CID"))
-}
-
 pub async fn get_docs(app_state: &AppState) -> Result<Vec<DocDetails>, AppError> {
     let mut stream = app_state.iroh().docs.list().await?;
     let mut doc_details = Vec::new();
@@ -125,7 +100,7 @@ pub async fn get_docs(app_state: &AppState) -> Result<Vec<DocDetails>, AppError>
             let doc_id = d.id();
             let ticket = d.share(ShareMode::Write).await?;
             doc_details.push(DocDetails {
-                doc_id,
+                doc_id: doc_id.to_string(),
                 ticket: ticket.to_string(),
                 data: None,
             });
@@ -155,7 +130,7 @@ pub async fn get_doc(app_state: &AppState, doc_id: String) -> Result<DocDetails,
         doc_entries.push(doc_entry);
     }
     let doc_details = DocDetails {
-        doc_id: namespace_id,
+        doc_id: namespace_id.to_string(),
         ticket: ticket.to_string(),
         data: Some(doc_entries),
     };
@@ -244,7 +219,7 @@ pub async fn update_doc(
     .await?;
 
     let doc_details = DocDetails {
-        doc_id: namespace_id,
+        doc_id: namespace_id.to_string(),
         ticket: ticket.to_string(),
         data: None,
     };
@@ -289,7 +264,7 @@ pub async fn join_doc(app_state: &AppState, ticket: DocTicket) -> Result<DocDeta
     let doc_id = doc.id();
 
     Ok(DocDetails {
-        doc_id,
+        doc_id: doc_id.to_string(),
         ticket: ticket.to_string(),
         data: None,
     })

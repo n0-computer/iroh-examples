@@ -33,7 +33,9 @@
               })
           })
           .then(response => response.json())
-          .then(data => console.log(data))
+          .then(data => {
+            window.location.pathname = `/gallery/${data.doc_id}`
+          })
           .catch((error) => {
               console.error('Error:', error);
           });
