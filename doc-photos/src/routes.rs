@@ -7,11 +7,12 @@ use axum::routing::{get, post};
 use axum::Router;
 use iroh::sync::AuthorId;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
+use tokio::sync::broadcast;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::config::Config;
-use crate::handlers;
-use crate::node::{get_provider_peer_id, ProviderInfo};
+use crate::node::{get_provider_peer_id, Event, ProviderInfo};
+use crate::{handlers, websocket};
 
 #[derive(Debug, Clone)]
 pub struct AppState(Inner);
@@ -27,6 +28,7 @@ impl Deref for AppState {
 #[derive(Clone, derive_more::Debug)]
 pub struct Inner {
     pub(crate) config: Arc<Config>,
+    pub(crate) provider_events: Arc<broadcast::Sender<Event>>,
     pub(crate) provider_details: ProviderInfo,
     pub(crate) iroh_client: iroh::client::mem::Iroh,
     pub(crate) author_id: AuthorId,
@@ -41,12 +43,13 @@ impl AppState {
         config: Config,
         iroh_client: iroh::client::mem::Iroh,
         author_id: AuthorId,
+        provider_events: Arc<broadcast::Sender<Event>>,
     ) -> Result<Self> {
         let provider_peer_id = get_provider_peer_id().await.unwrap();
         let provider_details = ProviderInfo {
             author_id: None,
             peer_id: provider_peer_id.to_string(),
-            addr: config.provider_address,
+            addr: config.provider_address.clone(),
             // Use the empty string as a sentinel value, real value is
             // set in the "provider" api handler
             auth_token: "".to_string(),
@@ -59,6 +62,7 @@ impl AppState {
             config: Arc::new(config),
             iroh_client,
             author_id,
+            provider_events,
         }))
     }
 
@@ -84,10 +88,12 @@ impl AppState {
 
     pub async fn create_app(&self) -> Result<Router> {
         let app = Router::new()
-            .route("/", get(handlers::iroh::join_doc_page_handler))
-            .route("/api/health", get(|| async { "iroh-kubo" }))
-            .route("/api/node/status", get(handlers::node::node_status_handler))
-            .route("/api/docs/join", post(handlers::iroh::join_doc_handler))
+            .route("/", get(handlers::home_handler))
+            .route("/gallery/:doc_id", get(handlers::doc_photos_html_handler))
+            .route("/ws", get(websocket::ws_handler))
+            .route("/blobs/:hash", get(handlers::blob_handler))
+            .route("/docs/join", post(handlers::join_doc_handler))
+            .route("/doc-photos/:doc_id", get(handlers::doc_photos_handler))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(DefaultMakeSpan::default().include_headers(true)),

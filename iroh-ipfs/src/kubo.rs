@@ -79,6 +79,7 @@ impl KuboReplicator {
                 replicated.insert(entry.content_hash(), ipfs_cid);
             }
         }
+        tracing::info!("found {} key(s) that need replicating", replicated.len());
 
         // build receive task
         let iroh = iroh_client.clone();
