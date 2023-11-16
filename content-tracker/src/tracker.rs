@@ -102,6 +102,12 @@ struct PeerInfo {
     last_probed: Option<Instant>,
 }
 
+fn create_id(haf: HashAndFormat) -> mainline::Id {
+    let mut data = [0u8; 20];
+    data.copy_from_slice(&haf.hash.as_bytes()[..20]);
+    mainline::Id::from_bytes(data).unwrap()
+}
+
 impl Tracker {
     /// Create a new tracker server.
     ///
@@ -133,6 +139,31 @@ impl Tracker {
             state: RwLock::new(state),
             options,
         })))
+    }
+
+    pub async fn announce_loop(self, port: u16) -> anyhow::Result<()> {
+        let dht = mainline::Dht::default();
+        loop {
+            let state = self.0.state.read().unwrap();
+            state.announce_data.iter().for_each(|(haf, _)| {
+                let info_hash: mainline::Id = create_id(*haf);
+                println!("announcing {:?}", info_hash);
+                let dht = dht.clone();
+                tokio::task::spawn_blocking(move || {
+                    let res = dht.announce_peer(info_hash, Some(port));
+                    match res {
+                        Ok(x) => {
+                            println!("announced peer: {:#?}", x);
+                        }
+                        Err(cause) => {
+                            tracing::error!("error announcing peer: {}", cause);
+                        }
+                    }
+                });
+            });
+            tokio::time::sleep(self.0.options.probe_interval).await;
+        }
+        Ok(())
     }
 
     /// The main loop that probes peers.

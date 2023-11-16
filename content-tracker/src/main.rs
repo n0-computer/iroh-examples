@@ -127,10 +127,14 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     );
     log!();
     let db2 = db.clone();
+    let db3 = db.clone();
     let endpoint2 = endpoint.clone();
     let _task = rt
         .local_pool()
         .spawn_pinned(move || db2.probe_loop(endpoint2));
+    let _task = rt
+        .local_pool()
+        .spawn_pinned(move || db3.announce_loop(args.port));
     while let Some(connecting) = endpoint.accept().await {
         tracing::info!("got connecting");
         let db = db.clone();

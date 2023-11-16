@@ -1821,6 +1821,7 @@ dependencies = [
  "hex",
  "humantime",
  "iroh",
+ "mainline",
  "pkarr",
  "postcard",
  "quinn",
@@ -2121,6 +2122,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d0d1830bcd151a6fc4aea1369af235b36c1528fe976b8ff678683c9995eade8"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "mainline"
+version = "0.1.0"
+dependencies = [
+ "crc",
+ "rand",
+ "serde",
+ "serde_bencode",
+ "serde_bytes",
+ "thiserror",
 ]
 
 [[package]]
@@ -3641,6 +3654,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e988182713aeed6a619a88bca186f6d6407483485ffe44c869ee264f8eabd13f"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_bencode"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a70dfc7b7438b99896e7f8992363ab8e2c4ba26aa5ec675d32d1c3c2c33d413e"
+dependencies = [
+ "serde",
+ "serde_bytes",
 ]
 
 [[package]]
