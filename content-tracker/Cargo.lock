@@ -2126,7 +2126,9 @@ dependencies = [
 
 [[package]]
 name = "mainline"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60233c9675eb3ae741e426e106ee532e010360db6bcfe595d0f5215f5f4da31a"
 dependencies = [
  "crc",
  "rand",

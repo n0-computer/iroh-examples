@@ -163,7 +163,6 @@ impl Tracker {
             });
             tokio::time::sleep(self.0.options.probe_interval).await;
         }
-        Ok(())
     }
 
     /// The main loop that probes peers.
