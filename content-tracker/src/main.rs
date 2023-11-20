@@ -239,6 +239,7 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
     log!("sending query");
     send.write_all(&request).await?;
     send.finish().await?;
+    log!("calling read_to_end");
     let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
     let response = postcard::from_bytes::<Response>(&response)?;
     match response {

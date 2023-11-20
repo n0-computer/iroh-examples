@@ -161,6 +161,7 @@ impl Tracker {
                     }
                 });
             });
+            drop(state);
             tokio::time::sleep(self.0.options.dht_announce_interval).await;
         }
     }
@@ -207,7 +208,9 @@ impl Tracker {
                 let response = self.handle_query(query)?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_stdvec(&response)?;
+                log!("sending query response");
                 send.write_all(&response).await?;
+                log!("calling finish");
                 send.finish().await?;
             }
         }
@@ -348,7 +351,9 @@ impl Tracker {
     }
 
     fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
+        println!("handling query: {:?}", query);
         let state = self.0.state.read().unwrap();
+        println!("got read lock");
         let entry = state.announce_data.get(&query.content);
         let options = &self.0.options;
         let kind = AnnounceKind::from_complete(query.flags.complete);
