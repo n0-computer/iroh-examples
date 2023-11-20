@@ -1,38 +1,36 @@
-pub mod args;
-pub mod discovery;
-pub mod io;
-pub mod iroh_bytes_util;
-pub mod options;
-pub mod protocol;
-pub mod tracker;
+mod args;
+mod discovery;
+mod io;
+mod iroh_bytes_util;
+mod options;
+mod tracker;
 
+use args::{AnnounceArgs, Args, Commands, QueryArgs, ServerArgs};
+use clap::Parser;
+use io::{
+    load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE, CONFIG_FILE,
+    SERVER_KEY_FILE,
+};
+use iroh::{
+    net::{
+        magic_endpoint::{get_alpn, get_remote_node_id},
+        MagicEndpoint, NodeId,
+    },
+    util::fs::load_secret_key,
+};
+use iroh_content_tracker::{
+    Announce, AnnounceKind, Query, QueryFlags, QueryResponse, Request, Response,
+    REQUEST_SIZE_LIMIT, TRACKER_ALPN,
+};
+use options::Options;
 use std::{
     collections::BTreeSet,
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
-
-use clap::Parser;
-use io::CONFIG_DEFAULTS_FILE;
-use iroh::net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    AddrInfo, MagicEndpoint, NodeAddr,
-};
-use iroh::util::fs::load_secret_key;
 use tokio_util::task::LocalPoolHandle;
 
-use crate::{
-    args::{AnnounceArgs, Args, Commands, QueryArgs, ServerArgs},
-    io::{load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_FILE, SERVER_KEY_FILE},
-    options::Options,
-    protocol::{
-        Announce, AnnounceKind, Query, QueryFlags, Request, Response, REQUEST_SIZE_LIMIT,
-        TRACKER_ALPN,
-    },
-    tracker::Tracker,
-};
-
-pub type NodeId = iroh::net::key::PublicKey;
+use crate::tracker::Tracker;
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -100,7 +98,7 @@ fn write_defaults() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn server(args: ServerArgs) -> anyhow::Result<()> {
+pub async fn server(args: ServerArgs) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let rt = tokio::runtime::Handle::current();
     let tpc = LocalPoolHandle::new(2);
@@ -153,26 +151,46 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
+pub async fn announce_request(
+    endpoint: &MagicEndpoint,
+    tracker: NodeId,
+    request: Announce,
+) -> anyhow::Result<()> {
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    let request = Request::Announce(request);
+    let request = postcard::to_stdvec(&request)?;
+    send.write_all(&request).await?;
+    send.finish().await?;
+    let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    Ok(())
+}
+
+pub async fn query_request(
+    endpoint: &MagicEndpoint,
+    tracker: NodeId,
+    request: Query,
+) -> anyhow::Result<QueryResponse> {
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    let request = Request::Query(request);
+    let request = postcard::to_stdvec(&request)?;
+    send.write_all(&request).await?;
+    send.finish().await?;
+    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    let response = postcard::from_bytes::<Response>(&response)?;
+    match response {
+        Response::QueryResponse(response) => Ok(response),
+    }
+}
+
+pub async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     set_verbose(true);
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
     let key = iroh::net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, 11112).await?;
-    log!("announce {:?}", args);
-    log!("trying to connect to {:?}", args.tracker);
-    let info = NodeAddr {
-        node_id: args.tracker,
-        info: AddrInfo {
-            derp_region: Some(2),
-            direct_addresses: Default::default(),
-        },
-    };
-    let connection = endpoint.connect(info, TRACKER_ALPN).await?;
-    log!("connected to {:?}", connection.remote_address());
-    let (mut send, mut recv) = connection.open_bi().await?;
-    log!("opened bi stream");
     let kind = if args.partial {
         AnnounceKind::Partial
     } else {
@@ -199,56 +217,27 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         kind,
         content,
     };
-    let request = Request::Announce(announce);
-    let request = postcard::to_stdvec(&request)?;
-    log!("sending announce");
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    Ok(())
+    announce_request(&endpoint, args.tracker, announce).await
 }
 
-async fn query(args: QueryArgs) -> anyhow::Result<()> {
+pub async fn query(args: QueryArgs) -> anyhow::Result<()> {
     set_verbose(true);
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
     let key = iroh::net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, args.port.unwrap_or_default()).await?;
-    let query = Query {
+    let request = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
             complete: !args.partial,
             verified: args.verified,
         },
     };
-    let info = NodeAddr {
-        node_id: args.tracker,
-        info: AddrInfo {
-            derp_region: Some(2),
-            direct_addresses: Default::default(),
-        },
-    };
-    log!("trying to connect to tracker at {:?}", args.tracker);
-    let connection = endpoint.connect(info, TRACKER_ALPN).await?;
-    log!("connected to {:?}", connection.remote_address());
-    let (mut send, mut recv) = connection.open_bi().await?;
-    log!("opened bi stream");
-    let request = Request::Query(query);
-    let request = postcard::to_stdvec(&request)?;
-    log!("sending query");
-    send.write_all(&request).await?;
-    send.finish().await?;
-    log!("calling read_to_end");
-    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    let response = postcard::from_bytes::<Response>(&response)?;
-    match response {
-        Response::QueryResponse(response) => {
-            log!("content {}", response.content);
-            for peer in response.hosts {
-                log!("- peer {}", peer);
-            }
-        }
+    let response = query_request(&endpoint, args.tracker, request).await?;
+    log!("content {}", response.content);
+    for peer in response.hosts {
+        log!("- peer {}", peer);
     }
     Ok(())
 }

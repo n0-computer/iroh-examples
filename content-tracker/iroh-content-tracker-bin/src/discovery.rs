@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::Result;
 use futures::{future, future::BoxFuture, FutureExt};
-use iroh::net::{AddrInfo, NodeAddr};
+use iroh::net::{AddrInfo, NodeAddr, NodeId};
 use pkarr::{
     dns::rdata::{RData, A, AAAA, TXT},
     dns::{Name, Packet, ResourceRecord, CLASS},
@@ -16,8 +16,6 @@ use pkarr::{
     Keypair, PkarrClient, SignedPacket,
 };
 use tracing::{info, warn};
-
-use crate::NodeId;
 
 const DERP_REGION_KEY: &str = "_derp_region.iroh.";
 

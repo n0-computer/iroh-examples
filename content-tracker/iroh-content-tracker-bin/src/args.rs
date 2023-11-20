@@ -1,10 +1,9 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
 use iroh::bytes::{Hash, HashAndFormat};
+use iroh::net::NodeId;
 use iroh::ticket::blob::Ticket;
 use std::{fmt::Display, str::FromStr};
-
-use crate::NodeId;
 
 #[derive(Parser, Debug)]
 pub struct Args {

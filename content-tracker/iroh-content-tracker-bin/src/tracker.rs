@@ -23,10 +23,10 @@ use crate::{
     },
     log,
     options::Options,
-    protocol::{
-        Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
-    },
     NodeId,
+};
+use iroh_content_tracker::{
+    Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
 };
 
 /// The tracker server.

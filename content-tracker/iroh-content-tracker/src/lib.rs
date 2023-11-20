@@ -2,9 +2,8 @@
 use std::collections::BTreeSet;
 
 use iroh::bytes::HashAndFormat;
+use iroh::net::NodeId;
 use serde::{Deserialize, Serialize};
-
-use crate::NodeId;
 
 /// The ALPN string for this protocol
 pub const TRACKER_ALPN: &[u8] = b"n0/tracker/1";
