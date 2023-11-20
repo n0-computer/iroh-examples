@@ -2158,14 +2158,15 @@ dependencies = [
 [[package]]
 name = "mainline"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60233c9675eb3ae741e426e106ee532e010360db6bcfe595d0f5215f5f4da31a"
+source = "git+https://github.com/nuhvi/mainline-rs#ee25c7a584d7a5c57954f0cedcb78d0665e54335"
 dependencies = [
  "crc",
+ "flume 0.11.0",
  "rand",
  "serde",
  "serde_bencode",
  "serde_bytes",
+ "sha1_smol",
  "thiserror",
 ]
 
@@ -3767,6 +3768,12 @@ name = "sha1"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc30b1e1e8c40c121ca33b86c23308a090d19974ef001b4bf6e61fd1a0fb095c"
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
 name = "sha2"

@@ -22,6 +22,7 @@ use crate::tracker::ProbeKind;
 pub const CONFIG_DEFAULTS_FILE: &str = "config.defaults.toml";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const SERVER_KEY_FILE: &str = "server.key";
+#[allow(dead_code)]
 pub const CLIENT_KEY_FILE: &str = "client.key";
 pub const TRACKER_HOME_ENV_VAR: &str = "IROH_TRACKER_HOME";
 

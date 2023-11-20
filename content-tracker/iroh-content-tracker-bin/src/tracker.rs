@@ -149,8 +149,8 @@ impl Tracker {
                 let info_hash: mainline::Id = create_id(*haf);
                 println!("announcing {:?}", info_hash);
                 let dht = dht.clone();
-                tokio::task::spawn_blocking(move || {
-                    let res = dht.announce_peer(info_hash, Some(port));
+                tokio::task::spawn(async move {
+                    let res = dht.announce_peer_async(info_hash, Some(port)).await;
                     match res {
                         Ok(x) => {
                             println!("announced peer: {:#?}", x);
