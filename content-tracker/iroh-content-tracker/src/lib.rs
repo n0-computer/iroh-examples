@@ -1,8 +1,8 @@
 //! The protocol for communicating with the tracker.
 use std::collections::BTreeSet;
 
-use iroh::bytes::HashAndFormat;
 use iroh::net::NodeId;
+use iroh::{bytes::HashAndFormat, net::MagicEndpoint};
 use serde::{Deserialize, Serialize};
 
 /// The ALPN string for this protocol
@@ -98,4 +98,37 @@ pub enum Request {
 pub enum Response {
     /// Response to a query
     QueryResponse(QueryResponse),
+}
+
+pub async fn announce(
+    endpoint: &MagicEndpoint,
+    tracker: NodeId,
+    request: Announce,
+) -> anyhow::Result<()> {
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    let request = Request::Announce(request);
+    let request = postcard::to_stdvec(&request)?;
+    send.write_all(&request).await?;
+    send.finish().await?;
+    let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    Ok(())
+}
+
+pub async fn query(
+    endpoint: &MagicEndpoint,
+    tracker: NodeId,
+    request: Query,
+) -> anyhow::Result<QueryResponse> {
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
+    let request = Request::Query(request);
+    let request = postcard::to_stdvec(&request)?;
+    send.write_all(&request).await?;
+    send.finish().await?;
+    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    let response = postcard::from_bytes::<Response>(&response)?;
+    match response {
+        Response::QueryResponse(response) => Ok(response),
+    }
 }

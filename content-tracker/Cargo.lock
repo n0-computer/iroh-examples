@@ -1829,7 +1829,9 @@ dependencies = [
 name = "iroh-content-tracker"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "iroh",
+ "postcard",
  "serde",
 ]
 

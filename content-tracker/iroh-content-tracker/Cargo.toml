@@ -9,4 +9,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 iroh = "0.11.0"
+anyhow = "1"
+postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 serde = { version = "1", features = ["derive"] }

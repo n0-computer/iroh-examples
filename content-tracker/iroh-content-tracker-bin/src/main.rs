@@ -19,8 +19,7 @@ use iroh::{
     util::fs::load_secret_key,
 };
 use iroh_content_tracker::{
-    Announce, AnnounceKind, Query, QueryFlags, QueryResponse, Request, Response,
-    REQUEST_SIZE_LIMIT, TRACKER_ALPN,
+    announce, query, Announce, AnnounceKind, Query, QueryFlags, TRACKER_ALPN,
 };
 use options::Options;
 use std::{
@@ -98,7 +97,7 @@ fn write_defaults() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn server(args: ServerArgs) -> anyhow::Result<()> {
+pub async fn server_cmd(args: ServerArgs) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let rt = tokio::runtime::Handle::current();
     let tpc = LocalPoolHandle::new(2);
@@ -151,40 +150,7 @@ pub async fn server(args: ServerArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn announce_request(
-    endpoint: &MagicEndpoint,
-    tracker: NodeId,
-    request: Announce,
-) -> anyhow::Result<()> {
-    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
-    let (mut send, mut recv) = connection.open_bi().await?;
-    let request = Request::Announce(request);
-    let request = postcard::to_stdvec(&request)?;
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    Ok(())
-}
-
-pub async fn query_request(
-    endpoint: &MagicEndpoint,
-    tracker: NodeId,
-    request: Query,
-) -> anyhow::Result<QueryResponse> {
-    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
-    let (mut send, mut recv) = connection.open_bi().await?;
-    let request = Request::Query(request);
-    let request = postcard::to_stdvec(&request)?;
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    let response = postcard::from_bytes::<Response>(&response)?;
-    match response {
-        Response::QueryResponse(response) => Ok(response),
-    }
-}
-
-pub async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
+pub async fn announce_cmd(args: AnnounceArgs) -> anyhow::Result<()> {
     set_verbose(true);
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
@@ -212,15 +178,15 @@ pub async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         *hosts.iter().next().unwrap()
     };
     let content = args.content.iter().map(|x| x.hash_and_format()).collect();
-    let announce = Announce {
+    let request = Announce {
         host,
         kind,
         content,
     };
-    announce_request(&endpoint, args.tracker, announce).await
+    announce(&endpoint, args.tracker, request).await
 }
 
-pub async fn query(args: QueryArgs) -> anyhow::Result<()> {
+pub async fn query_cmd(args: QueryArgs) -> anyhow::Result<()> {
     set_verbose(true);
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
@@ -234,7 +200,7 @@ pub async fn query(args: QueryArgs) -> anyhow::Result<()> {
             verified: args.verified,
         },
     };
-    let response = query_request(&endpoint, args.tracker, request).await?;
+    let response = query(&endpoint, args.tracker, request).await?;
     log!("content {}", response.content);
     for peer in response.hosts {
         log!("- peer {}", peer);
@@ -247,8 +213,8 @@ async fn main() -> anyhow::Result<()> {
     setup_logging();
     let args = Args::parse();
     match args.command {
-        Commands::Server(args) => server(args).await,
-        Commands::Announce(args) => announce(args).await,
-        Commands::Query(args) => query(args).await,
+        Commands::Server(args) => server_cmd(args).await,
+        Commands::Announce(args) => announce_cmd(args).await,
+        Commands::Query(args) => query_cmd(args).await,
     }
 }
