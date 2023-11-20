@@ -141,7 +141,7 @@ impl Tracker {
         })))
     }
 
-    pub async fn announce_loop(self, port: u16) -> anyhow::Result<()> {
+    pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
         let dht = mainline::Dht::default();
         loop {
             let state = self.0.state.read().unwrap();
@@ -161,7 +161,7 @@ impl Tracker {
                     }
                 });
             });
-            tokio::time::sleep(self.0.options.probe_interval).await;
+            tokio::time::sleep(self.0.options.dht_announce_interval).await;
         }
     }
 

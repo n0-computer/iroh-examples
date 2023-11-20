@@ -17,6 +17,9 @@ pub struct Options {
     // interval between probing peers
     #[serde(with = "serde_duration")]
     pub probe_interval: Duration,
+    // interval between probing peers
+    #[serde(with = "serde_duration")]
+    pub dht_announce_interval: Duration,
     // max hash seq size in bytes
     pub max_hash_seq_size: u64,
     // log file for dial attempts
@@ -35,8 +38,9 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             announce_timeout: Duration::from_secs(60 * 60 * 12),
-            probe_timeout: Duration::from_secs(30),
-            probe_interval: Duration::from_secs(10),
+            probe_timeout: Duration::from_secs(60 * 60),
+            probe_interval: Duration::from_secs(60 * 30),
+            dht_announce_interval: Duration::from_secs(60 * 60),
             // max hash seq size is 16 * 1024 hashes of 32 bytes each
             max_hash_seq_size: 1024 * 16 * 32,
             dial_log: Some("dial.log".into()),
