@@ -15,7 +15,7 @@ use std::{
 use clap::Parser;
 use io::CONFIG_DEFAULTS_FILE;
 use iroh::net::{
-    magic_endpoint::{get_alpn, get_peer_id},
+    magic_endpoint::{get_alpn, get_remote_node_id},
     AddrInfo, MagicEndpoint, NodeAddr,
 };
 use iroh::util::fs::load_secret_key;
@@ -89,7 +89,7 @@ pub async fn accept_conn(
 ) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
     let alpn = get_alpn(&mut conn).await?;
     let conn = conn.await?;
-    let peer_id = get_peer_id(&conn)?;
+    let peer_id = get_remote_node_id(&conn)?;
     Ok((peer_id, alpn, conn))
 }
 

@@ -17,7 +17,7 @@ dirs-next = "2"
 futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
-iroh = "0.10.0"
+iroh = "0.11.0"
 mainline = "0.2.0"
 pkarr = "0.3.0"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
