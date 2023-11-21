@@ -142,7 +142,7 @@ impl Tracker {
     }
 
     pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
-        let dht = mainline::Dht::default();
+        let dht = mainline::Dht::default().as_async();
         loop {
             let state = self.0.state.read().unwrap();
             state.announce_data.iter().for_each(|(haf, _)| {
@@ -150,7 +150,7 @@ impl Tracker {
                 println!("announcing {:?}", info_hash);
                 let dht = dht.clone();
                 tokio::task::spawn(async move {
-                    let res = dht.announce_peer_async(info_hash, Some(port)).await;
+                    let res = dht.announce_peer(info_hash, Some(port)).await;
                     match res {
                         Ok(x) => {
                             println!("announced peer: {:#?}", x);

@@ -16,7 +16,6 @@ futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
 iroh = "0.11.0"
-mainline = { git = "https://github.com/nuhvi/mainline-rs" }
 pkarr = "0.3.0"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 quinn = "0.10"
@@ -32,3 +31,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ttl_cache = "0.5.1"
 iroh-content-tracker = { path = "../iroh-content-tracker" }
+mainline = "0.3.0"

@@ -1,8 +1,8 @@
 //! The protocol for communicating with the tracker, and some helper functions to
 //! do announcements and queries.
-//! 
+//!
 //! The protocol is an extremely simple request-response protocol.
-//! 
+//!
 //! TLDR:
 //!
 //! Use the ALPN given here, in [`TRACKER_ALPN`].
@@ -14,8 +14,8 @@
 //! The functions [`announce`] and [`query`] do this for you.
 use std::collections::BTreeSet;
 
-use iroh_net::{NodeId, MagicEndpoint};
 use iroh_bytes::HashAndFormat;
+use iroh_net::{MagicEndpoint, NodeId};
 use serde::{Deserialize, Serialize};
 
 /// The ALPN string for this protocol
