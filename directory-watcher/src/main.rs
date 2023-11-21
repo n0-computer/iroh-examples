@@ -8,7 +8,10 @@ use args::{Args, WatchArgs};
 use bytes::Bytes;
 use io::setup_logging;
 use iroh::rpc_protocol::ShareMode;
-use notify::{event::CreateKind, Event, EventKind, RecursiveMode, Watcher};
+use notify::{
+    event::{CreateKind, ModifyKind, RenameMode},
+    Event, EventKind, RecursiveMode, Watcher,
+};
 
 /// Is this file relevant for insertion?
 fn is_relevant(path: &Path) -> bool {
@@ -100,26 +103,31 @@ async fn watch_cmd(args: WatchArgs) -> anyhow::Result<()> {
             let Ok(event) = msg else {
                 continue;
             };
-            let EventKind::Create(CreateKind::File) = event.kind else {
-                tracing::error!("ignoring {:?} for {:?}", event.kind, event.paths);
-                continue;
-            };
-            for path in event.paths {
-                tracing::error!("create: {:?} {:?}", path, root2);
-                if let Some(relative_path) = make_relative(&root2, &path) {
-                    tracing::error!("create: {:?}", relative_path);
-                    if is_relevant(&relative_path) {
-                        if let Ok(bytes) = std::fs::read(&path) {
-                            if let Some(key) = get_key(&bytes) {
-                                println!("Found something that looks like a mail");
-                                println!("Using key {}", key);
-                                let key = Bytes::from(key);
-                                let doc = doc.clone();
-                                let hash = doc.set_bytes(author, key, bytes).await?;
-                                println!("added entry with hash {}", hash);
+            match event.kind {
+                EventKind::Create(CreateKind::File)
+                | EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
+                    for path in event.paths {
+                        tracing::error!("create: {:?} {:?}", path, root2);
+                        if let Some(relative_path) = make_relative(&root2, &path) {
+                            tracing::error!("create: {:?}", relative_path);
+                            if is_relevant(&relative_path) {
+                                if let Ok(bytes) = std::fs::read(&path) {
+                                    if let Some(key) = get_key(&bytes) {
+                                        println!("Found something that looks like a mail");
+                                        println!("Using key {}", key);
+                                        let key = Bytes::from(key);
+                                        let doc = doc.clone();
+                                        let hash = doc.set_bytes(author, key, bytes).await?;
+                                        println!("added entry with hash {}", hash);
+                                    }
+                                }
                             }
                         }
                     }
+                }
+                _ => {
+                    tracing::error!("ignoring {:?} for {:?}", event.kind, event.paths);
+                    continue;
                 }
             }
         }
