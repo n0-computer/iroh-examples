@@ -12,7 +12,7 @@ use notify::{event::CreateKind, Event, EventKind, RecursiveMode, Watcher};
 /// Is this file relevant for insertion?
 fn is_relevant(path: &Path) -> bool {
     let text = path.to_string_lossy();
-    text.starts_with("Maildir/new/") || text.starts_with("Maildir/cur/")
+    text.starts_with("new/") || text.starts_with("cur/")
 }
 
 /// Get a key given an email.
