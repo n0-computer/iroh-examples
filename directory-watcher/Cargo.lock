@@ -878,10 +878,12 @@ name = "directory-watcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "clap",
  "iroh",
  "notify",
  "postcard",
+ "quic-rpc",
  "serde",
  "serde_json",
  "tempfile",

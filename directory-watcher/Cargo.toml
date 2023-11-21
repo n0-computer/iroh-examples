@@ -7,10 +7,12 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
+bytes = "1.5.0"
 clap = { version = "4.4.8", features = ["derive"] }
 iroh = "0.11.0"
 notify = "6.1.1"
 postcard = "1.0.8"
+quic-rpc = "0.6.1"
 serde = "1.0.193"
 serde_json = "1.0.108"
 tempfile = "3.8.1"
