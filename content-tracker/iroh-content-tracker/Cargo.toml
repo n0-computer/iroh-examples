@@ -8,7 +8,8 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-iroh = "0.11.0"
+iroh-net = "0.11.0"
+iroh-bytes = "0.11.0"
 anyhow = "1"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 serde = { version = "1", features = ["derive"] }

@@ -1,8 +1,21 @@
-//! The protocol for communicating with the tracker.
+//! The protocol for communicating with the tracker, and some helper functions to
+//! do announcements and queries.
+//! 
+//! The protocol is an extremely simple request-response protocol.
+//! 
+//! TLDR:
+//!
+//! Use the ALPN given here, in [`TRACKER_ALPN`].
+//! Create a connection to the tracker
+//! Open a bidi stream
+//! Send a request, encoded as postcard
+//! Read a response, encoded as postcard
+//!
+//! The functions [`announce`] and [`query`] do this for you.
 use std::collections::BTreeSet;
 
-use iroh::net::NodeId;
-use iroh::{bytes::HashAndFormat, net::MagicEndpoint};
+use iroh_net::{NodeId, MagicEndpoint};
+use iroh_bytes::HashAndFormat;
 use serde::{Deserialize, Serialize};
 
 /// The ALPN string for this protocol
@@ -100,6 +113,7 @@ pub enum Response {
     QueryResponse(QueryResponse),
 }
 
+/// Announce to a tracker that a node has some blobs or set of blobs.
 pub async fn announce(
     endpoint: &MagicEndpoint,
     tracker: NodeId,
@@ -115,6 +129,7 @@ pub async fn announce(
     Ok(())
 }
 
+/// Query a tracker for location info for a blob.
 pub async fn query(
     endpoint: &MagicEndpoint,
     tracker: NodeId,
