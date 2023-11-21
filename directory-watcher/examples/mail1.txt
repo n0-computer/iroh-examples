@@ -1,0 +1,12 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Sample Email
+Message-ID: <1234567890.abcdef@example.com>
+Date: Tue, 21 Nov 2023 10:00:00 +0000
+
+Hello,
+
+This is a sample email to demonstrate the format of an email message with headers and content. The Message-ID header is a unique identifier for this email message.
+
+Best regards,
+Sender
