@@ -7,6 +7,7 @@ mod io;
 use args::{Args, WatchArgs};
 use bytes::Bytes;
 use io::setup_logging;
+use iroh::rpc_protocol::ShareMode;
 use notify::{event::CreateKind, Event, EventKind, RecursiveMode, Watcher};
 
 /// Is this file relevant for insertion?
@@ -81,6 +82,8 @@ async fn watch_cmd(args: WatchArgs) -> anyhow::Result<()> {
     let iroh = node.client();
     let doc = iroh.docs.create().await?;
     println!("Writing to document {}", doc.id());
+    let ticket = doc.share(ShareMode::Write).await?;
+    println!("Got ticket {}", ticket);
     let author = iroh.authors.create().await?;
     println!("Using author {}", author);
 
