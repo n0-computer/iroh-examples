@@ -101,6 +101,7 @@ async fn watch_cmd(args: WatchArgs) -> anyhow::Result<()> {
                 continue;
             };
             let EventKind::Create(CreateKind::File) = event.kind else {
+                tracing::error!("ignoring {:?} for {:?}", event.kind, event.paths);
                 continue;
             };
             for path in event.paths {
