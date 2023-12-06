@@ -129,7 +129,7 @@ async fn proxy(
     let Ok(hostname) = hostname.to_str() else {
         return bad_request("invalid host header - not ascii");
     };
-    let parts = hostname.split(".").collect::<Vec<_>>();
+    let parts = hostname.split('.').collect::<Vec<_>>();
     if parts.len() < 2 {
         return bad_request("invalid host header - missing subdomain");
     }
