@@ -13,7 +13,7 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.72"
-  RS_EXAMPLES_LIST: "content-tracker,iroh-ipfs"
+  RS_EXAMPLES_LIST: "content-tracker,iroh-ipfs,dumbpipe-web"
   GO_EXAMPLES_LIST: "dall_e_worker"
 
 jobs:
