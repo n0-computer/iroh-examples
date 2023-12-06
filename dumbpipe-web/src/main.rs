@@ -105,6 +105,8 @@ fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
         return Ok(NodeAddr {
             node_id,
             info: AddrInfo {
+                // todo: derp URL discovery once we switch to derp URLs
+                // hardcoded to 2 (=europe) for now
                 derp_region: Some(2),
                 direct_addresses: Default::default(),
             },
