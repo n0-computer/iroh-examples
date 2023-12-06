@@ -1,7 +1,10 @@
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+//! QuinnEndpoint is a wrapper around a quinn::SendStream and quinn::RecvStream
+//!
+//! It implements AsyncRead and AsyncWrite so it can be used with tokio::io::copy
+use quinn::{RecvStream, SendStream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use quinn::{SendStream, RecvStream};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 pub struct QuinnEndpoint {
     pub send: SendStream,
@@ -30,10 +33,7 @@ impl AsyncWrite for QuinnEndpoint {
         send_poll.map_err(Into::into)
     }
 
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         let self_mut = self.get_mut();
         let flush_poll = Pin::new(&mut self_mut.send).poll_flush(cx);
         flush_poll.map_err(Into::into)
