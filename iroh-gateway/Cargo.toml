@@ -14,7 +14,7 @@ range-collections = "0.4.5"
 anyhow = "1.0.75"
 flume = "0.11.0"
 tracing = "0.1.40"
-tower-http = "0.4.4"
+tower-http = { version = "0.4.4", features = ["cors"] }
 clap = { version = "4.4.7", features = ["derive"] }
 mime_classifier = "0.0.1"
 derive_more = { version = "1.0.0-beta.1", features = ["debug"] }

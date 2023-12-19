@@ -43,6 +43,7 @@ use std::{
     result,
     sync::{Arc, RwLock},
 };
+use tower_http::cors::CorsLayer;
 use url::Url;
 
 // Make our own error that wraps `anyhow::Error`.
@@ -664,6 +665,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/node/:node_id/collection/:blake3_hash", get(handle_remote_collection_index))
         .route("/node/:node_id/collection/:blake3_hash/*path",get(handle_remote_collection_request))
         .route("/ticket/:ticket", get(handle_ticket_request))
+        .layer(CorsLayer::permissive())
         .layer(Extension(gateway));
 
     // Run our application with hyper
