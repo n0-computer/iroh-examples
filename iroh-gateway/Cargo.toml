@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.7.2"
+axum = "0.7.3"
 tokio = { version = "1", features = ["full"] }
 headers = { version = "0.4" }
 hyper = "1"
@@ -14,7 +14,7 @@ range-collections = "0.4.5"
 anyhow = "1.0.75"
 flume = "0.11.0"
 tracing = "0.1.40"
-tower-http = "0.4.4"
+tower-http = { version = "0.5.0", features = ["cors"] }
 clap = { version = "4.4.7", features = ["derive"] }
 mime_classifier = "0.0.1"
 derive_more = { version = "1.0.0-beta.1", features = ["debug"] }

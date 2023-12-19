@@ -4,7 +4,7 @@ use args::CertMode;
 use axum::{
     body::Body,
     extract::Path,
-    http::{header, Request, StatusCode},
+    http::{header, Method, Request, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Extension, Router,
@@ -38,6 +38,7 @@ use std::{
 };
 use tokio::net::TcpListener;
 use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
+use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use tower_service::Service;
 use url::Url;
 
@@ -504,6 +505,11 @@ async fn main() -> anyhow::Result<()> {
         collection_cache: Mutex::new(LruCache::new(1000.try_into().unwrap())),
     }));
 
+    let cors = CorsLayer::new()
+        .allow_headers(AllowHeaders::mirror_request())
+        .allow_methods([Method::GET])
+        .allow_origin(AllowOrigin::mirror_request());
+
     #[rustfmt::skip]
     let app = Router::new()
         .route("/blob/:blake3_hash", get(handle_local_blob_request))
@@ -511,6 +517,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/collection/:blake3_hash/*path",get(handle_local_collection_request))
         .route("/ticket/:ticket", get(handle_ticket_index))
         .route("/ticket/:ticket/*path", get(handle_ticket_request))
+        .layer(cors)
         .layer(Extension(gateway));
 
     match args.cert_mode {
