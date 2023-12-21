@@ -105,16 +105,14 @@ fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
         return Ok(NodeAddr {
             node_id,
             info: AddrInfo {
-                // todo: derp URL discovery once we switch to derp URLs
-                // hardcoded to 2 (=europe) for now
-                derp_region: Some(2),
+                derp_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
                 direct_addresses: Default::default(),
             },
         });
     }
     // then try to parse as a node ticket
     if let Ok(ticket) = dumbpipe::NodeTicket::from_str(subdomain) {
-        return Ok(ticket.addr);
+        return Ok(ticket.node_addr().clone());
     }
     Err(anyhow::anyhow!("invalid subdomain"))
 }
