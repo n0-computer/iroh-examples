@@ -16,22 +16,20 @@ use futures::{
     FutureExt,
 };
 use headers::{HeaderMapExt, Range};
+use iroh::bytes::{
+    store::bao_tree::{ByteNum, ChunkNum},
+    BlobFormat,
+};
 use iroh::{
     bytes::{
+        format::collection::Collection,
         get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
         protocol::RangeSpecSeq,
         store::bao_tree::io::fsm::BaoContentItem,
         Hash,
     },
     net::{key::PublicKey, AddrInfo, MagicEndpoint, NodeAddr},
-};
-use iroh::{
-    bytes::{
-        store::bao_tree::{ByteNum, ChunkNum},
-        BlobFormat,
-    },
-    collection::{Blob, Collection},
-    ticket::blob::Ticket,
+    ticket::BlobTicket,
 };
 use mime::Mime;
 use mime_classifier::MimeClassifier;
@@ -228,8 +226,7 @@ async fn get_collection_inner(
     let ConnectedNext::StartRoot(at_start_root) = connected.next().await? else {
         anyhow::bail!("unexpected response");
     };
-    let (mut curr, hash_seq, collection) =
-        iroh::collection::Collection::read_fsm(at_start_root).await?;
+    let (mut curr, hash_seq, collection) = Collection::read_fsm(at_start_root).await?;
 
     let mut headers = Vec::new();
     let at_closing = loop {
@@ -347,7 +344,7 @@ async fn handle_remote_blob_request(
     let node_addr = NodeAddr {
         node_id,
         info: AddrInfo {
-            derp_region: Some(2),
+            derp_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
             direct_addresses: Default::default(),
         },
     };
@@ -398,7 +395,7 @@ async fn handle_remote_collection_request(
 
 async fn handle_ticket_request(
     gateway: Extension<Gateway>,
-    Path(ticket): Path<Ticket>,
+    Path(ticket): Path<BlobTicket>,
     req: Request<Body>,
 ) -> std::result::Result<impl IntoResponse, AppError> {
     println!("handle_remote_collection_request");
@@ -462,11 +459,7 @@ async fn collection_index(
     //     ));
     // }
 
-    for Blob {
-        name,
-        hash: child_hash,
-    } in collection.blobs()
-    {
+    for (name, child_hash) in collection.iter() {
         let url = format!("{}/collection/{}/{}", link_prefix, hash, name);
         let url = encode_relative_url(&url)?;
         let mime = gateway
@@ -500,7 +493,7 @@ async fn forward_collection_range(
     let suffix = suffix.strip_prefix('/').unwrap_or(suffix);
     println!("suffix {}", suffix);
     let collection = get_collection(gateway, hash, &connection).await?;
-    for Blob { name, hash } in collection.blobs() {
+    for (name, hash) in collection.iter() {
         if name == suffix {
             let res = forward_range(gateway, connection, hash, range).await?;
             return Ok(res.into_response());
@@ -609,13 +602,13 @@ async fn forward_range(
 /// A discovery method that just uses a hardcoded region.
 #[derive(Debug)]
 pub struct HardcodedRegionDiscovery {
-    region: u16,
+    url: Url,
 }
 
 impl HardcodedRegionDiscovery {
     /// Create a new discovery method that always returns the given region.
-    pub fn new(region: u16) -> Self {
-        Self { region }
+    pub fn new(url: Url) -> Self {
+        Self { url }
     }
 }
 
@@ -624,7 +617,7 @@ impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
 
     fn resolve<'a>(&'a self, _node_id: &'a PublicKey) -> BoxFuture<'a, anyhow::Result<AddrInfo>> {
         future::ok(AddrInfo {
-            derp_region: Some(self.region),
+            derp_url: Some(self.url.clone()),
             direct_addresses: Default::default(),
         })
         .boxed()
@@ -634,7 +627,7 @@ impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = args::Args::parse();
-    let discovery = HardcodedRegionDiscovery::new(args.derp_region);
+    let discovery = HardcodedRegionDiscovery::new(args.derp_url.clone());
     let endpoint = MagicEndpoint::builder()
         .discovery(Box::new(discovery))
         .bind(0)
@@ -642,7 +635,7 @@ async fn main() -> anyhow::Result<()> {
     let default_node = args.default_node.map(|default_node| NodeAddr {
         node_id: default_node,
         info: AddrInfo {
-            derp_region: Some(args.derp_region),
+            derp_url: Some(args.derp_url),
             direct_addresses: Default::default(),
         },
     });

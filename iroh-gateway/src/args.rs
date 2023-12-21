@@ -1,6 +1,7 @@
 //! Command line arguments.
 use clap::Parser;
 use iroh::net::key::PublicKey as NodeId;
+use url::Url;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -11,8 +12,8 @@ pub struct Args {
     pub default_node: Option<NodeId>,
 
     /// Derp region
-    #[clap(long, default_value = "2")]
-    pub derp_region: u16,
+    #[clap(long, default_value = "https://euw1-1.derp.iroh.network")]
+    pub derp_url: Url,
 
     /// Listen port
     #[clap(long, default_value = "8080")]
