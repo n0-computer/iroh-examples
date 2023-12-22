@@ -33,7 +33,7 @@ use mime_classifier::MimeClassifier;
 use range_collections::{range_set::RangeSetRange, RangeSet2};
 use std::{
     collections::BTreeMap,
-    net::SocketAddr,
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
     ops::Bound,
     result,
     str::FromStr,
@@ -608,14 +608,32 @@ fn combinator(
 ) -> impl FnOnce(Request<Body>) -> BoxFuture<'static, Response> + Clone + Send + 'static {
     |req| {
         println!("got request {:?}", req);
-        let hostname = get_hostname(&req);
-        if let Some(host) = hostname {
-            let parts = host.split('.').collect::<Vec<_>>();
-            if parts.len() > 1 {
-                return with_subdomain.oneshot(req).map(|x| x.unwrap()).boxed();
+        if let Some(hostname) = get_hostname(&req) {
+            if let Ok(url) = hostname.parse::<Url>() {
+                if let Some(hostname) = get_hostname_2(&url) {
+                    let parts = hostname.split('.').collect::<Vec<_>>();
+                    if parts.len() > 1 {
+                        return with_subdomain.oneshot(req).map(|x| x.unwrap()).boxed();
+                    }
+                }
             }
         }
         without_subdomain.oneshot(req).map(|x| x.unwrap()).boxed()
+    }
+}
+
+fn get_hostname_2(url: &Url) -> Option<&str> {
+    match url.host_str() {
+        Some(host) => {
+            if host.parse::<Ipv4Addr>().is_ok() {
+                None
+            } else if host.parse::<Ipv6Addr>().is_ok() {
+                None
+            } else {
+                Some(host)
+            }
+        }
+        None => None,
     }
 }
 
