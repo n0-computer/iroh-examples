@@ -16,10 +16,7 @@ use futures::{
     FutureExt,
 };
 use headers::{HeaderMapExt, Range};
-use iroh::bytes::{
-    store::bao_tree::{ByteNum, ChunkNum},
-    BlobFormat,
-};
+use iroh::bytes::store::bao_tree::{ByteNum, ChunkNum};
 use iroh::{
     bytes::{
         format::collection::Collection,
@@ -28,7 +25,7 @@ use iroh::{
         store::bao_tree::io::fsm::BaoContentItem,
         Hash,
     },
-    net::{key::PublicKey, AddrInfo, MagicEndpoint, NodeAddr},
+    net::{key::PublicKey, AddrInfo, MagicEndpoint},
     ticket::BlobTicket,
 };
 use mime::Mime;
@@ -42,6 +39,7 @@ use std::{
     str::FromStr,
     sync::{Arc, RwLock},
 };
+use tower::ServiceExt;
 use url::Url;
 
 // Make our own error that wraps `anyhow::Error`.
@@ -134,7 +132,7 @@ fn slice(offset: u64, data: Bytes, ranges: RangeSet2<u64>) -> Vec<Bytes> {
 }
 
 /// Parse the byte range from the request headers.
-async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
+fn parse_byte_range(req: &Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
     Ok(match req.headers().typed_get::<Range>() {
         Some(range) => {
             println!("got range request {:?}", range);
@@ -166,8 +164,6 @@ impl Deref for Gateway {
 struct Inner {
     /// Endpoint to connect to nodes
     endpoint: MagicEndpoint,
-    /// Default node to connect to when not specified in the url
-    default_node: Option<NodeAddr>,
     /// Mime classifier
     #[debug("MimeClassifier")]
     mime_classifier: MimeClassifier,
@@ -181,32 +177,19 @@ struct Inner {
     subdomains: RwLock<BTreeMap<String, BlobTicket>>,
 }
 
-impl Inner {
-    /// Get the default node to connect to when not specified in the url
-    fn default_node(&self) -> anyhow::Result<NodeAddr> {
-        let node_addr = self
-            .default_node
-            .clone()
-            .context("default node not configured")?;
-        Ok(node_addr)
-    }
-
-    /// Get the mime type for a hash from the remote node.
-    async fn get_default_connection(&self) -> anyhow::Result<quinn::Connection> {
-        let connection = self
-            .endpoint
-            .connect(self.default_node()?, &iroh::bytes::protocol::ALPN)
+impl Gateway {
+    async fn ticket_for_alias(&self, alias: &str) -> anyhow::Result<(quinn::Connection, Hash)> {
+        let endpoint = self.endpoint.clone();
+        let ticket = {
+            let subdomains = self.subdomains.read().unwrap();
+            subdomains.get(alias).context("alias not found")?.clone()
+        };
+        let node_addr = ticket.node_addr().clone();
+        let hash = ticket.hash();
+        let connection = endpoint
+            .connect(node_addr, &iroh::bytes::protocol::ALPN)
             .await?;
-        Ok(connection)
-    }
-
-    /// Get a connection to a remote node by node id.
-    async fn get_connection(&self, remote_node_id: PublicKey) -> anyhow::Result<quinn::Connection> {
-        let connection = self
-            .endpoint
-            .connect_by_node_id(&remote_node_id, &iroh::bytes::protocol::ALPN)
-            .await?;
-        Ok(connection)
+        Ok((connection, hash))
     }
 }
 
@@ -338,141 +321,12 @@ async fn get_mime_type(
     Ok(mime)
 }
 
-/// Handle a request for a range of bytes from an explicitly specified node.
-async fn handle_remote_blob_request(
-    gateway: Extension<Gateway>,
-    path: Path<(PublicKey, Hash)>,
-    req: Request<Body>,
-) -> std::result::Result<Response<Body>, AppError> {
-    let Path((node_id, hash)) = path;
-    let node_addr = NodeAddr {
-        node_id,
-        info: AddrInfo {
-            derp_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
-            direct_addresses: Default::default(),
-        },
-    };
-    let connection = gateway
-        .endpoint
-        .connect(node_addr, &iroh::bytes::protocol::ALPN)
-        .await?;
-    let byte_range = parse_byte_range(req).await?;
-    let res = forward_range(&gateway, connection, &hash, byte_range).await?;
-    Ok(res)
-}
-
-/// Handle a request for a range of bytes from the default node.
-async fn handle_local_blob_request(
-    gateway: Extension<Gateway>,
-    Path(blake3_hash): Path<Hash>,
-    req: Request<Body>,
-) -> std::result::Result<Response<Body>, AppError> {
-    let connection = gateway.get_default_connection().await?;
-    let byte_range = parse_byte_range(req).await?;
-    let res = forward_range(&gateway, connection, &blake3_hash, byte_range).await?;
-    Ok(res)
-}
-
-async fn create_subdomain(
-    gateway: Extension<Gateway>,
-    Path(name): Path<String>,
-    ticket: String,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    println!("create_subdomain {} {}", name, ticket);
-    if let Ok(ticket) = BlobTicket::from_str(&ticket) {
-        gateway
-            .subdomains
-            .write()
-            .unwrap()
-            .insert(name, ticket.clone());
-        Ok(StatusCode::OK)
-    } else {
-        Ok(StatusCode::BAD_REQUEST)
-    }
-}
-
-async fn delete_subdomain(
-    gateway: Extension<Gateway>,
-    Path(name): Path<String>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    println!("delete_subdomain {}", name);
-    gateway.subdomains.write().unwrap().remove(&name);
-    Ok(StatusCode::OK)
-}
-
-/// Handle a request for a range of bytes from the default node.
-async fn handle_local_collection_request(
-    gateway: Extension<Gateway>,
-    Path((hash, suffix)): Path<(Hash, String)>,
-    req: Request<Body>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    let connection = gateway.get_default_connection().await?;
-    let byte_range = parse_byte_range(req).await?;
-    let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
-    Ok(res)
-}
-
-async fn handle_remote_collection_request(
-    gateway: Extension<Gateway>,
-    Path((node_id, hash, suffix)): Path<(PublicKey, Hash, String)>,
-    req: Request<Body>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    println!("handle_remote_collection_request");
-    let byte_range = parse_byte_range(req).await?;
-    let connection = gateway.get_connection(node_id).await?;
-    let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
-    Ok(res)
-}
-
-async fn handle_ticket_request(
-    gateway: Extension<Gateway>,
-    Path(ticket): Path<BlobTicket>,
-    req: Request<Body>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    println!("handle_remote_collection_request");
-    let byte_range = parse_byte_range(req).await?;
-    let connection = gateway
-        .endpoint
-        .connect(ticket.node_addr().clone(), &iroh::bytes::protocol::ALPN)
-        .await?;
-    let hash = ticket.hash();
-    let prefix = format!("/node/{}", ticket.node_addr().node_id);
-    let res = match ticket.format() {
-        BlobFormat::Raw => forward_range(&gateway, connection, &hash, byte_range)
-            .await?
-            .into_response(),
-        BlobFormat::HashSeq => collection_index(&gateway, connection, &hash, &prefix)
-            .await?
-            .into_response(),
-    };
-    Ok(res)
-}
-
-async fn handle_local_collection_index(
-    gateway: Extension<Gateway>,
-    Path(hash): Path<Hash>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    let connection = gateway.get_default_connection().await?;
-    let res = collection_index(&gateway, connection, &hash, "").await?;
-    Ok(res)
-}
-
-async fn handle_remote_collection_index(
-    gateway: Extension<Gateway>,
-    Path((node_id, hash)): Path<(PublicKey, Hash)>,
-) -> std::result::Result<impl IntoResponse, AppError> {
-    let connection = gateway.get_connection(node_id).await?;
-    let prefix = format!("/node/{}", node_id);
-    let res = collection_index(&gateway, connection, &hash, &prefix).await?;
-    Ok(res)
-}
-
 async fn collection_index(
     gateway: &Gateway,
     connection: quinn::Connection,
     hash: &Hash,
     link_prefix: &str,
-) -> anyhow::Result<impl IntoResponse> {
+) -> anyhow::Result<Response> {
     fn encode_relative_url(relative_url: &str) -> anyhow::Result<String> {
         let base = Url::parse("http://example.com")?;
         let joined_url = base.join(relative_url)?;
@@ -520,7 +374,7 @@ async fn forward_collection_range(
     hash: &Hash,
     suffix: &str,
     range: (Option<u64>, Option<u64>),
-) -> anyhow::Result<impl IntoResponse> {
+) -> anyhow::Result<Response> {
     let suffix = suffix.strip_prefix('/').unwrap_or(suffix);
     println!("suffix {}", suffix);
     let collection = get_collection(gateway, hash, &connection).await?;
@@ -655,6 +509,115 @@ impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
     }
 }
 
+async fn create_subdomain(
+    gateway: Extension<Gateway>,
+    Path(name): Path<String>,
+    ticket: String,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    println!("create_subdomain {} {}", name, ticket);
+    if let Ok(ticket) = BlobTicket::from_str(&ticket) {
+        println!("{:?}", ticket);
+        gateway
+            .subdomains
+            .write()
+            .unwrap()
+            .insert(name, ticket.clone());
+        Ok(StatusCode::OK)
+    } else {
+        Ok(StatusCode::BAD_REQUEST)
+    }
+}
+
+async fn delete_subdomain(
+    gateway: Extension<Gateway>,
+    Path(name): Path<String>,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    println!("delete_subdomain {}", name);
+    gateway.subdomains.write().unwrap().remove(&name);
+    Ok(StatusCode::OK)
+}
+
+async fn handle_alias(
+    gateway: Extension<Gateway>,
+    Path((alias, suffix)): Path<(String, String)>,
+    req: Request<Body>,
+) -> std::result::Result<Response, AppError> {
+    println!("handle_alias {} {}", alias, suffix);
+    let byte_range = parse_byte_range(&req)?;
+    let (connection, hash) = gateway.ticket_for_alias(&alias).await?;
+    let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
+    Ok(res)
+}
+
+async fn handle_alias_index(
+    gateway: Extension<Gateway>,
+    Path(alias): Path<String>,
+) -> std::result::Result<Response, AppError> {
+    println!("handle_alias_index {}", alias);
+    let (connection, hash) = gateway.ticket_for_alias(&alias).await?;
+    let res = collection_index(&gateway, connection, &hash, "").await?;
+    Ok(res)
+}
+
+async fn handle_subdomain(
+    gateway: Extension<Gateway>,
+    Path(suffix): Path<String>,
+    req: Request<Body>,
+) -> std::result::Result<Response, AppError> {
+    println!("handle_subdomain {}", suffix);
+    let Some(hostname) = get_hostname(&req) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let Some(alias) = hostname.split('.').next() else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let byte_range = parse_byte_range(&req)?;
+    let (connection, hash) = gateway.ticket_for_alias(alias).await?;
+    let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
+    Ok(res)
+}
+
+async fn handle_subdomain_index(
+    gateway: Extension<Gateway>,
+    req: Request<Body>,
+) -> std::result::Result<Response, AppError> {
+    let Some(hostname) = get_hostname(&req) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let Some(alias) = hostname.split('.').next() else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let (connection, hash) = gateway.ticket_for_alias(alias).await?;
+    let res = collection_index(&gateway, connection, &hash, "").await?;
+    Ok(res)
+}
+
+/// Get the hostname from the request headers.
+fn get_hostname(req: &Request<Body>) -> Option<&str> {
+    let (_, hostname) = req
+        .headers()
+        .iter()
+        .find(|(name, _value)| name.as_str() == "host")?;
+    let hostname = hostname.to_str().ok()?;
+    Some(hostname)
+}
+
+fn combinator(
+    with_subdomain: Router,
+    without_subdomain: Router,
+) -> impl FnOnce(Request<Body>) -> BoxFuture<'static, Response> + Clone + Send + 'static {
+    |req| {
+        let hostname = get_hostname(&req);
+        if let Some(host) = hostname {
+            let parts = host.split('.').collect::<Vec<_>>();
+            if parts.len() > 1 {
+                return with_subdomain.oneshot(req).map(|x| x.unwrap()).boxed();
+            }
+        }
+        without_subdomain.oneshot(req).map(|x| x.unwrap()).boxed()
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = args::Args::parse();
@@ -663,16 +626,8 @@ async fn main() -> anyhow::Result<()> {
         .discovery(Box::new(discovery))
         .bind(0)
         .await?;
-    let default_node = args.default_node.map(|default_node| NodeAddr {
-        node_id: default_node,
-        info: AddrInfo {
-            derp_url: Some(args.derp_url),
-            direct_addresses: Default::default(),
-        },
-    });
     let gateway = Gateway(Arc::new(Inner {
         endpoint,
-        default_node,
         mime_classifier: MimeClassifier::new(),
         mime_cache: RwLock::new(BTreeMap::new()),
         collection_cache: RwLock::new(BTreeMap::new()),
@@ -684,22 +639,24 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/subdomain/:name", put(create_subdomain))
         .route("/subdomain/:name", delete(delete_subdomain))
-        .route("/blob/:blake3_hash", get(handle_local_blob_request))
-        .route("/collection/:blake3_hash", get(handle_local_collection_index))
-        .route("/collection/:blake3_hash/*path",get(handle_local_collection_request))
-        .route("/node/:node_id/blob/:blake3_hash", get(handle_remote_blob_request))
-        .route("/node/:node_id/collection/:blake3_hash", get(handle_remote_collection_index))
-        .route("/node/:node_id/collection/:blake3_hash/*path",get(handle_remote_collection_request))
-        .route("/ticket/:ticket", get(handle_ticket_request))
+        .route("/alias/:alias", get(handle_alias_index))
+        .route("/alias/:alias/*path", get(handle_alias))
+        .layer(Extension(gateway.clone()));
+
+    let sd = Router::new()
+        .route("/*path", get(handle_subdomain))
+        .route("/", get(handle_subdomain_index))
         .layer(Extension(gateway));
+
+    let main_app = Router::new().fallback(axum::routing::any(combinator(sd, app)));
 
     // Run our application with hyper
     // We'll bind to 127.0.0.1:3000
-    let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
     println!("listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, main_app).await?;
 
     Ok(())
 }
