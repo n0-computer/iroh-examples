@@ -613,11 +613,13 @@ fn combinator(
                 if let Some(hostname) = get_hostname_2(&url) {
                     let parts = hostname.split('.').collect::<Vec<_>>();
                     if parts.len() > 1 {
+                        println!("got subdomain {}, handling with subdomain", parts[0]);
                         return with_subdomain.oneshot(req).map(|x| x.unwrap()).boxed();
                     }
                 }
             }
         }
+        println!("handling without subdomain");
         without_subdomain.oneshot(req).map(|x| x.unwrap()).boxed()
     }
 }
