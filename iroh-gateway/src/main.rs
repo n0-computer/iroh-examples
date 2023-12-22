@@ -607,6 +607,7 @@ fn combinator(
     without_subdomain: Router,
 ) -> impl FnOnce(Request<Body>) -> BoxFuture<'static, Response> + Clone + Send + 'static {
     |req| {
+        println!("got request {:?}", req);
         let hostname = get_hostname(&req);
         if let Some(host) = hostname {
             let parts = host.split('.').collect::<Vec<_>>();
