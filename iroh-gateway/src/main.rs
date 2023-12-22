@@ -630,9 +630,12 @@ fn combinator(
 fn get_hostname_2(url: &Url) -> Option<&str> {
     match url.host_str() {
         Some(host) => {
+            println!("got host str {}", host);
             if host.parse::<Ipv4Addr>().is_ok() {
+                println!("host is ipv4 addr {}", host);
                 None
             } else if host.parse::<Ipv6Addr>().is_ok() {
+                println!("host is ipv6 addr {}", host);
                 None
             } else {
                 Some(host)
