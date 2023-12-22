@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.5"
+axum = "0.7.2"
 tokio = { version = "1", features = ["full"] }
-headers = { version = "0.3" }
-hyper = "0.14"
+headers = { version = "0.4" }
+hyper = "1"
 bytes = "1.1"
 iroh = "0.12.0"
 range-collections = "0.4.5"

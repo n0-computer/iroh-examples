@@ -5,7 +5,7 @@ use axum::{
     extract::Path,
     http::{header, Request, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{delete, get, put},
     Extension, Router,
 };
 use bytes::Bytes;
@@ -39,6 +39,7 @@ use std::{
     net::SocketAddr,
     ops::Bound,
     result,
+    str::FromStr,
     sync::{Arc, RwLock},
 };
 use url::Url;
@@ -137,10 +138,11 @@ async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Op
     Ok(match req.headers().typed_get::<Range>() {
         Some(range) => {
             println!("got range request {:?}", range);
-            if range.iter().count() > 1 {
+            let ranges = range.satisfiable_ranges(0).collect::<Vec<_>>();
+            if ranges.len() > 1 {
                 anyhow::bail!("multiple ranges not supported");
             }
-            let Some((start, end)) = range.iter().next() else {
+            let Some((start, end)) = ranges.into_iter().next() else {
                 anyhow::bail!("empty range");
             };
             normalize_range(start, end)
@@ -175,6 +177,8 @@ struct Inner {
     mime_cache: RwLock<BTreeMap<Hash, Mime>>,
     /// Cache of hashes to collections
     collection_cache: RwLock<BTreeMap<Hash, Collection>>,
+    /// Subdomains
+    subdomains: RwLock<BTreeMap<String, BlobTicket>>,
 }
 
 impl Inner {
@@ -367,6 +371,33 @@ async fn handle_local_blob_request(
     let byte_range = parse_byte_range(req).await?;
     let res = forward_range(&gateway, connection, &blake3_hash, byte_range).await?;
     Ok(res)
+}
+
+async fn create_subdomain(
+    gateway: Extension<Gateway>,
+    Path(name): Path<String>,
+    ticket: String,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    println!("create_subdomain {} {}", name, ticket);
+    if let Ok(ticket) = BlobTicket::from_str(&ticket) {
+        gateway
+            .subdomains
+            .write()
+            .unwrap()
+            .insert(name, ticket.clone());
+        Ok(StatusCode::OK)
+    } else {
+        Ok(StatusCode::BAD_REQUEST)
+    }
+}
+
+async fn delete_subdomain(
+    gateway: Extension<Gateway>,
+    Path(name): Path<String>,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    println!("delete_subdomain {}", name);
+    gateway.subdomains.write().unwrap().remove(&name);
+    Ok(StatusCode::OK)
 }
 
 /// Handle a request for a range of bytes from the default node.
@@ -581,7 +612,7 @@ async fn forward_range(
         let _stats = at_closing.next().await?;
         Ok(())
     });
-    let body = Body::wrap_stream(recv.into_stream());
+    let body = Body::from_stream(recv.into_stream());
     let builder = Response::builder()
         .status(status_code)
         .header(header::ACCEPT_RANGES, "bytes")
@@ -645,11 +676,14 @@ async fn main() -> anyhow::Result<()> {
         mime_classifier: MimeClassifier::new(),
         mime_cache: RwLock::new(BTreeMap::new()),
         collection_cache: RwLock::new(BTreeMap::new()),
+        subdomains: RwLock::new(BTreeMap::new()),
     }));
 
     // Build our application by composing routes
     #[rustfmt::skip]
     let app = Router::new()
+        .route("/subdomain/:name", put(create_subdomain))
+        .route("/subdomain/:name", delete(delete_subdomain))
         .route("/blob/:blake3_hash", get(handle_local_blob_request))
         .route("/collection/:blake3_hash", get(handle_local_collection_index))
         .route("/collection/:blake3_hash/*path",get(handle_local_collection_request))
@@ -664,9 +698,8 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
     println!("listening on {}", addr);
 
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await?;
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
