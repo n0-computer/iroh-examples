@@ -628,6 +628,7 @@ fn combinator(
 }
 
 fn get_hostname_2(url: &Url) -> Option<&str> {
+    println!("get_hostname_2 {:?}", url);
     match url.host_str() {
         Some(host) => {
             println!("got host str {}", host);
