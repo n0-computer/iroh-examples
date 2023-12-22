@@ -641,7 +641,10 @@ fn get_hostname_2(url: &Url) -> Option<&str> {
                 Some(host)
             }
         }
-        None => None,
+        None =>{
+            println!("host is none???");
+            None
+        },
     }
 }
 
