@@ -609,8 +609,11 @@ fn combinator(
     |req| {
         println!("got request {:?}", req);
         if let Some(hostname) = get_hostname(&req) {
+            println!("got hostname header {}", hostname);
             if let Ok(url) = hostname.parse::<Url>() {
+                println!("hostname is a url {}", url);
                 if let Some(hostname) = get_hostname_2(&url) {
+                    println!("hostname host part is not ip addr {}", hostname);
                     let parts = hostname.split('.').collect::<Vec<_>>();
                     if parts.len() > 1 {
                         println!("got subdomain {}, handling with subdomain", parts[0]);
