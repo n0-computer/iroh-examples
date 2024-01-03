@@ -186,7 +186,7 @@ impl Inner {
     async fn get_default_connection(&self) -> anyhow::Result<quinn::Connection> {
         let connection = self
             .endpoint
-            .connect(self.default_node()?, &iroh::bytes::protocol::ALPN)
+            .connect(self.default_node()?, iroh::bytes::protocol::ALPN)
             .await?;
         Ok(connection)
     }
@@ -356,7 +356,7 @@ async fn handle_ticket_request(
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
-        .connect(ticket.node_addr().clone(), &iroh::bytes::protocol::ALPN)
+        .connect(ticket.node_addr().clone(), iroh::bytes::protocol::ALPN)
         .await?;
     let hash = ticket.hash();
     let prefix = format!("/node/{}", ticket.node_addr().node_id);
