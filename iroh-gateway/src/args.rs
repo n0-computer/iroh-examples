@@ -2,15 +2,21 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use iroh::ticket::NodeTicket;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Node ticket for the default node
+    /// Ticket for the default node.
+    ///
+    /// This can be a node ticket or a blob ticket. If it is a blob ticket, the
+    /// hash is ignored and just the node part is used.
+    ///
+    /// This is needed for all endpoints except `/ticket`.
     #[clap(long)]
-    pub default_node: Option<NodeTicket>,
+    pub default_node: Option<String>,
 
-    /// Http or https listen addr
+    /// Http or https listen addr.
+    /// 
+    /// Will listen on http if cert_path is not specified, https otherwise.
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
 
@@ -21,7 +27,7 @@ pub struct Args {
     #[clap(long)]
     pub cert_path: Option<PathBuf>,
 
-    /// Magic port for the node, random if not specified
+    /// Magic port for the node, random if not specified.
     #[clap(long)]
     pub magic_port: Option<u16>,
 }

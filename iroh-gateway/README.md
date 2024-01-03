@@ -46,5 +46,5 @@ http://localhost:8080/node/cytwbysn6cs6jbhdak6ypmrbg2w3nrcrptl5xlts2yurk4mq5cb/b
 ```
 
 # Features
-- [ ] range requests
-- [ ] mime type sniffing
+- [x] range requests
+- [x] mime type sniffing

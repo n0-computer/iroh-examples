@@ -237,7 +237,7 @@ async fn get_collection_inner(
     Ok((collection, headers))
 }
 
-/// Get the mime type for a hash, either from the cache or by requesting it from the node.
+/// Get the collection. This will also fill the mime cache.
 async fn get_collection(
     gateway: &Gateway,
     hash: &Hash,
@@ -335,6 +335,16 @@ async fn handle_local_blob_request(
     Ok(res)
 }
 
+async fn handle_local_collection_index(
+    gateway: Extension<Gateway>,
+    Path(hash): Path<Hash>,
+) -> std::result::Result<impl IntoResponse, AppError> {
+    let connection = gateway.get_default_connection().await?;
+    let link_prefix = format!("/collection/{}", hash);
+    let res = collection_index(&gateway, connection, &hash, &link_prefix).await?;
+    Ok(res)
+}
+
 /// Handle a request for a range of bytes from the default node.
 async fn handle_local_collection_request(
     gateway: Extension<Gateway>,
@@ -347,19 +357,19 @@ async fn handle_local_collection_request(
     Ok(res)
 }
 
-async fn handle_ticket_request(
+async fn handle_ticket_index(
     gateway: Extension<Gateway>,
     Path(ticket): Path<BlobTicket>,
     req: Request<Body>,
 ) -> std::result::Result<impl IntoResponse, AppError> {
-    tracing::info!("handle_ticket_request");
+    tracing::info!("handle_ticket_index");
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
         .connect(ticket.node_addr().clone(), iroh::bytes::protocol::ALPN)
         .await?;
     let hash = ticket.hash();
-    let prefix = format!("/node/{}", ticket.node_addr().node_id);
+    let prefix = format!("/ticket/{}", ticket);
     let res = match ticket.format() {
         BlobFormat::Raw => forward_range(&gateway, connection, &hash, byte_range)
             .await?
@@ -371,12 +381,19 @@ async fn handle_ticket_request(
     Ok(res)
 }
 
-async fn handle_local_collection_index(
+async fn handle_ticket_request(
     gateway: Extension<Gateway>,
-    Path(hash): Path<Hash>,
+    Path((ticket, suffix)): Path<(BlobTicket, String)>,
+    req: Request<Body>,
 ) -> std::result::Result<impl IntoResponse, AppError> {
-    let connection = gateway.get_default_connection().await?;
-    let res = collection_index(&gateway, connection, &hash, "").await?;
+    tracing::info!("handle_ticket_request");
+    let byte_range = parse_byte_range(req).await?;
+    let connection = gateway
+        .endpoint
+        .connect(ticket.node_addr().clone(), iroh::bytes::protocol::ALPN)
+        .await?;
+    let hash = ticket.hash();
+    let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
     Ok(res)
 }
 
@@ -398,7 +415,7 @@ async fn collection_index(
     res.push_str("<html>\n<head></head>\n");
 
     for (name, child_hash) in collection.iter() {
-        let url = format!("{}/collection/{}/{}", link_prefix, hash, name);
+        let url = format!("{}/{}", link_prefix, name);
         let url = encode_relative_url(&url)?;
         let smo = gateway.mime_cache.lock().unwrap().get(child_hash).cloned();
         res.push_str(&format!("<a href=\"{}\">{}</a>", url, name,));
@@ -540,7 +557,15 @@ async fn main() -> anyhow::Result<()> {
     let endpoint = MagicEndpoint::builder().bind(magic_port).await?;
     let default_node = args
         .default_node
-        .map(|default_node| default_node.node_addr().clone());
+        .map(|default_node| {
+            Ok(if let Ok(node_ticket) = default_node.parse::<BlobTicket>() {
+                node_ticket.node_addr().clone()
+            } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
+                blob_ticket.node_addr().clone()
+            } else {
+                anyhow::bail!("invalid default node");
+            })
+        }).transpose()?;
     let gateway = Gateway(Arc::new(Inner {
         endpoint,
         default_node,
@@ -555,7 +580,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/blob/:blake3_hash", get(handle_local_blob_request))
         .route("/collection/:blake3_hash", get(handle_local_collection_index))
         .route("/collection/:blake3_hash/*path",get(handle_local_collection_request))
-        .route("/ticket/:ticket", get(handle_ticket_request))
+        .route("/ticket/:ticket", get(handle_ticket_index))
+        .route("/ticket/:ticket/*path", get(handle_ticket_request))
         .layer(Extension(gateway));
 
     if let Some(path) = args.cert_path {
