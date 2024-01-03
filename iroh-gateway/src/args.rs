@@ -49,7 +49,7 @@ pub struct Args {
     pub contact: Option<String>,
 
     /// Certificate path.
-    /// 
+    ///
     /// Not needed if cert_mode is None.
     /// In manual mode, this is the directory containing the cert.pem and key.pem files.
     /// In letsencrypt mode, this is the directory used by the acme acceptor.

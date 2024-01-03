@@ -30,13 +30,12 @@ use mime::Mime;
 use mime_classifier::MimeClassifier;
 use range_collections::RangeSet2;
 use ranges::parse_byte_range;
-use tokio_rustls_acme::{AcmeConfig, caches::DirCache, axum::AxumAcceptor};
 use std::{
     result,
     sync::{Arc, Mutex},
 };
+use tokio_rustls_acme::{caches::DirCache, AcmeConfig};
 use url::Url;
-use tower_service::Service;
 
 use crate::ranges::{slice, to_byte_range, to_chunk_range};
 mod ranges;
@@ -512,7 +511,7 @@ async fn main() -> anyhow::Result<()> {
             // Run our application as just http
             let addr = args.addr;
             println!("listening on {}, http", addr);
-    
+
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, app).await?;
         }
@@ -538,20 +537,23 @@ async fn main() -> anyhow::Result<()> {
             let hostnames = args.hostname;
             let contact = args.contact.context("contact not specified")?;
             let dir = args.cert_path.context("cert_path not specified")?;
-            let state = AcmeConfig::new(hostnames)
+            let _state = AcmeConfig::new(hostnames)
                 .contact([format!("mailto:{contact}")])
                 .cache_option(Some(DirCache::new(dir)))
                 .directory_lets_encrypt(is_production)
                 .state();
-            let config = todo!();
-            let acceptor = state.axum_acceptor(config);
-            // Run our application with hyper
-            let addr = args.addr.parse()?;
-            println!("listening on {}, https", addr);
-            axum_server::bind(addr)
-                .acceptor(acceptor)
-                .serve(app.into_make_service())
-                .await?;
+            todo!("update tokio-rustls-acme to latest rustls");
+            // let config = rustls::ServerConfig::builder()
+            //     .with_no_client_auth()
+            //     .with_cert_resolver(state.resolver());
+            // let acceptor = state.axum_acceptor(config);
+            // // Run our application with hyper
+            // let addr = args.addr.parse()?;
+            // println!("listening on {}, https", addr);
+            // axum_server::bind(addr)
+            //     .acceptor(acceptor)
+            //     .serve(app.into_make_service())
+            //     .await?;
         }
     }
 
