@@ -15,7 +15,7 @@ pub struct Args {
     pub default_node: Option<String>,
 
     /// Http or https listen addr.
-    /// 
+    ///
     /// Will listen on http if cert_path is not specified, https otherwise.
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
