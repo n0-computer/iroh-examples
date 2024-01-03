@@ -1,5 +1,6 @@
 mod args;
 use anyhow::Context;
+use args::CertMode;
 use axum::{
     body::Body,
     extract::Path,
@@ -29,11 +30,13 @@ use mime::Mime;
 use mime_classifier::MimeClassifier;
 use range_collections::RangeSet2;
 use ranges::parse_byte_range;
+use tokio_rustls_acme::{AcmeConfig, caches::DirCache, axum::AxumAcceptor};
 use std::{
     result,
     sync::{Arc, Mutex},
 };
 use url::Url;
+use tower_service::Service;
 
 use crate::ranges::{slice, to_byte_range, to_chunk_range};
 mod ranges;
@@ -504,24 +507,52 @@ async fn main() -> anyhow::Result<()> {
         .route("/ticket/:ticket/*path", get(handle_ticket_request))
         .layer(Extension(gateway));
 
-    if let Some(path) = args.cert_path {
-        let cert_file = path.join("cert.pem");
-        let key_file = path.join("key.pem");
-        let config = RustlsConfig::from_pem_file(cert_file, key_file).await?;
-        // Run our application with hyper
-        let addr = args.addr;
-        println!("listening on {}, https", addr);
-        let addr = addr.parse()?;
-        axum_server::bind_rustls(addr, config)
-            .serve(app.into_make_service())
-            .await?;
-    } else {
-        // Run our application with hyper
-        let addr = args.addr;
-        println!("listening on {}, http", addr);
-
-        let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app).await?;
+    match args.cert_mode {
+        CertMode::None => {
+            // Run our application as just http
+            let addr = args.addr;
+            println!("listening on {}, http", addr);
+    
+            let listener = tokio::net::TcpListener::bind(addr).await?;
+            axum::serve(listener, app).await?;
+        }
+        CertMode::Manual => {
+            // Run with manual certificates
+            let cert_path = args
+                .cert_path
+                .context("cert_path not specified")?
+                .canonicalize()?;
+            let cert_file = cert_path.join("cert.pem");
+            let key_file = cert_path.join("key.pem");
+            let config = RustlsConfig::from_pem_file(cert_file, key_file).await?;
+            // Run our application with hyper
+            let addr = args.addr;
+            println!("listening on {}, https", addr);
+            let addr = addr.parse()?;
+            axum_server::bind_rustls(addr, config)
+                .serve(app.into_make_service())
+                .await?;
+        }
+        CertMode::LetsEncryptStaging | CertMode::LetsEncrypt => {
+            let is_production = args.cert_mode == CertMode::LetsEncrypt;
+            let hostnames = args.hostname;
+            let contact = args.contact.context("contact not specified")?;
+            let dir = args.cert_path.context("cert_path not specified")?;
+            let state = AcmeConfig::new(hostnames)
+                .contact([format!("mailto:{contact}")])
+                .cache_option(Some(DirCache::new(dir)))
+                .directory_lets_encrypt(is_production)
+                .state();
+            let config = todo!();
+            let acceptor = state.axum_acceptor(config);
+            // Run our application with hyper
+            let addr = args.addr.parse()?;
+            println!("listening on {}, https", addr);
+            axum_server::bind(addr)
+                .acceptor(acceptor)
+                .serve(app.into_make_service())
+                .await?;
+        }
     }
 
     Ok(())
