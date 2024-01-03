@@ -1,21 +1,27 @@
 //! Command line arguments.
+use std::path::PathBuf;
+
 use clap::Parser;
-use iroh::net::key::PublicKey as NodeId;
-use url::Url;
+use iroh::ticket::NodeTicket;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// The node to provide a gateway for.
-    ///
-    /// You can also specify a node in the url, but this one will be the default.
+    /// Node ticket for the default node
     #[clap(long)]
-    pub default_node: Option<NodeId>,
+    pub default_node: Option<NodeTicket>,
 
-    /// Derp region
-    #[clap(long, default_value = "https://euw1-1.derp.iroh.network")]
-    pub derp_url: Url,
+    /// Http or https listen addr
+    #[clap(long, default_value = "0.0.0.0:8080")]
+    pub addr: String,
 
-    /// Listen port
-    #[clap(long, default_value = "8080")]
-    pub port: u16,
+    /// Https certificate path.
+    ///
+    /// If this is specified, the server will listen on https.
+    /// The path should be a directory containing `cert.pem` and `key.pem`.
+    #[clap(long)]
+    pub cert_path: Option<PathBuf>,
+
+    /// Magic port for the node, random if not specified
+    #[clap(long)]
+    pub magic_port: Option<u16>,
 }
