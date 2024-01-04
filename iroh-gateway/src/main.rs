@@ -1,5 +1,6 @@
 mod args;
 use anyhow::Context;
+use args::CertMode;
 use axum::{
     body::Body,
     extract::Path,
@@ -8,15 +9,13 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-use axum_server::tls_rustls::RustlsConfig;
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
-use headers::{HeaderMapExt, Range};
-use iroh::bytes::{
-    store::bao_tree::{ByteNum, ChunkNum},
-    BlobFormat,
-};
+use futures::{pin_mut, StreamExt};
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use iroh::bytes::{store::bao_tree::ByteNum, BlobFormat};
 use iroh::{
     bytes::{
         format::collection::Collection,
@@ -31,13 +30,23 @@ use iroh::{
 use lru::LruCache;
 use mime::Mime;
 use mime_classifier::MimeClassifier;
-use range_collections::{range_set::RangeSetRange, RangeSet2};
+use range_collections::RangeSet2;
+use ranges::parse_byte_range;
 use std::{
-    ops::Bound,
     result,
     sync::{Arc, Mutex},
 };
+use tokio::net::TcpListener;
+use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
+use tower_service::Service;
 use url::Url;
+
+use crate::{
+    cert_util::{load_certs, load_secret_key},
+    ranges::{slice, to_byte_range, to_chunk_range},
+};
+mod cert_util;
+mod ranges;
 
 // Make our own error that wraps `anyhow::Error`.
 struct AppError(anyhow::Error);
@@ -62,88 +71,6 @@ where
     fn from(err: E) -> Self {
         Self(err.into())
     }
-}
-
-/// Given a range specified as arbitrary range bounds, normalize it into a range
-/// that has inclusive start and exclusive end.
-fn normalize_range(start: Bound<u64>, end: Bound<u64>) -> (Option<u64>, Option<u64>) {
-    match (start, end) {
-        (Bound::Included(start), Bound::Included(end)) => (Some(start), end.checked_add(1)),
-        (Bound::Included(start), Bound::Excluded(end)) => (Some(start), Some(end)),
-        (Bound::Included(start), Bound::Unbounded) => (Some(start), None),
-        (Bound::Excluded(start), Bound::Included(end)) => {
-            (start.checked_add(1), end.checked_add(1))
-        }
-        (Bound::Excluded(start), Bound::Excluded(end)) => (start.checked_add(1), Some(end)),
-        (Bound::Excluded(start), Bound::Unbounded) => (start.checked_add(1), None),
-        (Bound::Unbounded, Bound::Included(end)) => (None, end.checked_add(1)),
-        (Bound::Unbounded, Bound::Excluded(end)) => (None, Some(end)),
-        (Bound::Unbounded, Bound::Unbounded) => (None, None),
-    }
-}
-
-/// Convert a normalized range into a `RangeSet2<u64>` that represents the byte range.
-fn to_byte_range(start: Option<u64>, end: Option<u64>) -> RangeSet2<u64> {
-    match (start, end) {
-        (Some(start), Some(end)) => RangeSet2::from(start..end),
-        (Some(start), None) => RangeSet2::from(start..),
-        (None, Some(end)) => RangeSet2::from(..end),
-        (None, None) => RangeSet2::all(),
-    }
-}
-
-/// Convert a normalized range into a `RangeSet2<ChunkNum>` that represents the chunk range.
-///
-/// Ranges are rounded up so that the given byte range is completely covered by the chunk range.
-fn to_chunk_range(start: Option<u64>, end: Option<u64>) -> RangeSet2<ChunkNum> {
-    let start = start.map(ByteNum);
-    let end = end.map(ByteNum);
-    match (start, end) {
-        (Some(start), Some(end)) => RangeSet2::from(start.full_chunks()..end.chunks()),
-        (Some(start), None) => RangeSet2::from(start.full_chunks()..),
-        (None, Some(end)) => RangeSet2::from(..end.chunks()),
-        (None, None) => RangeSet2::all(),
-    }
-}
-
-/// Given an incoming piece of data at an offset, and a set of ranges that are being requested,
-/// split the data into parts that cover only requested ranges
-fn slice(offset: u64, data: Bytes, ranges: RangeSet2<u64>) -> Vec<Bytes> {
-    let len = data.len() as u64;
-    let data_range = to_byte_range(Some(offset), offset.checked_add(len));
-    let relevant = ranges & data_range;
-    relevant
-        .iter()
-        .map(|range| match range {
-            RangeSetRange::Range(range) => {
-                let start = (range.start - offset) as usize;
-                let end = (range.end - offset) as usize;
-                data.slice(start..end)
-            }
-            RangeSetRange::RangeFrom(range) => {
-                let start = (range.start - offset) as usize;
-                data.slice(start..)
-            }
-        })
-        .collect()
-}
-
-/// Parse the byte range from the request headers.
-async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
-    Ok(match req.headers().typed_get::<Range>() {
-        Some(range) => {
-            println!("got range request {:?}", range);
-            let ranges = range.satisfiable_ranges(0).collect::<Vec<_>>();
-            if ranges.len() > 1 {
-                anyhow::bail!("multiple ranges not supported");
-            }
-            let Some((start, end)) = ranges.into_iter().next() else {
-                anyhow::bail!("empty range");
-            };
-            normalize_range(start, end)
-        }
-        None => (None, None),
-    })
 }
 
 #[derive(Debug, Clone)]
@@ -558,14 +485,17 @@ async fn main() -> anyhow::Result<()> {
     let default_node = args
         .default_node
         .map(|default_node| {
-            Ok(if let Ok(node_ticket) = default_node.parse::<BlobTicket>() {
-                node_ticket.node_addr().clone()
-            } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
-                blob_ticket.node_addr().clone()
-            } else {
-                anyhow::bail!("invalid default node");
-            })
-        }).transpose()?;
+            Ok(
+                if let Ok(node_ticket) = default_node.parse::<BlobTicket>() {
+                    node_ticket.node_addr().clone()
+                } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
+                    blob_ticket.node_addr().clone()
+                } else {
+                    anyhow::bail!("invalid default node");
+                },
+            )
+        })
+        .transpose()?;
     let gateway = Gateway(Arc::new(Inner {
         endpoint,
         default_node,
@@ -574,7 +504,6 @@ async fn main() -> anyhow::Result<()> {
         collection_cache: Mutex::new(LruCache::new(1000.try_into().unwrap())),
     }));
 
-    // Build our application by composing routes
     #[rustfmt::skip]
     let app = Router::new()
         .route("/blob/:blake3_hash", get(handle_local_blob_request))
@@ -584,24 +513,197 @@ async fn main() -> anyhow::Result<()> {
         .route("/ticket/:ticket/*path", get(handle_ticket_request))
         .layer(Extension(gateway));
 
-    if let Some(path) = args.cert_path {
-        let cert_file = path.join("cert.pem");
-        let key_file = path.join("key.pem");
-        let config = RustlsConfig::from_pem_file(cert_file, key_file).await?;
-        // Run our application with hyper
-        let addr = args.addr;
-        println!("listening on {}, https", addr);
-        let addr = addr.parse()?;
-        axum_server::bind_rustls(addr, config)
-            .serve(app.into_make_service())
-            .await?;
-    } else {
-        // Run our application with hyper
-        let addr = args.addr;
-        println!("listening on {}, http", addr);
+    match args.cert_mode {
+        CertMode::None => {
+            // Run our application as just http
+            let addr = args.addr;
+            println!("listening on {}, http", addr);
 
-        let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app).await?;
+            let listener = tokio::net::TcpListener::bind(addr).await?;
+            axum::serve(listener, app).await?;
+        }
+        CertMode::Manual => {
+            // Run with manual certificates
+            //
+            // Code copied from https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls/src
+            //
+            // TODO: use axum_server maybe, once tokio-rustls-acme is on the latest
+            // rustls.
+            let cert_path = args
+                .cert_path
+                .context("cert_path not specified")?
+                .canonicalize()?;
+            let cert_file = cert_path.join("cert.pem");
+            let key_file = cert_path.join("key.pem");
+            let certs = load_certs(cert_file)?;
+            let secret_key = load_secret_key(key_file)?;
+            let config = rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_single_cert(certs, secret_key)?;
+            // Run our application with hyper
+            let addr = args.addr;
+            println!("listening on {}", addr);
+            println!("https with manual certificates");
+            let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+            let tcp_listener = TcpListener::bind(addr).await?;
+
+            pin_mut!(tcp_listener);
+
+            loop {
+                let tower_service = app.clone();
+                let tls_acceptor = tls_acceptor.clone();
+
+                // Wait for new tcp connection
+                let (cnx, addr) = tcp_listener.accept().await?;
+
+                tokio::spawn(async move {
+                    // Wait for tls handshake to happen
+                    let Ok(stream) = tls_acceptor.accept(cnx).await else {
+                        tracing::error!("error during tls handshake connection from {}", addr);
+                        return;
+                    };
+
+                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                    // `TokioIo` converts between them.
+                    let stream = TokioIo::new(stream);
+
+                    // Hyper has also its own `Service` trait and doesn't use tower. We can use
+                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                    // `tower::Service::call`.
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                            // tower's `Service` requires `&mut self`.
+                            //
+                            // We don't need to call `poll_ready` since `Router` is always ready.
+                            tower_service.clone().call(request)
+                        });
+
+                    let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection_with_upgrades(stream, hyper_service)
+                        .await;
+
+                    if let Err(err) = ret {
+                        tracing::warn!("error serving connection from {}: {}", addr, err);
+                    }
+                });
+            }
+        }
+        CertMode::LetsEncryptStaging | CertMode::LetsEncrypt => {
+            // Run with letsencrypt certificates
+            //
+            // Code copied from https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls/src and adapted
+            //
+            // TODO: use axum_server with the axum acceptor maybe, once tokio-rustls-acme is on the latest
+            // rustls.
+            let is_production = args.cert_mode == CertMode::LetsEncrypt;
+            let hostnames = args.hostname;
+            let contact = args.contact.context("contact not specified")?;
+            let dir = args.cert_path.context("cert_path not specified")?;
+            let state = AcmeConfig::new(hostnames)
+                .contact([format!("mailto:{contact}")])
+                .cache_option(Some(DirCache::new(dir)))
+                .directory_lets_encrypt(is_production)
+                .state();
+            let config = rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_cert_resolver(state.resolver());
+            // config.alpn_protocols.extend([b"h2".to_vec(), b"http/1.1".to_vec()]);
+            let config = Arc::new(config);
+            let acme_acceptor = state.acceptor();
+            // drive the acme state machine
+            //
+            // this drives the cert renewal process.
+            tokio::spawn(async move {
+                let mut state = state;
+                while let Some(event) = state.next().await {
+                    match event {
+                        Ok(ok) => tracing::debug!("acme event: {:?}", ok),
+                        Err(err) => tracing::error!("error: {:?}", err),
+                    }
+                }
+            });
+            // Run our application with hyper
+            let addr = args.addr;
+            println!("listening on {}", addr);
+            println!(
+                "https with letsencrypt certificates, production = {}",
+                is_production
+            );
+            let tcp_listener = TcpListener::bind(addr).await?;
+
+            pin_mut!(tcp_listener);
+
+            loop {
+                let tower_service = app.clone();
+                let acme_acceptor = acme_acceptor.clone();
+                let config = config.clone();
+
+                // Wait for new tcp connection
+                let (cnx, addr) = tcp_listener.accept().await?;
+                println!("got connection from {}", addr);
+
+                tokio::spawn(async move {
+                    // Wait for tls handshake to happen
+                    let handshake = match acme_acceptor.accept(cnx).await {
+                        Ok(Some(handshake)) => {
+                            tracing::info!("got tls handshake from {}", addr);
+                            handshake
+                        }
+                        Ok(None) => {
+                            tracing::info!("got acme tls challenge from {}", addr);
+                            return Ok(());
+                        }
+                        Err(cause) => {
+                            tracing::error!(
+                                "error during tls handshake connection from {}: {}",
+                                addr,
+                                cause
+                            );
+                            return Ok(());
+                        }
+                    };
+                    let stream = match handshake.into_stream(config.clone()).await {
+                        Ok(stream) => stream,
+                        Err(cause) => {
+                            tracing::error!(
+                                "error during tls handshake connection from {}: {}",
+                                addr,
+                                cause
+                            );
+                            return Ok(());
+                        }
+                    };
+
+                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                    // `TokioIo` converts between them.
+                    let stream = TokioIo::new(stream);
+
+                    // Hyper has also its own `Service` trait and doesn't use tower. We can use
+                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                    // `tower::Service::call`.
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                            // tower's `Service` requires `&mut self`.
+                            //
+                            // We don't need to call `poll_ready` since `Router` is always ready.
+                            tower_service.clone().call(request)
+                        });
+
+                    let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection_with_upgrades(stream, hyper_service)
+                        .await;
+
+                    if let Err(err) = ret {
+                        tracing::warn!("error serving connection from {}: {}", addr, err);
+                    }
+                    anyhow::Ok(())
+                });
+            }
+        }
     }
 
     Ok(())
