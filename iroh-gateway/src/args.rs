@@ -37,7 +37,7 @@ pub struct Args {
     pub magic_port: Option<u16>,
 
     /// Certificate mode, default is none.
-    #[clap(long, default_value = "None")]
+    #[clap(long, default_value = "none")]
     pub cert_mode: CertMode,
 
     /// Hostnames for letsencrypt.
