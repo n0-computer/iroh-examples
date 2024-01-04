@@ -42,10 +42,10 @@ use tower_service::Service;
 use url::Url;
 
 use crate::{
-    https::{load_certs, load_secret_key},
+    cert_util::{load_certs, load_secret_key},
     ranges::{slice, to_byte_range, to_chunk_range},
 };
-mod https;
+mod cert_util;
 mod ranges;
 
 // Make our own error that wraps `anyhow::Error`.

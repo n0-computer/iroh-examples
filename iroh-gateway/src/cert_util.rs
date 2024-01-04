@@ -1,3 +1,4 @@
+//! Utilities for loading certificates and keys.
 use anyhow::{Context, Result};
 use std::path::Path;
 
