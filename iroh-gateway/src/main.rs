@@ -621,17 +621,39 @@ async fn main() -> anyhow::Result<()> {
 
                 // Wait for new tcp connection
                 let (cnx, addr) = tcp_listener.accept().await?;
+                println!("got connection from {}", addr);
 
                 tokio::spawn(async move {
                     // Wait for tls handshake to happen
-                    let handshake = match acme_acceptor.accept(cnx).await? {
-                        Some(handshake) => handshake,
-                        None => {
+                    let handshake = match acme_acceptor.accept(cnx).await {
+                        Ok(Some(handshake)) => {
+                            tracing::info!("got tls handshake from {}", addr);
+                            handshake
+                        }
+                        Ok(None) => {
                             tracing::info!("got acme tls challenge from {}", addr);
                             return Ok(());
                         }
+                        Err(cause) => {
+                            tracing::error!(
+                                "error during tls handshake connection from {}: {}",
+                                addr,
+                                cause
+                            );
+                            return Ok(());
+                        }
                     };
-                    let stream = handshake.into_stream(config.clone()).await?;
+                    let stream = match handshake.into_stream(config.clone()).await {
+                        Ok(stream) => stream,
+                        Err(cause) => {
+                            tracing::error!(
+                                "error during tls handshake connection from {}: {}",
+                                addr,
+                                cause
+                            );
+                            return Ok(());
+                        }
+                    };
 
                     // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
                     // `TokioIo` converts between them.
