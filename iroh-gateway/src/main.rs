@@ -9,10 +9,12 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-use axum_server::tls_rustls::RustlsConfig;
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
+use futures::pin_mut;
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use iroh::bytes::{store::bao_tree::ByteNum, BlobFormat};
 use iroh::{
     bytes::{
@@ -34,10 +36,16 @@ use std::{
     result,
     sync::{Arc, Mutex},
 };
-use tokio_rustls_acme::{caches::DirCache, AcmeConfig};
+use tokio::net::TcpListener;
+use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
+use tower_service::Service;
 use url::Url;
 
-use crate::ranges::{slice, to_byte_range, to_chunk_range};
+use crate::{
+    https::{load_certs, load_secret_key},
+    ranges::{slice, to_byte_range, to_chunk_range},
+};
+mod https;
 mod ranges;
 
 // Make our own error that wraps `anyhow::Error`.
@@ -523,37 +531,134 @@ async fn main() -> anyhow::Result<()> {
                 .canonicalize()?;
             let cert_file = cert_path.join("cert.pem");
             let key_file = cert_path.join("key.pem");
-            let config = RustlsConfig::from_pem_file(cert_file, key_file).await?;
+            let certs = load_certs(cert_file)?;
+            let secret_key = load_secret_key(key_file)?;
+            let config = rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_single_cert(certs, secret_key)?;
             // Run our application with hyper
             let addr = args.addr;
-            println!("listening on {}, https", addr);
-            let addr = addr.parse()?;
-            axum_server::bind_rustls(addr, config)
-                .serve(app.into_make_service())
-                .await?;
+            println!("listening on {}", addr);
+            println!("https with manual certificates");
+            let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+            let tcp_listener = TcpListener::bind(addr).await?;
+
+            pin_mut!(tcp_listener);
+
+            loop {
+                let tower_service = app.clone();
+                let tls_acceptor = tls_acceptor.clone();
+
+                // Wait for new tcp connection
+                let (cnx, addr) = tcp_listener.accept().await?;
+
+                tokio::spawn(async move {
+                    // Wait for tls handshake to happen
+                    let Ok(stream) = tls_acceptor.accept(cnx).await else {
+                        tracing::error!("error during tls handshake connection from {}", addr);
+                        return;
+                    };
+
+                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                    // `TokioIo` converts between them.
+                    let stream = TokioIo::new(stream);
+
+                    // Hyper has also its own `Service` trait and doesn't use tower. We can use
+                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                    // `tower::Service::call`.
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                            // tower's `Service` requires `&mut self`.
+                            //
+                            // We don't need to call `poll_ready` since `Router` is always ready.
+                            tower_service.clone().call(request)
+                        });
+
+                    let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection_with_upgrades(stream, hyper_service)
+                        .await;
+
+                    if let Err(err) = ret {
+                        tracing::warn!("error serving connection from {}: {}", addr, err);
+                    }
+                });
+            }
         }
         CertMode::LetsEncryptStaging | CertMode::LetsEncrypt => {
             let is_production = args.cert_mode == CertMode::LetsEncrypt;
             let hostnames = args.hostname;
             let contact = args.contact.context("contact not specified")?;
             let dir = args.cert_path.context("cert_path not specified")?;
-            let _state = AcmeConfig::new(hostnames)
+            let state = AcmeConfig::new(hostnames)
                 .contact([format!("mailto:{contact}")])
                 .cache_option(Some(DirCache::new(dir)))
                 .directory_lets_encrypt(is_production)
                 .state();
-            todo!("update tokio-rustls-acme to latest rustls");
-            // let config = rustls::ServerConfig::builder()
-            //     .with_no_client_auth()
-            //     .with_cert_resolver(state.resolver());
-            // let acceptor = state.axum_acceptor(config);
-            // // Run our application with hyper
-            // let addr = args.addr.parse()?;
-            // println!("listening on {}, https", addr);
-            // axum_server::bind(addr)
-            //     .acceptor(acceptor)
-            //     .serve(app.into_make_service())
-            //     .await?;
+            let config = rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_no_client_auth()
+                .with_cert_resolver(state.resolver());
+            // config.alpn_protocols.extend([b"h2".to_vec(), b"http/1.1".to_vec()]);
+            let config = Arc::new(config);
+            let acme_acceptor = state.acceptor();
+            // Run our application with hyper
+            let addr = args.addr;
+            println!("listening on {}", addr);
+            println!(
+                "https with letsencrypt certificates, production = {}",
+                is_production
+            );
+            let tcp_listener = TcpListener::bind(addr).await?;
+
+            pin_mut!(tcp_listener);
+
+            loop {
+                let tower_service = app.clone();
+                let acme_acceptor = acme_acceptor.clone();
+                let config = config.clone();
+
+                // Wait for new tcp connection
+                let (cnx, addr) = tcp_listener.accept().await?;
+
+                tokio::spawn(async move {
+                    // Wait for tls handshake to happen
+                    let handshake = match acme_acceptor.accept(cnx).await? {
+                        Some(handshake) => handshake,
+                        None => {
+                            tracing::info!("got acme tls challenge from {}", addr);
+                            return Ok(());
+                        }
+                    };
+                    let stream = handshake.into_stream(config.clone()).await?;
+
+                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                    // `TokioIo` converts between them.
+                    let stream = TokioIo::new(stream);
+
+                    // Hyper has also its own `Service` trait and doesn't use tower. We can use
+                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                    // `tower::Service::call`.
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                            // tower's `Service` requires `&mut self`.
+                            //
+                            // We don't need to call `poll_ready` since `Router` is always ready.
+                            tower_service.clone().call(request)
+                        });
+
+                    let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection_with_upgrades(stream, hyper_service)
+                        .await;
+
+                    if let Err(err) = ret {
+                        tracing::warn!("error serving connection from {}: {}", addr, err);
+                    }
+                    anyhow::Ok(())
+                });
+            }
         }
     }
 
