@@ -12,7 +12,7 @@ use axum::{
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
-use futures::pin_mut;
+use futures::{pin_mut, StreamExt};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use iroh::bytes::{store::bao_tree::ByteNum, BlobFormat};
@@ -504,7 +504,6 @@ async fn main() -> anyhow::Result<()> {
         collection_cache: Mutex::new(LruCache::new(1000.try_into().unwrap())),
     }));
 
-    // Build our application by composing routes
     #[rustfmt::skip]
     let app = Router::new()
         .route("/blob/:blake3_hash", get(handle_local_blob_request))
@@ -525,6 +524,11 @@ async fn main() -> anyhow::Result<()> {
         }
         CertMode::Manual => {
             // Run with manual certificates
+            //
+            // Code copied from https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls/src
+            //
+            // TODO: use axum_server maybe, once tokio-rustls-acme is on the latest
+            // rustls.
             let cert_path = args
                 .cert_path
                 .context("cert_path not specified")?
@@ -587,6 +591,12 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         CertMode::LetsEncryptStaging | CertMode::LetsEncrypt => {
+            // Run with letsencrypt certificates
+            //
+            // Code copied from https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls/src and adapted
+            //
+            // TODO: use axum_server with the axum acceptor maybe, once tokio-rustls-acme is on the latest
+            // rustls.
             let is_production = args.cert_mode == CertMode::LetsEncrypt;
             let hostnames = args.hostname;
             let contact = args.contact.context("contact not specified")?;
@@ -603,6 +613,18 @@ async fn main() -> anyhow::Result<()> {
             // config.alpn_protocols.extend([b"h2".to_vec(), b"http/1.1".to_vec()]);
             let config = Arc::new(config);
             let acme_acceptor = state.acceptor();
+            // drive the acme state machine
+            //
+            // this drives the cert renewal process.
+            tokio::spawn(async move {
+                let mut state = state;
+                while let Some(event) = state.next().await {
+                    match event {
+                        Ok(ok) => tracing::debug!("acme event: {:?}", ok),
+                        Err(err) => tracing::error!("error: {:?}", err),
+                    }
+                }
+            });
             // Run our application with hyper
             let addr = args.addr;
             println!("listening on {}", addr);
