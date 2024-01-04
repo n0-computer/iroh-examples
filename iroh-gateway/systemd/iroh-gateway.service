@@ -1,0 +1,16 @@
+[Unit]
+Description=Iroh Gateway Service
+After=network.target
+
+[Service]
+ExecStart=/root/bin/iroh-gateway \
+    --addr 0.0.0.0:8080 \ # listen on all interfaces, port 8080
+    --default-node <blob ticket or node ticket>
+WorkingDirectory=/root/services/iroh-gateway
+Restart=always
+User=root
+Group=root
+Environment="RUST_LOG=info"
+
+[Install]
+WantedBy=multi-user.target

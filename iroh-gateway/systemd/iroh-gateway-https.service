@@ -1,0 +1,20 @@
+[Unit]
+Description=Iroh Gateway Service Https
+After=network.target
+
+[Service]
+ExecStart=/root/bin/iroh-gateway \
+    --addr 0.0.0.0:443 \ # listen on all interfaces at port 443
+    --cert-mode lets-encrypt \ # lets-encrypt production mode
+    --hostname myhostname.org \ # public hostname. you can have multiple
+    --contact admin@mycompany.org \ # admin email for letsencrypt
+    --cert-path ./letsencrypt \ # work dir for letsencrypt, relative to work dir
+    --default-node <blob ticket or node ticket>
+WorkingDirectory=/root/services/iroh-gateway
+Restart=always
+User=root
+Group=root
+Environment="RUST_LOG=info"
+
+[Install]
+WantedBy=multi-user.target
