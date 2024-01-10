@@ -1,6 +1,6 @@
 [package]
 name = "iroh-content-tracker"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Simple content tracker server for iroh"
 license = "MIT OR Apache-2.0"
@@ -14,11 +14,12 @@ bytes = "1"
 clap = { version = "4", features = ["derive"] }
 derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"] }
 dirs-next = "2"
+ed25519-dalek = "2.1.0"
 futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
-iroh = "0.10.0"
-pkarr = "0.3.0"
+iroh = "0.12.0"
+mainline = "1.0.0"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 quinn = "0.10"
 rand = "0.8"
@@ -32,3 +33,4 @@ toml = "0.7.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ttl_cache = "0.5.1"
+url = "2.5.0"

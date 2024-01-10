@@ -15,7 +15,7 @@ use std::{
 use clap::Parser;
 use io::CONFIG_DEFAULTS_FILE;
 use iroh::net::{
-    magic_endpoint::{get_alpn, get_peer_id},
+    magic_endpoint::{get_alpn, get_remote_node_id},
     AddrInfo, MagicEndpoint, NodeAddr,
 };
 use iroh::util::fs::load_secret_key;
@@ -58,7 +58,7 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
     let t0 = Instant::now();
     loop {
         let addr = endpoint.my_addr().await?;
-        if addr.derp_region().is_some() {
+        if addr.derp_url().is_some() {
             break;
         }
         if t0.elapsed() > Duration::from_secs(10) {
@@ -73,11 +73,10 @@ async fn create_endpoint(
     key: iroh::net::key::SecretKey,
     port: u16,
 ) -> anyhow::Result<MagicEndpoint> {
-    // let pkarr_relay_discovery = discovery::PkarrRelayDiscovery::new(key.clone(), PKARR_RELAY_URL.parse().unwrap());
-    let region_discover = discovery::HardcodedRegionDiscovery::new(2);
+    let mainline_discovery = discovery::MainlineDiscovery::new(key.clone());
     iroh::net::MagicEndpoint::builder()
         .secret_key(key)
-        .discovery(Box::new(region_discover))
+        .discovery(Box::new(mainline_discovery))
         .alpns(vec![TRACKER_ALPN.to_vec()])
         .bind(port)
         .await
@@ -89,7 +88,7 @@ pub async fn accept_conn(
 ) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
     let alpn = get_alpn(&mut conn).await?;
     let conn = conn.await?;
-    let peer_id = get_peer_id(&conn)?;
+    let peer_id = get_remote_node_id(&conn)?;
     Ok((peer_id, alpn, conn))
 }
 
@@ -102,9 +101,7 @@ fn write_defaults() -> anyhow::Result<()> {
 
 async fn server(args: ServerArgs) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
-    let rt = tokio::runtime::Handle::current();
     let tpc = LocalPoolHandle::new(2);
-    let rt = iroh::bytes::util::runtime::Handle::new(rt, tpc);
     let home = tracker_home()?;
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
@@ -128,9 +125,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     log!();
     let db2 = db.clone();
     let endpoint2 = endpoint.clone();
-    let _task = rt
-        .local_pool()
-        .spawn_pinned(move || db2.probe_loop(endpoint2));
+    let _task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
     while let Some(connecting) = endpoint.accept().await {
         tracing::info!("got connecting");
         let db = db.clone();
@@ -158,14 +153,9 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     let endpoint = create_endpoint(key, 11112).await?;
     log!("announce {:?}", args);
     log!("trying to connect to {:?}", args.tracker);
-    let info = NodeAddr {
-        node_id: args.tracker,
-        info: AddrInfo {
-            derp_region: Some(2),
-            direct_addresses: Default::default(),
-        },
-    };
-    let connection = endpoint.connect(info, TRACKER_ALPN).await?;
+    let connection = endpoint
+        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
+        .await?;
     log!("connected to {:?}", connection.remote_address());
     let (mut send, mut recv) = connection.open_bi().await?;
     log!("opened bi stream");
@@ -218,15 +208,10 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
             verified: args.verified,
         },
     };
-    let info = NodeAddr {
-        node_id: args.tracker,
-        info: AddrInfo {
-            derp_region: Some(2),
-            direct_addresses: Default::default(),
-        },
-    };
     log!("trying to connect to tracker at {:?}", args.tracker);
-    let connection = endpoint.connect(info, TRACKER_ALPN).await?;
+    let connection = endpoint
+        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
+        .await?;
     log!("connected to {:?}", connection.remote_address());
     let (mut send, mut recv) = connection.open_bi().await?;
     log!("opened bi stream");

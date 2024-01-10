@@ -1,7 +1,7 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
 use iroh::bytes::{Hash, HashAndFormat};
-use iroh::ticket::blob::Ticket;
+use iroh::ticket::BlobTicket;
 use std::{fmt::Display, str::FromStr};
 
 use crate::NodeId;
@@ -34,7 +34,7 @@ pub struct ServerArgs {
 pub enum ContentArg {
     Hash(Hash),
     HashAndFormat(HashAndFormat),
-    Ticket(Ticket),
+    Ticket(BlobTicket),
 }
 
 impl ContentArg {
@@ -78,7 +78,7 @@ impl FromStr for ContentArg {
             Ok(hash.into())
         } else if let Ok(haf) = HashAndFormat::from_str(s) {
             Ok(haf.into())
-        } else if let Ok(ticket) = Ticket::from_str(s) {
+        } else if let Ok(ticket) = BlobTicket::from_str(s) {
             Ok(ticket.into())
         } else {
             anyhow::bail!("invalid hash and format")

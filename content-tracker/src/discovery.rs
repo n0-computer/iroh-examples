@@ -1,180 +1,100 @@
 //! Discovery services
 //!
 //! Originally copied and adapted from <https://github.com/dvc94ch/p2p/blob/master/src/discovery.rs>
-use std::{
-    collections::BTreeSet,
-    net::{IpAddr, SocketAddr},
-};
-
 use anyhow::Result;
+use ed25519_dalek::SigningKey;
 use futures::{future, future::BoxFuture, FutureExt};
-use iroh::net::{AddrInfo, NodeAddr};
-use pkarr::{
-    dns::rdata::{RData, A, AAAA, TXT},
-    dns::{Name, Packet, ResourceRecord, CLASS},
-    url::Url,
-    Keypair, PkarrClient, SignedPacket,
+use iroh::{
+    base::ticket::Ticket,
+    net::{key::SecretKey, magicsock::Discovery, AddrInfo, NodeAddr},
 };
-use tracing::{info, warn};
+use mainline::{common::MutableItem, dht::DhtSettings};
+use url::Url;
 
 use crate::NodeId;
 
-const DERP_REGION_KEY: &str = "_derp_region.iroh.";
-
-#[allow(dead_code)]
-const PKARR_RELAY_URL: &str = "https://iroh-discovery.rklaehn.workers.dev/";
-
-#[allow(unused)]
-fn filter_ipaddr(rr: &ResourceRecord) -> Option<IpAddr> {
-    if rr.class != CLASS::IN {
-        return None;
-    }
-    let addr: IpAddr = match rr.rdata {
-        RData::A(A { address }) => IpAddr::V4(address.into()),
-        RData::AAAA(AAAA { address }) => IpAddr::V6(address.into()),
-        _ => return None,
-    };
-    Some(addr)
+#[derive(Debug, Clone)]
+pub struct MainlineDiscovery {
+    mainline_client: mainline::async_dht::AsyncDht,
+    keypair: iroh::net::key::SecretKey,
 }
 
-fn filter_txt(rr: &ResourceRecord) -> Option<String> {
-    if rr.class != CLASS::IN {
-        return None;
-    }
-    if let RData::TXT(txt) = &rr.rdata {
-        String::try_from(txt.clone()).ok()
-    } else {
-        None
-    }
-}
-
-fn filter_u16(rr: &ResourceRecord) -> Option<u16> {
-    if rr.class != CLASS::IN {
-        return None;
-    }
-    if let RData::A(A { address }) = rr.rdata {
-        Some(address as _)
-    } else {
-        None
-    }
-}
-
-fn packet_to_node_addr(node_id: &NodeId, packet: &SignedPacket) -> NodeAddr {
-    let direct_addresses = packet
-        .resource_records("@")
-        .filter_map(filter_txt)
-        .filter_map(|addr| addr.parse().ok())
-        .collect::<BTreeSet<SocketAddr>>();
-    let derp_region = packet
-        .resource_records(DERP_REGION_KEY)
-        .find_map(filter_u16);
-    NodeAddr {
-        node_id: *node_id,
-        info: AddrInfo {
-            derp_region,
-            direct_addresses,
-        },
-    }
-}
-
-fn node_addr_to_packet(keypair: &Keypair, info: &AddrInfo, ttl: u32) -> Result<SignedPacket> {
-    let mut packet = Packet::new_reply(0);
-    for addr in &info.direct_addresses {
-        let addr = addr.to_string();
-        packet.answers.push(ResourceRecord::new(
-            Name::new("@").unwrap(),
-            CLASS::IN,
-            ttl,
-            RData::TXT(TXT::try_from(addr.as_str())?.into_owned()),
-        ));
-    }
-    if let Some(derp_region) = info.derp_region {
-        packet.answers.push(ResourceRecord::new(
-            Name::new(DERP_REGION_KEY).unwrap(),
-            CLASS::IN,
-            ttl,
-            RData::A(A {
-                address: derp_region as _,
-            }),
-        ));
-    }
-    Ok(SignedPacket::from_packet(keypair, &packet)?)
-}
-
-/// A discovery method that uses the pkarr DNS protocol. See pkarr.org for more
-/// information.
-///
-/// This is using pkarr via a simple http relay or self-contained server.
-#[derive(Debug)]
-pub struct PkarrRelayDiscovery {
-    keypair: pkarr::Keypair,
-    relay: Url,
-    client: PkarrClient,
-}
-
-impl PkarrRelayDiscovery {
-    #[allow(dead_code)]
-    pub fn new(secret_key: iroh::net::key::SecretKey, relay: Url) -> Self {
-        let keypair = pkarr::Keypair::from_secret_key(&secret_key.to_bytes());
+impl MainlineDiscovery {
+    pub fn new(keypair: SecretKey) -> Self {
+        let mainline_client = mainline::Dht::new(DhtSettings::default()).as_async();
         Self {
+            mainline_client,
             keypair,
-            relay,
-            client: PkarrClient::new(),
         }
     }
 }
 
-impl iroh::net::magicsock::Discovery for PkarrRelayDiscovery {
+impl Discovery for MainlineDiscovery {
     fn publish(&self, info: &AddrInfo) {
-        info!("publishing {:?} via {}", info, self.relay);
-        let signed_packet = node_addr_to_packet(&self.keypair, info, 0).unwrap();
-        let client = self.client.clone();
-        let relay = self.relay.clone();
+        let Ok(ticket) = iroh::net::ticket::NodeTicket::new(NodeAddr {
+            node_id: self.keypair.public(),
+            info: info.clone(),
+        }) else {
+            return;
+        };
+        let ticket = ticket.to_bytes().into();
+        let signing_key = SigningKey::from(self.keypair.to_bytes());
+        let item = MutableItem::new(signing_key, ticket, 0, None);
+        let mainline_client = self.mainline_client.clone();
         tokio::spawn(async move {
-            let res = client.relay_put(&relay, signed_packet).await;
-            if let Err(e) = res {
-                warn!("error publishing: {}", e);
-            } else {
-                info!("done publishing");
+            let res = mainline_client.put_mutable(item).await;
+            match res {
+                Ok(x) => {
+                    println!("published to mainline: {:?}", x);
+                }
+                Err(cause) => {
+                    tracing::warn!("error publishing to mainline: {}", cause);
+                }
             }
         });
     }
 
-    fn resolve<'a>(
-        &'a self,
-        node_id: &'a NodeId,
-    ) -> futures::future::BoxFuture<'a, Result<AddrInfo>> {
-        async move {
-            info!("resolving {} via {}", node_id, self.relay);
-            let pkarr_public_key = pkarr::PublicKey::try_from(*node_id.as_bytes()).unwrap();
-            let packet = self.client.relay_get(&self.relay, pkarr_public_key).await?;
-            let addr = packet_to_node_addr(node_id, &packet);
-            info!("resolved: {} to {:?}", node_id, addr);
-            Ok(addr.info)
-        }
+    fn resolve<'a>(&'a self, node_id: &'a iroh::net::NodeId) -> BoxFuture<'a, Result<AddrInfo>> {
+        let public_key = *node_id.clone().as_bytes();
+        let mainline_client = self.mainline_client.clone();
+        tokio::spawn(async move {
+            let mut response = mainline_client.get_mutable(&public_key, None).await;
+            while let Some(item) = response.next_async().await {
+                let Ok(ticket) = iroh::net::ticket::NodeTicket::from_bytes(item.item.value())
+                else {
+                    continue;
+                };
+                return Ok(ticket.node_addr().info.clone());
+            }
+            Err(anyhow::anyhow!("not found"))
+        })
+        .map(|res| match res {
+            Ok(res) => res,
+            Err(cause) => Err(cause.into()),
+        })
         .boxed()
     }
 }
 
 /// A discovery method that just uses a hardcoded region.
 #[derive(Debug)]
-pub struct HardcodedRegionDiscovery {
-    region: u16,
+pub struct HardcodedDerperDiscovery {
+    derp_url: Url,
 }
 
-impl HardcodedRegionDiscovery {
+impl HardcodedDerperDiscovery {
     /// Create a new discovery method that always returns the given region.
-    pub fn new(region: u16) -> Self {
-        Self { region }
+    pub fn new(derp_url: Url) -> Self {
+        Self { derp_url }
     }
 }
 
-impl iroh::net::magicsock::Discovery for HardcodedRegionDiscovery {
+impl iroh::net::magicsock::Discovery for HardcodedDerperDiscovery {
     fn publish(&self, _info: &AddrInfo) {}
 
     fn resolve<'a>(&'a self, _node_id: &'a NodeId) -> BoxFuture<'a, Result<AddrInfo>> {
         future::ok(AddrInfo {
-            derp_region: Some(self.region),
+            derp_url: Some(self.derp_url.clone()),
             direct_addresses: Default::default(),
         })
         .boxed()
