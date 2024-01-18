@@ -518,7 +518,7 @@ async fn main() -> anyhow::Result<()> {
 
     let cors = CorsLayer::new()
         .allow_headers(AllowHeaders::mirror_request())
-        .allow_methods([Method::GET])
+        .allow_methods([Method::GET, Method::HEAD, Method::OPTIONS])
         .allow_origin(AllowOrigin::mirror_request());
 
     #[rustfmt::skip]
