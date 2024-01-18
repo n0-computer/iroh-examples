@@ -465,6 +465,15 @@ async fn forward_range(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CACHE_CONTROL, "public,max-age=31536000,immutable")
         .header(header::CONTENT_TYPE, mime.to_string());
+    // content-length needs to be the actual repsonse size
+    let transfer_size = match (start, end) {
+        (Some(start), Some(end)) => end - start,
+        (Some(start), None) => size - start,
+        (None, Some(end)) => end,
+        (None, None) => size,
+    };
+    let builder = builder.header(header::CONTENT_LENGTH, transfer_size);
+
     let builder = if start.is_some() || end.is_some() {
         builder.header(
             header::CONTENT_RANGE,
