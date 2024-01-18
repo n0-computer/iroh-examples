@@ -475,10 +475,12 @@ async fn forward_range(
     let builder = builder.header(header::CONTENT_LENGTH, transfer_size);
 
     let builder = if start.is_some() || end.is_some() {
-        builder.header(
-            header::CONTENT_RANGE,
-            format_content_range(start, end, size),
-        )
+        builder
+            .header(
+                header::CONTENT_RANGE,
+                format_content_range(start, end, size),
+            )
+            .status(StatusCode::PARTIAL_CONTENT)
     } else {
         builder
     };
