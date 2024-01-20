@@ -71,6 +71,7 @@ impl PkarrNodeDiscovery {
 
 impl Discovery for PkarrNodeDiscovery {
     fn publish(&self, info: &AddrInfo) {
+        tracing::debug!("publishing {:?}", info);
         let Some(keypair) = &self.0.keypair else {
             tracing::debug!("no keypair set, not publishing");
             return;
