@@ -1,10 +1,8 @@
 //! The protocol for communicating with the tracker.
-use std::collections::BTreeSet;
-
-use iroh::bytes::HashAndFormat;
+use iroh_bytes::HashAndFormat;
+use iroh_net::NodeId;
 use serde::{Deserialize, Serialize};
-
-use crate::NodeId;
+use std::collections::BTreeSet;
 
 /// The ALPN string for this protocol
 pub const TRACKER_ALPN: &[u8] = b"n0/tracker/1";
@@ -37,6 +35,8 @@ impl AnnounceKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Announce {
     /// The peer that supposedly has the data.
+    ///
+    /// Should we get this from the connection?
     pub host: NodeId,
     /// The blobs or sets that the peer claims to have.
     pub content: BTreeSet<HashAndFormat>,

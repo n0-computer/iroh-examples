@@ -1,14 +1,8 @@
 pub mod args;
-pub mod io;
-pub mod iroh_bytes_util;
-pub mod options;
-pub mod protocol;
-pub mod tracker;
 
 use std::{
     collections::BTreeSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
-    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -16,20 +10,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use clap::Parser;
-use io::CONFIG_DEFAULTS_FILE;
-use iroh::net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    MagicEndpoint,
-};
-use iroh::util::fs::load_secret_key;
-use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
-use pkarr::PkarrClient;
-use tokio_util::task::LocalPoolHandle;
-
-use crate::{
-    args::{AnnounceArgs, Args, Commands, QueryArgs, ServerArgs},
-    io::{load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_FILE, SERVER_KEY_FILE},
+use iroh_mainline_content_discovery::TrackerId;
+use iroh_mainline_content_discovery::{
+    io::{
+        self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE,
+        CONFIG_FILE, SERVER_KEY_FILE,
+    },
     options::Options,
     protocol::{
         Announce, AnnounceKind, Query, QueryFlags, Request, Response, REQUEST_SIZE_LIMIT,
@@ -37,38 +25,16 @@ use crate::{
     },
     tracker::Tracker,
 };
+use iroh_net::{
+    magic_endpoint::{get_alpn, get_remote_node_id},
+    MagicEndpoint, NodeId,
+};
+use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
+use pkarr::PkarrClient;
+use tokio::io::AsyncWriteExt;
+use tokio_util::task::LocalPoolHandle;
 
-pub type NodeId = iroh::net::key::PublicKey;
-
-/// A tracker id for queries - either a node id or an address.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TrackerId {
-    NodeId(NodeId),
-    Addr(SocketAddr),
-}
-
-impl std::fmt::Display for TrackerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TrackerId::NodeId(node_id) => write!(f, "{}", node_id),
-            TrackerId::Addr(addr) => write!(f, "{}", addr),
-        }
-    }
-}
-
-impl FromStr for TrackerId {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(node_id) = s.parse() {
-            return Ok(TrackerId::NodeId(node_id));
-        }
-        if let Ok(addr) = s.parse() {
-            return Ok(TrackerId::Addr(addr));
-        }
-        anyhow::bail!("invalid tracker id")
-    }
-}
+use crate::args::{AnnounceArgs, Args, Commands, QueryArgs, ServerArgs};
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -106,14 +72,14 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
 }
 
 async fn create_endpoint(
-    key: iroh::net::key::SecretKey,
+    key: iroh_net::key::SecretKey,
     port: u16,
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
     let pkarr = PkarrClient::new();
     let discovery_key = if publish { Some(&key) } else { None };
     let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
-    iroh::net::MagicEndpoint::builder()
+    iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
         .alpns(vec![TRACKER_ALPN.to_vec()])
@@ -134,7 +100,7 @@ pub async fn accept_conn(
 /// Write default options to a sample config file.
 fn write_defaults() -> anyhow::Result<()> {
     let default_path = tracker_path(CONFIG_DEFAULTS_FILE)?;
-    crate::io::save_to_file(Options::default(), &default_path)?;
+    io::save_to_file(Options::default(), &default_path)?;
     Ok(())
 }
 
@@ -177,25 +143,11 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
 }
 
 async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
-    set_verbose(true);
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh::net::key::SecretKey::generate();
-    let endpoint = create_endpoint(key, 11112, false).await?;
-    log!("announce {:?}", args);
-    log!("trying to connect to {:?}", args.tracker);
-    let connection = endpoint
-        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
-        .await?;
-    log!("connected to {:?}", connection.remote_address());
-    let (mut send, mut recv) = connection.open_bi().await?;
-    log!("opened bi stream");
-    let kind = if args.partial {
-        AnnounceKind::Partial
-    } else {
-        AnnounceKind::Complete
-    };
+    let key = iroh_net::key::SecretKey::generate();
+    let content = args.content.iter().map(|x| x.hash_and_format()).collect();
     let host = if let Some(host) = args.host {
         host
     } else {
@@ -211,75 +163,75 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         }
         *hosts.iter().next().unwrap()
     };
-    let content = args.content.iter().map(|x| x.hash_and_format()).collect();
+    println!("announcing to {}", args.tracker);
+    println!("host {} has", host);
+    for content in &content {
+        println!("    {}", content);
+    }
+    let endpoint = create_endpoint(key, 11112, false).await?;
+    let connection = endpoint
+        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
+        .await?;
+    println!("connected to {:?}", connection.remote_address());
+    let kind = if args.partial {
+        AnnounceKind::Partial
+    } else {
+        AnnounceKind::Complete
+    };
     let announce = Announce {
         host,
         kind,
         content,
     };
-    let request = Request::Announce(announce);
-    let request = postcard::to_stdvec(&request)?;
-    log!("sending announce");
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    iroh_mainline_content_discovery::announce(connection, announce).await?;
+    println!("done");
     Ok(())
 }
 
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
-    set_verbose(true);
-    match args.tracker {
-        TrackerId::Addr(tracker) => query_socket(args, tracker).await,
-        TrackerId::NodeId(tracker) => query_magic(args, tracker).await,
-    }
-}
-
-async fn query_magic(args: QueryArgs, tracker: NodeId) -> anyhow::Result<()> {
-    // todo: uncomment once the connection problems are fixed
-    // for now, a random node id is more reliable.
-    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh::net::key::SecretKey::generate();
-    let endpoint = create_endpoint(key, args.port.unwrap_or_default(), false).await?;
-    log!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
-    query_connection(args, connection).await
-}
-
-async fn query_socket(args: QueryArgs, tracker: SocketAddr) -> anyhow::Result<()> {
-    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
-    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
-    log!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect(tracker, "localhost")?.await?;
-    query_connection(args, connection).await
-}
-
-async fn query_connection(args: QueryArgs, connection: quinn::Connection) -> anyhow::Result<()> {
-    let query = Query {
+    let connection = connect(&args.tracker).await?;
+    let q = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
             complete: !args.partial,
             verified: args.verified,
         },
     };
-    log!("connected to {:?}", connection.remote_address());
-    let (mut send, mut recv) = connection.open_bi().await?;
-    log!("opened bi stream");
-    let request = Request::Query(query);
-    let request = postcard::to_stdvec(&request)?;
-    log!("sending query");
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    let response = postcard::from_bytes::<Response>(&response)?;
-    match response {
-        Response::QueryResponse(response) => {
-            log!("content {}", response.content);
-            for peer in response.hosts {
-                log!("- peer {}", peer);
-            }
-        }
+    let res = iroh_mainline_content_discovery::query(connection, q).await?;
+    println!(
+        "querying tracker {} for content {}",
+        args.tracker, args.content
+    );
+    for peer in res.hosts {
+        println!("{}", peer);
     }
     Ok(())
+}
+
+async fn connect(tracker: &TrackerId) -> anyhow::Result<quinn::Connection> {
+    match tracker {
+        TrackerId::Addr(tracker) => connect_socket(*tracker).await,
+        TrackerId::NodeId(tracker) => connect_magic(tracker.clone()).await,
+    }
+}
+
+async fn connect_magic(tracker: NodeId) -> anyhow::Result<quinn::Connection> {
+    // todo: uncomment once the connection problems are fixed
+    // for now, a random node id is more reliable.
+    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
+    let key = iroh_net::key::SecretKey::generate();
+    let endpoint = create_endpoint(key, 0, false).await?;
+    tracing::info!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    Ok(connection)
+}
+
+async fn connect_socket(tracker: SocketAddr) -> anyhow::Result<quinn::Connection> {
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
+    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
+    tracing::info!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect(tracker, "localhost")?.await?;
+    Ok(connection)
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -295,7 +247,7 @@ async fn main() -> anyhow::Result<()> {
 
 /// Returns default server configuration along with its certificate.
 #[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
-fn configure_server(secret_key: &iroh::net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
+fn configure_server(secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
     make_server_config(secret_key, 8, 1024, vec![TRACKER_ALPN.to_vec()])
 }
 
@@ -304,9 +256,9 @@ fn create_quinn_client(
     alpn_protocols: Vec<Vec<u8>>,
     keylog: bool,
 ) -> anyhow::Result<quinn::Endpoint> {
-    let secret_key = iroh::net::key::SecretKey::generate();
+    let secret_key = iroh_net::key::SecretKey::generate();
     let tls_client_config =
-        iroh::net::tls::make_client_config(&secret_key, None, alpn_protocols, keylog)?;
+        iroh_net::tls::make_client_config(&secret_key, None, alpn_protocols, keylog)?;
     let mut client_config = quinn::ClientConfig::new(Arc::new(tls_client_config));
     let mut endpoint = quinn::Endpoint::client(bind_addr)?;
     let mut transport_config = quinn::TransportConfig::default();
@@ -318,12 +270,12 @@ fn create_quinn_client(
 
 /// Create a [`quinn::ServerConfig`] with the given secret key and limits.
 pub fn make_server_config(
-    secret_key: &iroh::net::key::SecretKey,
+    secret_key: &iroh_net::key::SecretKey,
     max_streams: u64,
     max_connections: u32,
     alpn_protocols: Vec<Vec<u8>>,
 ) -> anyhow::Result<quinn::ServerConfig> {
-    let tls_server_config = iroh::net::tls::make_server_config(secret_key, alpn_protocols, false)?;
+    let tls_server_config = iroh_net::tls::make_server_config(secret_key, alpn_protocols, false)?;
     let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_server_config));
     let mut transport_config = quinn::TransportConfig::default();
     transport_config
@@ -334,4 +286,44 @@ pub fn make_server_config(
         .transport_config(Arc::new(transport_config))
         .concurrent_connections(max_connections);
     Ok(server_config)
+}
+
+/// Loads a [`SecretKey`] from the provided file.
+pub async fn load_secret_key(
+    key_path: std::path::PathBuf,
+) -> anyhow::Result<iroh_net::key::SecretKey> {
+    if key_path.exists() {
+        let keystr = tokio::fs::read(key_path).await?;
+        let secret_key =
+            iroh_net::key::SecretKey::try_from_openssh(keystr).context("invalid keyfile")?;
+        Ok(secret_key)
+    } else {
+        let secret_key = iroh_net::key::SecretKey::generate();
+        let ser_key = secret_key.to_openssh()?;
+
+        // Try to canoncialize if possible
+        let key_path = key_path.canonicalize().unwrap_or(key_path);
+        let key_path_parent = key_path.parent().ok_or_else(|| {
+            anyhow::anyhow!("no parent directory found for '{}'", key_path.display())
+        })?;
+        tokio::fs::create_dir_all(&key_path_parent).await?;
+
+        // write to tempfile
+        let (file, temp_file_path) = tempfile::NamedTempFile::new_in(key_path_parent)
+            .context("unable to create tempfile")?
+            .into_parts();
+        let mut file = tokio::fs::File::from_std(file);
+        file.write_all(ser_key.as_bytes())
+            .await
+            .context("unable to write keyfile")?;
+        file.flush().await?;
+        drop(file);
+
+        // move file
+        tokio::fs::rename(temp_file_path, key_path)
+            .await
+            .context("failed to rename keyfile")?;
+
+        Ok(secret_key)
+    }
 }
