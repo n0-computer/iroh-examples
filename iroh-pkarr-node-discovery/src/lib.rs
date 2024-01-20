@@ -1,10 +1,10 @@
 //! # Pkarr based node discovery for iroh-net
 //!
-//! Node discovery is being able to find information about an iroh node based on just its node id.
+//! Node discovery is being able to find connecting information about an iroh node based on just its node id.
 //!
 //! This crate implements a discovery mechanism for iroh-net based on https://https://pkarr.org/.
 //!
-//! Each node publishes its address to the mainline DHT as a DNS packet, signed with its private key.
+//! TLDR: Each node publishes its address to the mainline DHT as a DNS packet, signed with its private key.
 //! The DNS packet contains the node's direct addresses and optionally a DERP URL.
 use std::{
     collections::BTreeSet,
@@ -25,7 +25,10 @@ use pkarr::{
     Keypair, PkarrClient, SignedPacket,
 };
 
+/// The key for the DERP URL TXT record.
 const DERP_URL_KEY: &str = "_derp_url.iroh.";
+/// Republish delay for the DHT. This is only for when the info does not change.
+/// If the info changes, it will be published immediately.
 const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
 
 /// A discovery mechanism for iroh-net based on https://https://pkarr.org/
@@ -33,18 +36,28 @@ const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
 /// TLDR: it stores node addresses in DNS records, signed by the node's private key,
 /// and publishes them to the bittorrent mainline DHT.
 ///
-/// Calling publish will start a background task that periodically publishes the node address
+/// Calling publish will start a background task that periodically publishes the node address.
 #[derive(Debug, Clone)]
 pub struct PkarrNodeDiscovery(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
-    keypair: Option<pkarr::Keypair>,
+    /// Pkarr client for interacting with the DHT.
     pkarr: PkarrClient,
+    /// The background task that periodically publishes the node address.
+    /// Due to AbortingJoinHandle, this will be aborted when the discovery is dropped.
     task: Mutex<Option<AbortingJoinHandle<()>>>,
+    /// Optional keypair for signing the DNS packets.
+    ///
+    /// If this is None, the node will not publish its address to the DHT.
+    keypair: Option<pkarr::Keypair>,
 }
 
 impl PkarrNodeDiscovery {
+    /// Create a new discovery mechanism.
+    ///
+    /// If a secret key is provided, the node will publish its address to the DHT.
+    /// If no secret key is provided, publish will be a no-op, but resolving other nodes will still work.
     pub fn new(pkarr: PkarrClient, secret_key: Option<&SecretKey>) -> Self {
         let keypair =
             secret_key.map(|secret_key| pkarr::Keypair::from_secret_key(&secret_key.to_bytes()));
