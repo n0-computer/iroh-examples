@@ -20,9 +20,11 @@ hex = "0.4.3"
 humantime = "2.1.0"
 iroh = "0.12.0"
 mainline = "1.0.0"
+pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
 quinn = "0.10"
 rand = "0.8"
+redb = "1.5.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.107"
 simple-mdns = { version = "0.5.0", features = ["async-tokio"] }

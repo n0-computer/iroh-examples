@@ -26,7 +26,7 @@ use crate::{
     protocol::{
         Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
     },
-    NodeId,
+    NodeId, accept_conn,
 };
 
 /// The tracker server.
@@ -156,6 +156,44 @@ impl Tracker {
             self.apply_result(results, now);
             tokio::time::sleep(self.0.options.probe_interval).await;
         }
+    }
+
+    pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
+        while let Some(connecting) = endpoint.accept().await {
+            tracing::info!("got connecting");
+            let db = self.clone();
+            tokio::spawn(async move {
+                let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
+                    tracing::error!("error accepting connection");
+                    return;
+                };
+                // if we were supporting multiple protocols, we'd need to check the ALPN here.
+                tracing::info!("got connection from {} {}", remote_node_id, alpn);
+                if let Err(cause) = db.handle_connection(conn).await {
+                    tracing::error!("error handling connection: {}", cause);
+                }
+            });
+        }
+        Ok(())
+    }
+
+    pub async fn quinn_accept_loop(self, endpoint: quinn::Endpoint) -> std::io::Result<()> {
+        while let Some(connecting) = endpoint.accept().await {
+            tracing::info!("got connecting");
+            let db = self.clone();
+            tokio::spawn(async move {
+                let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
+                    tracing::error!("error accepting connection");
+                    return;
+                };
+                // if we were supporting multiple protocols, we'd need to check the ALPN here.
+                tracing::info!("got connection from {} {}", remote_node_id, alpn);
+                if let Err(cause) = db.handle_connection(conn).await {
+                    tracing::error!("error handling connection: {}", cause);
+                }
+            });
+        }
+        Ok(())
     }
 
     /// Handle a single incoming connection on the tracker ALPN.

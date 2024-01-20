@@ -73,7 +73,7 @@ async fn create_endpoint(
     key: iroh::net::key::SecretKey,
     port: u16,
 ) -> anyhow::Result<MagicEndpoint> {
-    let mainline_discovery = discovery::MainlineDiscovery::new(key.clone());
+    let mainline_discovery = discovery::PkarrDiscovery::new(key.clone());
     iroh::net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
@@ -106,7 +106,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
     let key = load_secret_key(key_path).await?;
-    let endpoint = create_endpoint(key, args.port).await?;
+    let endpoint = create_endpoint(key, args.magic_port).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
     let mut options = load_from_file::<Options>(&config_path)?;
@@ -125,22 +125,10 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     log!();
     let db2 = db.clone();
     let endpoint2 = endpoint.clone();
-    let _task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
-    while let Some(connecting) = endpoint.accept().await {
-        tracing::info!("got connecting");
-        let db = db.clone();
-        tokio::spawn(async move {
-            let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
-                tracing::error!("error accepting connection");
-                return;
-            };
-            // if we were supporting multiple protocols, we'd need to check the ALPN here.
-            tracing::info!("got connection from {} {}", remote_node_id, alpn);
-            if let Err(cause) = db.handle_connection(conn).await {
-                tracing::error!("error handling connection: {}", cause);
-            }
-        });
-    }
+    let _probe_task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
+    let magic_accept_task = tokio::spawn(db.magic_accept_loop(endpoint));
+    // let _quinn_accept_task = tokio::spawn(db.quinn_accept_loop(endpoint));
+    magic_accept_task.await??;
     Ok(())
 }
 
