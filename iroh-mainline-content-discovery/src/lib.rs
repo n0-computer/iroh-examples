@@ -1,11 +1,20 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use genawaiter::sync::Gen;
+use std::{
+    collections::{BTreeSet, HashSet},
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::Context;
+use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
+use iroh_bytes::HashAndFormat;
 use iroh_net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
     MagicEndpoint, NodeId,
 };
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
+use mainline::common::{GetPeerResponse, StoreQueryMetdata};
 use pkarr::PkarrClient;
 use protocol::QueryResponse;
 use tokio::io::AsyncWriteExt;
@@ -17,36 +26,6 @@ pub mod iroh_bytes_util;
 pub mod options;
 pub mod protocol;
 pub mod tracker;
-
-/// A tracker id for queries - either a node id or an address.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TrackerId {
-    NodeId(NodeId),
-    Addr(std::net::SocketAddr),
-}
-
-impl std::fmt::Display for TrackerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TrackerId::NodeId(node_id) => write!(f, "{}", node_id),
-            TrackerId::Addr(addr) => write!(f, "{}", addr),
-        }
-    }
-}
-
-impl std::str::FromStr for TrackerId {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(node_id) = s.parse() {
-            return Ok(TrackerId::NodeId(node_id));
-        }
-        if let Ok(addr) = s.parse() {
-            return Ok(TrackerId::Addr(addr));
-        }
-        anyhow::bail!("invalid tracker id")
-    }
-}
 
 /// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
 pub(crate) async fn accept_conn(
@@ -76,6 +55,100 @@ pub async fn announce(connection: quinn::Connection, args: Announce) -> anyhow::
     send.finish().await?;
     let _response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
     Ok(())
+}
+
+fn to_infohash(haf: HashAndFormat) -> mainline::Id {
+    let mut data = [0u8; 20];
+    data.copy_from_slice(&haf.hash.as_bytes()[..20]);
+    mainline::Id::from_bytes(data).unwrap()
+}
+
+fn unique_tracker_addrs(
+    mut response: mainline::common::Response<GetPeerResponse>,
+) -> impl Stream<Item = SocketAddr> {
+    Gen::new(|co| async move {
+        let mut found = HashSet::new();
+        while let Some(response) = response.next_async().await {
+            let tracker = response.peer;
+            if !found.insert(tracker) {
+                continue;
+            }
+            co.yield_(tracker).await;
+        }
+    })
+}
+
+async fn query_one(
+    endpoint: impl ConnectionProvider,
+    addr: SocketAddr,
+    args: Query,
+) -> anyhow::Result<Vec<NodeId>> {
+    let connection = endpoint.connect(addr).await?;
+    let result = query(connection, args).await?;
+    Ok(result.hosts)
+}
+
+/// A connection provider that can be used to connect to a tracker.
+///
+/// This can either be a [`quinn::Endpoint`] where connections are created on demand,
+/// or some sort of connection pool.
+pub trait ConnectionProvider: Clone {
+    fn connect(&self, addr: SocketAddr) -> BoxFuture<anyhow::Result<quinn::Connection>>;
+}
+
+impl ConnectionProvider for quinn::Endpoint {
+    fn connect(&self, addr: SocketAddr) -> BoxFuture<anyhow::Result<quinn::Connection>> {
+        async move { Ok(self.connect(addr, "localhost")?.await?) }.boxed()
+    }
+}
+
+/// Query the mainline DHT for trackers for the given content, then query each tracker for peers.
+pub async fn query_dht(
+    endpoint: impl ConnectionProvider,
+    dht: mainline::dht::Dht,
+    args: Query,
+    query_parallelism: usize,
+) -> impl Stream<Item = anyhow::Result<NodeId>> {
+    let dht = dht.as_async();
+    let info_hash = to_infohash(args.content);
+    let response: mainline::common::Response<GetPeerResponse> = dht.get_peers(info_hash);
+    let unique_tracker_addrs = unique_tracker_addrs(response);
+    unique_tracker_addrs
+        .map(move |addr| {
+            let endpoint = endpoint.clone();
+            async move {
+                let hosts = match query_one(endpoint, addr, args).await {
+                    Ok(hosts) => hosts.into_iter().map(anyhow::Ok).collect(),
+                    Err(cause) => vec![Err(cause)],
+                };
+                futures::stream::iter(hosts)
+            }
+        })
+        .buffer_unordered(query_parallelism)
+        .flatten()
+}
+
+/// Announce to the mainline DHT in parallel.
+///
+/// Note that this should only be called from a publicly reachable node, where port is the port
+/// on which the tracker protocol is reachable.
+pub fn announce_dht(
+    dht: mainline::dht::Dht,
+    content: BTreeSet<HashAndFormat>,
+    port: u16,
+    announce_parallelism: usize,
+) -> impl Stream<Item = (HashAndFormat, mainline::Result<StoreQueryMetdata>)> {
+    let dht = dht.as_async();
+    futures::stream::iter(content)
+        .map(move |content| {
+            let dht = dht.clone();
+            async move {
+                let info_hash = to_infohash(content);
+                let res = dht.announce_peer(info_hash, Some(port)).await;
+                (content, res)
+            }
+        })
+        .buffer_unordered(announce_parallelism)
 }
 
 /// Assume an existing connection to a tracker and query it for peers for some content.
@@ -192,4 +265,70 @@ async fn create_endpoint(
         .alpns(vec![TRACKER_ALPN.to_vec()])
         .bind(port)
         .await
+}
+
+/// A tracker id for queries - either a node id or an address.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum TrackerId {
+    NodeId(NodeId),
+    Addr(std::net::SocketAddr),
+}
+
+impl std::fmt::Display for TrackerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TrackerId::NodeId(node_id) => write!(f, "{}", node_id),
+            TrackerId::Addr(addr) => write!(f, "{}", addr),
+        }
+    }
+}
+
+impl std::str::FromStr for TrackerId {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(node_id) = s.parse() {
+            return Ok(TrackerId::NodeId(node_id));
+        }
+        if let Ok(addr) = s.parse() {
+            return Ok(TrackerId::Addr(addr));
+        }
+        anyhow::bail!("invalid tracker id")
+    }
+}
+
+/// Connect to a tracker using the [protocol::TRACKER_ALPN] protocol, using either
+/// a node id or an address.
+///
+/// Note that this is less efficient than using an existing endpoint when doing multiple requests.
+/// It is provided as a convenience function for short lived utilities.
+pub async fn connect(tracker: &TrackerId, local_port: u16) -> anyhow::Result<quinn::Connection> {
+    match tracker {
+        TrackerId::Addr(tracker) => connect_socket(*tracker, local_port).await,
+        TrackerId::NodeId(tracker) => connect_magic(&tracker, local_port).await,
+    }
+}
+
+/// Create a magic endpoint and connect to a tracker using the [protocol::TRACKER_ALPN] protocol.
+pub async fn connect_magic(tracker: &NodeId, local_port: u16) -> anyhow::Result<quinn::Connection> {
+    // todo: uncomment once the connection problems are fixed
+    // for now, a random node id is more reliable.
+    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
+    let key = iroh_net::key::SecretKey::generate();
+    let endpoint = create_endpoint(key, local_port, false).await?;
+    tracing::info!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect_by_node_id(tracker, TRACKER_ALPN).await?;
+    Ok(connection)
+}
+
+/// Create a quinn endpoint and connect to a tracker using the [protocol::TRACKER_ALPN] protocol.
+pub async fn connect_socket(
+    tracker: SocketAddr,
+    local_port: u16,
+) -> anyhow::Result<quinn::Connection> {
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, local_port));
+    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
+    tracing::info!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect(tracker, "localhost")?.await?;
+    Ok(connection)
 }

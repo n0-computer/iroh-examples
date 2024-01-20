@@ -40,6 +40,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ttl_cache = "0.5.1"
 url = "2.5.0"
+flume = "0.11.0"
+genawaiter = { version = "0.99.1", features = ["futures03"] }
 
 [features]
 cli = ["clap"]

@@ -17,7 +17,7 @@ use iroh_net::{MagicEndpoint, NodeId};
 use rand::Rng;
 
 use crate::{
-    accept_conn,
+    accept_conn, announce_dht,
     io::{log_connection_attempt, log_probe_attempt, AnnounceData},
     iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
@@ -26,6 +26,7 @@ use crate::{
     protocol::{
         Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
     },
+    to_infohash,
 };
 
 /// The tracker server.
@@ -154,6 +155,42 @@ impl Tracker {
                 .collect::<BTreeMap<_, _>>();
             self.apply_result(results, now);
             tokio::time::sleep(self.0.options.probe_interval).await;
+        }
+    }
+
+    pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
+        let dht = mainline::Dht::default();
+        loop {
+            let state = self.0.state.read().unwrap();
+            let content: BTreeSet<HashAndFormat> =
+                state.announce_data.iter().map(|(haf, _)| *haf).collect();
+            drop(state);
+            let mut announce = announce_dht(
+                dht.clone(),
+                content,
+                port,
+                self.0.options.dht_announce_parallelism,
+            );
+            while let Some((content, res)) = announce.next().await {
+                match res {
+                    Ok(sqm) => {
+                        let stored_at = sqm.stored_at();
+                        tracing::info!(
+                            "announced {} as {} on {} nodes",
+                            content,
+                            sqm.target(),
+                            stored_at.len()
+                        );
+                        for item in stored_at {
+                            tracing::debug!("stored at {} {}", item.id, item.address);
+                        }
+                    }
+                    Err(cause) => {
+                        tracing::warn!("error announcing: {}", cause);
+                    }
+                }
+            }
+            tokio::time::sleep(self.0.options.dht_announce_interval).await;
         }
     }
 

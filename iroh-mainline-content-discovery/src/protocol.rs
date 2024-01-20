@@ -45,7 +45,7 @@ pub struct Announce {
 }
 
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct QueryFlags {
     /// Only return peers that supposedly have the complete data.
     ///
@@ -63,7 +63,7 @@ pub struct QueryFlags {
 }
 
 /// Query a peer for a blob or set of blobs.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Query {
     /// The content we want to find.
     ///

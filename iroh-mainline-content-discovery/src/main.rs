@@ -12,17 +12,13 @@ use std::{
 
 use anyhow::Context;
 use clap::Parser;
-use iroh_mainline_content_discovery::TrackerId;
 use iroh_mainline_content_discovery::{
     io::{
         self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE,
         CONFIG_FILE, SERVER_KEY_FILE,
     },
     options::Options,
-    protocol::{
-        Announce, AnnounceKind, Query, QueryFlags, Request, Response, REQUEST_SIZE_LIMIT,
-        TRACKER_ALPN,
-    },
+    protocol::{Announce, AnnounceKind, Query, QueryFlags, TRACKER_ALPN},
     tracker::Tracker,
 };
 use iroh_net::{
@@ -127,16 +123,17 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
         "tracker query --tracker {} <hash> or <ticket>",
         addr.node_id
     );
-    log!();
     let db2 = db.clone();
     let db3 = db.clone();
+    let db4 = db.clone();
     let endpoint2 = endpoint.clone();
     let _probe_task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
+    let _announce_task = tpc.spawn_pinned(move || db3.dht_announce_loop(args.quinn_port));
     let magic_accept_task = tokio::spawn(db.magic_accept_loop(endpoint));
     let server_config = configure_server(&key)?;
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, args.quinn_port));
     let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
-    let quinn_accept_task = tokio::spawn(db3.quinn_accept_loop(quinn_endpoint));
+    let quinn_accept_task = tokio::spawn(db4.quinn_accept_loop(quinn_endpoint));
     magic_accept_task.await??;
     quinn_accept_task.await??;
     Ok(())
@@ -189,7 +186,9 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
 }
 
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
-    let connection = connect(&args.tracker).await?;
+    let connection =
+        iroh_mainline_content_discovery::connect(&args.tracker, args.port.unwrap_or_default())
+            .await?;
     let q = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
@@ -208,32 +207,6 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn connect(tracker: &TrackerId) -> anyhow::Result<quinn::Connection> {
-    match tracker {
-        TrackerId::Addr(tracker) => connect_socket(*tracker).await,
-        TrackerId::NodeId(tracker) => connect_magic(tracker.clone()).await,
-    }
-}
-
-async fn connect_magic(tracker: NodeId) -> anyhow::Result<quinn::Connection> {
-    // todo: uncomment once the connection problems are fixed
-    // for now, a random node id is more reliable.
-    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh_net::key::SecretKey::generate();
-    let endpoint = create_endpoint(key, 0, false).await?;
-    tracing::info!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
-    Ok(connection)
-}
-
-async fn connect_socket(tracker: SocketAddr) -> anyhow::Result<quinn::Connection> {
-    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
-    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
-    tracing::info!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect(tracker, "localhost")?.await?;
-    Ok(connection)
-}
-
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     setup_logging();
@@ -249,23 +222,6 @@ async fn main() -> anyhow::Result<()> {
 #[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
 fn configure_server(secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
     make_server_config(secret_key, 8, 1024, vec![TRACKER_ALPN.to_vec()])
-}
-
-fn create_quinn_client(
-    bind_addr: SocketAddr,
-    alpn_protocols: Vec<Vec<u8>>,
-    keylog: bool,
-) -> anyhow::Result<quinn::Endpoint> {
-    let secret_key = iroh_net::key::SecretKey::generate();
-    let tls_client_config =
-        iroh_net::tls::make_client_config(&secret_key, None, alpn_protocols, keylog)?;
-    let mut client_config = quinn::ClientConfig::new(Arc::new(tls_client_config));
-    let mut endpoint = quinn::Endpoint::client(bind_addr)?;
-    let mut transport_config = quinn::TransportConfig::default();
-    transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
-    client_config.transport_config(Arc::new(transport_config));
-    endpoint.set_default_client_config(client_config);
-    Ok(endpoint)
 }
 
 /// Create a [`quinn::ServerConfig`] with the given secret key and limits.
