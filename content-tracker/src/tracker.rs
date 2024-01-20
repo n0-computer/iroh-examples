@@ -179,6 +179,8 @@ impl Tracker {
     }
 
     pub async fn quinn_accept_loop(self, endpoint: quinn::Endpoint) -> std::io::Result<()> {
+        let local_addr = endpoint.local_addr()?;
+        println!("quinn listening on {}", local_addr);
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
             let db = self.clone();

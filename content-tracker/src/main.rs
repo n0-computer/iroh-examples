@@ -7,9 +7,12 @@ pub mod tracker;
 
 use std::{
     collections::BTreeSet,
-    net::SocketAddr,
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     str::FromStr,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -141,7 +144,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
     let key = load_secret_key(key_path).await?;
-    let endpoint = create_endpoint(key, args.magic_port, true).await?;
+    let endpoint = create_endpoint(key.clone(), args.magic_port, true).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
     let mut options = load_from_file::<Options>(&config_path)?;
@@ -159,11 +162,16 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     );
     log!();
     let db2 = db.clone();
+    let db3 = db.clone();
     let endpoint2 = endpoint.clone();
     let _probe_task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
     let magic_accept_task = tokio::spawn(db.magic_accept_loop(endpoint));
-    // let _quinn_accept_task = tokio::spawn(db.quinn_accept_loop(endpoint));
+    let server_config = configure_server(&key)?;
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, args.quinn_port));
+    let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
+    let quinn_accept_task = tokio::spawn(db3.quinn_accept_loop(quinn_endpoint));
     magic_accept_task.await??;
+    quinn_accept_task.await??;
     Ok(())
 }
 
@@ -219,6 +227,13 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
 
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
     set_verbose(true);
+    match args.tracker {
+        TrackerId::Addr(tracker) => query_quinn(args, tracker).await,
+        TrackerId::NodeId(tracker) => query_magic(args, tracker).await,
+    }
+}
+
+async fn query_magic(args: QueryArgs, tracker: NodeId) -> anyhow::Result<()> {
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
@@ -231,11 +246,44 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
             verified: args.verified,
         },
     };
-    let TrackerId::NodeId(tracker) = args.tracker else {
-        anyhow::bail!("tracker must be specified as a node id");
-    };
     log!("trying to connect to tracker at {:?}", tracker);
     let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
+    log!("connected to {:?}", connection.remote_address());
+    let (mut send, mut recv) = connection.open_bi().await?;
+    log!("opened bi stream");
+    let request = Request::Query(query);
+    let request = postcard::to_stdvec(&request)?;
+    log!("sending query");
+    send.write_all(&request).await?;
+    send.finish().await?;
+    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
+    let response = postcard::from_bytes::<Response>(&response)?;
+    match response {
+        Response::QueryResponse(response) => {
+            log!("content {}", response.content);
+            for peer in response.hosts {
+                log!("- peer {}", peer);
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn query_quinn(args: QueryArgs, tracker: SocketAddr) -> anyhow::Result<()> {
+    // todo: uncomment once the connection problems are fixed
+    // for now, a random node id is more reliable.
+    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
+    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
+    let query = Query {
+        content: args.content.hash_and_format(),
+        flags: QueryFlags {
+            complete: !args.partial,
+            verified: args.verified,
+        },
+    };
+    log!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect(tracker, "localhost")?.await?;
     log!("connected to {:?}", connection.remote_address());
     let (mut send, mut recv) = connection.open_bi().await?;
     log!("opened bi stream");
@@ -266,4 +314,47 @@ async fn main() -> anyhow::Result<()> {
         Commands::Announce(args) => announce(args).await,
         Commands::Query(args) => query(args).await,
     }
+}
+
+/// Returns default server configuration along with its certificate.
+#[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
+fn configure_server(secret_key: &iroh::net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
+    make_server_config(secret_key, 8, 1024, vec![TRACKER_ALPN.to_vec()])
+}
+
+fn create_quinn_client(
+    bind_addr: SocketAddr,
+    alpn_protocols: Vec<Vec<u8>>,
+    keylog: bool,
+) -> anyhow::Result<quinn::Endpoint> {
+    let secret_key = iroh::net::key::SecretKey::generate();
+    let tls_client_config =
+        iroh::net::tls::make_client_config(&secret_key, None, alpn_protocols, keylog)?;
+    let mut client_config = quinn::ClientConfig::new(Arc::new(tls_client_config));
+    let mut endpoint = quinn::Endpoint::client(bind_addr)?;
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
+    client_config.transport_config(Arc::new(transport_config));
+    endpoint.set_default_client_config(client_config);
+    Ok(endpoint)
+}
+
+/// Create a [`quinn::ServerConfig`] with the given secret key and limits.
+pub fn make_server_config(
+    secret_key: &iroh::net::key::SecretKey,
+    max_streams: u64,
+    max_connections: u32,
+    alpn_protocols: Vec<Vec<u8>>,
+) -> anyhow::Result<quinn::ServerConfig> {
+    let tls_server_config = iroh::net::tls::make_server_config(secret_key, alpn_protocols, false)?;
+    let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_server_config));
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config
+        .max_concurrent_bidi_streams(max_streams.try_into()?)
+        .max_concurrent_uni_streams(0u32.into());
+
+    server_config
+        .transport_config(Arc::new(transport_config))
+        .concurrent_connections(max_connections);
+    Ok(server_config)
 }

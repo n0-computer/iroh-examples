@@ -1959,7 +1959,9 @@ dependencies = [
  "postcard",
  "quinn",
  "rand",
+ "rcgen 0.12.0",
  "redb",
+ "rustls",
  "serde",
  "serde_json",
  "simple-mdns",
@@ -2079,7 +2081,7 @@ dependencies = [
  "quinn-udp",
  "rand",
  "rand_core",
- "rcgen",
+ "rcgen 0.11.3",
  "reqwest",
  "ring 0.17.5",
  "rtnetlink",
@@ -3337,6 +3339,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcgen"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d918c80c5a4c7560db726763020bd16db179e4d5b828078842274a443addb5d"
+dependencies = [
+ "pem 3.0.2",
+ "ring 0.17.5",
+ "time",
+ "yasna",
+]
+
+[[package]]
 name = "redb"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4410,7 +4424,7 @@ dependencies = [
  "futures",
  "log",
  "pem 2.0.1",
- "rcgen",
+ "rcgen 0.11.3",
  "reqwest",
  "ring 0.16.20",
  "rustls",
