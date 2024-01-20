@@ -4,7 +4,7 @@ use iroh::bytes::{Hash, HashAndFormat};
 use iroh::ticket::BlobTicket;
 use std::{fmt::Display, str::FromStr};
 
-use crate::NodeId;
+use crate::{NodeId, TrackerId};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -119,7 +119,7 @@ pub struct AnnounceArgs {
 #[derive(Parser, Debug)]
 pub struct QueryArgs {
     #[clap(long)]
-    pub tracker: NodeId,
+    pub tracker: TrackerId,
 
     /// the port to use for querying
     #[clap(long)]

@@ -7,6 +7,8 @@ pub mod tracker;
 
 use std::{
     collections::BTreeSet,
+    net::SocketAddr,
+    str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
@@ -34,6 +36,35 @@ use crate::{
 };
 
 pub type NodeId = iroh::net::key::PublicKey;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum TrackerId {
+    NodeId(NodeId),
+    Addr(SocketAddr),
+}
+
+impl std::fmt::Display for TrackerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TrackerId::NodeId(node_id) => write!(f, "{}", node_id),
+            TrackerId::Addr(addr) => write!(f, "{}", addr),
+        }
+    }
+}
+
+impl FromStr for TrackerId {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(node_id) = s.parse() {
+            return Ok(TrackerId::NodeId(node_id));
+        }
+        if let Ok(addr) = s.parse() {
+            return Ok(TrackerId::Addr(addr));
+        }
+        anyhow::bail!("invalid tracker id")
+    }
+}
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -73,9 +104,11 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
 async fn create_endpoint(
     key: iroh::net::key::SecretKey,
     port: u16,
+    publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
     let pkarr = PkarrClient::new();
-    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, Some(&key));
+    let discovery_key = if publish { Some(&key) } else { None };
+    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
     iroh::net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
@@ -108,7 +141,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
     let key = load_secret_key(key_path).await?;
-    let endpoint = create_endpoint(key, args.magic_port).await?;
+    let endpoint = create_endpoint(key, args.magic_port, true).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
     let mut options = load_from_file::<Options>(&config_path)?;
@@ -140,7 +173,7 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
     let key = iroh::net::key::SecretKey::generate();
-    let endpoint = create_endpoint(key, 11112).await?;
+    let endpoint = create_endpoint(key, 11112, false).await?;
     log!("announce {:?}", args);
     log!("trying to connect to {:?}", args.tracker);
     let connection = endpoint
@@ -190,7 +223,7 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
     let key = iroh::net::key::SecretKey::generate();
-    let endpoint = create_endpoint(key, args.port.unwrap_or_default()).await?;
+    let endpoint = create_endpoint(key, args.port.unwrap_or_default(), false).await?;
     let query = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
@@ -198,10 +231,11 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
             verified: args.verified,
         },
     };
-    log!("trying to connect to tracker at {:?}", args.tracker);
-    let connection = endpoint
-        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
-        .await?;
+    let TrackerId::NodeId(tracker) = args.tracker else {
+        anyhow::bail!("tracker must be specified as a node id");
+    };
+    log!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
     log!("connected to {:?}", connection.remote_address());
     let (mut send, mut recv) = connection.open_bi().await?;
     log!("opened bi stream");

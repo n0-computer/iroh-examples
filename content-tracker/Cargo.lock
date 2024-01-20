@@ -2115,8 +2115,6 @@ dependencies = [
 [[package]]
 name = "iroh-pkarr-node-discovery"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80dd8cd00337e660ec7155fb7911932ac3f85abdc1742b52b9257da6fb2945e2"
 dependencies = [
  "anyhow",
  "futures",
