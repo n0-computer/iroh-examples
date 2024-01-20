@@ -35,28 +35,34 @@ const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
 ///
 /// Calling publish will start a background task that periodically publishes the node address
 #[derive(Debug, Clone)]
-pub struct PkarrDiscovery(Arc<Inner>);
+pub struct PkarrNodeDiscovery(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
-    keypair: pkarr::Keypair,
+    keypair: Option<pkarr::Keypair>,
     pkarr: PkarrClient,
     task: Mutex<Option<AbortingJoinHandle<()>>>,
 }
 
-impl PkarrDiscovery {
-    pub fn new(pkarr: PkarrClient, secret_key: SecretKey) -> Self {
+impl PkarrNodeDiscovery {
+    pub fn new(pkarr: PkarrClient, secret_key: Option<&SecretKey>) -> Self {
+        let keypair =
+            secret_key.map(|secret_key| pkarr::Keypair::from_secret_key(&secret_key.to_bytes()));
         Self(Arc::new(Inner {
-            keypair: pkarr::Keypair::from_secret_key(&secret_key.to_bytes()),
+            keypair,
             pkarr,
             task: Default::default(),
         }))
     }
 }
 
-impl Discovery for PkarrDiscovery {
+impl Discovery for PkarrNodeDiscovery {
     fn publish(&self, info: &AddrInfo) {
-        let Ok(signed_packet) = node_addr_to_packet(&self.0.keypair, info, 0) else {
+        let Some(keypair) = &self.0.keypair else {
+            tracing::debug!("no keypair set, not publishing");
+            return;
+        };
+        let Ok(signed_packet) = node_addr_to_packet(keypair, info, 0) else {
             tracing::warn!("failed to create signed packet");
             return;
         };
@@ -68,7 +74,10 @@ impl Discovery for PkarrDiscovery {
                 let res = this.0.pkarr.publish(&signed_packet).await;
                 match res {
                     Ok(info) => {
-                        tracing::debug!("pkarr publish success: {:?}", info);
+                        tracing::debug!(
+                            "pkarr publish success. published to {} nodes",
+                            info.stored_at().len()
+                        );
                         for node in info.stored_at() {
                             tracing::trace!("stored address: {:?}", node);
                         }
@@ -180,14 +189,13 @@ fn node_addr_to_packet(
 
 #[cfg(test)]
 mod tests {
-    use std::net::SocketAddr;
-    use proptest::prelude::*;
     use super::*;
+    use proptest::prelude::*;
+    use std::net::SocketAddr;
 
     fn arb_secret_key() -> impl Strategy<Value = iroh_net::key::SecretKey> {
-        prop::array::uniform32(any::<u8>()).prop_map(|arr| {
-            iroh_net::key::SecretKey::from_bytes(&arr)
-        })
+        prop::array::uniform32(any::<u8>())
+            .prop_map(|arr| iroh_net::key::SecretKey::from_bytes(&arr))
     }
 
     fn arb_addr_info() -> impl Strategy<Value = iroh_net::AddrInfo> {

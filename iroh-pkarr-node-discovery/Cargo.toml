@@ -17,3 +17,4 @@ tracing = "0.1.40"
 hex = "0.4.3"
 postcard = "1.0.8"
 proptest = "1.4.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
