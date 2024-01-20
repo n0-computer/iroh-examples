@@ -40,6 +40,7 @@ use crate::{
 
 pub type NodeId = iroh::net::key::PublicKey;
 
+/// A tracker id for queries - either a node id or an address.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TrackerId {
     NodeId(NodeId),
@@ -228,7 +229,7 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
     set_verbose(true);
     match args.tracker {
-        TrackerId::Addr(tracker) => query_quinn(args, tracker).await,
+        TrackerId::Addr(tracker) => query_socket(args, tracker).await,
         TrackerId::NodeId(tracker) => query_magic(args, tracker).await,
     }
 }
@@ -239,42 +240,20 @@ async fn query_magic(args: QueryArgs, tracker: NodeId) -> anyhow::Result<()> {
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
     let key = iroh::net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, args.port.unwrap_or_default(), false).await?;
-    let query = Query {
-        content: args.content.hash_and_format(),
-        flags: QueryFlags {
-            complete: !args.partial,
-            verified: args.verified,
-        },
-    };
     log!("trying to connect to tracker at {:?}", tracker);
     let connection = endpoint.connect_by_node_id(&tracker, TRACKER_ALPN).await?;
-    log!("connected to {:?}", connection.remote_address());
-    let (mut send, mut recv) = connection.open_bi().await?;
-    log!("opened bi stream");
-    let request = Request::Query(query);
-    let request = postcard::to_stdvec(&request)?;
-    log!("sending query");
-    send.write_all(&request).await?;
-    send.finish().await?;
-    let response = recv.read_to_end(REQUEST_SIZE_LIMIT).await?;
-    let response = postcard::from_bytes::<Response>(&response)?;
-    match response {
-        Response::QueryResponse(response) => {
-            log!("content {}", response.content);
-            for peer in response.hosts {
-                log!("- peer {}", peer);
-            }
-        }
-    }
-    Ok(())
+    query_connection(args, connection).await
 }
 
-async fn query_quinn(args: QueryArgs, tracker: SocketAddr) -> anyhow::Result<()> {
-    // todo: uncomment once the connection problems are fixed
-    // for now, a random node id is more reliable.
-    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
+async fn query_socket(args: QueryArgs, tracker: SocketAddr) -> anyhow::Result<()> {
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
     let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
+    log!("trying to connect to tracker at {:?}", tracker);
+    let connection = endpoint.connect(tracker, "localhost")?.await?;
+    query_connection(args, connection).await
+}
+
+async fn query_connection(args: QueryArgs, connection: quinn::Connection) -> anyhow::Result<()> {
     let query = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
@@ -282,8 +261,6 @@ async fn query_quinn(args: QueryArgs, tracker: SocketAddr) -> anyhow::Result<()>
             verified: args.verified,
         },
     };
-    log!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect(tracker, "localhost")?.await?;
     log!("connected to {:?}", connection.remote_address());
     let (mut send, mut recv) = connection.open_bi().await?;
     log!("opened bi stream");
