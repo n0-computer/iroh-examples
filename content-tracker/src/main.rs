@@ -1,5 +1,4 @@
 pub mod args;
-pub mod discovery;
 pub mod io;
 pub mod iroh_bytes_util;
 pub mod options;
@@ -16,9 +15,11 @@ use clap::Parser;
 use io::CONFIG_DEFAULTS_FILE;
 use iroh::net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
-    AddrInfo, MagicEndpoint, NodeAddr,
+    MagicEndpoint,
 };
 use iroh::util::fs::load_secret_key;
+use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
+use pkarr::PkarrClient;
 use tokio_util::task::LocalPoolHandle;
 
 use crate::{
@@ -73,7 +74,8 @@ async fn create_endpoint(
     key: iroh::net::key::SecretKey,
     port: u16,
 ) -> anyhow::Result<MagicEndpoint> {
-    let mainline_discovery = discovery::PkarrDiscovery::new(key.clone());
+    let pkarr = PkarrClient::new();
+    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, Some(&key));
     iroh::net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))

@@ -19,6 +19,7 @@ futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
 iroh = "0.12.0"
+iroh-pkarr-node-discovery = "0.1.0"
 mainline = "1.0.0"
 pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }

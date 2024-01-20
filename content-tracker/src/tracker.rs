@@ -17,6 +17,7 @@ use iroh::net::MagicEndpoint;
 use rand::Rng;
 
 use crate::{
+    accept_conn,
     io::{log_connection_attempt, log_probe_attempt, AnnounceData},
     iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
@@ -26,7 +27,7 @@ use crate::{
     protocol::{
         Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
     },
-    NodeId, accept_conn,
+    NodeId,
 };
 
 /// The tracker server.
