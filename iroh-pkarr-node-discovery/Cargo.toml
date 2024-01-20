@@ -1,0 +1,19 @@
+[package]
+name = "iroh-pkarr-node-discovery"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.79"
+futures = "0.3.30"
+iroh-net = "0.12.0"
+pkarr = { version = "1.0.1", features = ["async"] }
+tokio = "1.35.1"
+tracing = "0.1.40"
+
+[dev-dependencies]
+hex = "0.4.3"
+postcard = "1.0.8"
+proptest = "1.4.0"

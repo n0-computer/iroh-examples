@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2ab7263a828f715898e782333a854c507d888b0579623a3c32cf712a7f03b916 # shrinks to info = AddrInfo { derp_url: None, direct_addresses: {[::ffff:0.0.0.0]:0} }, key = SecretKey(aaaaaaaaaaaaaaaa)
+cc 2429c2339b55e663deb7e6cd3757edfd38fdb5ef07b135307b9f89face73383a # shrinks to info = AddrInfo { derp_url: None, direct_addresses: {[::ffff:0.0.0.0]:0} }, key = SecretKey(aaaaaaaaaaaaaaaa)
