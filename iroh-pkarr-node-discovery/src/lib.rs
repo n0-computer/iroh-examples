@@ -84,6 +84,7 @@ impl Discovery for PkarrNodeDiscovery {
             return;
         };
         let this = self.clone();
+        let z32 = keypair.public_key().to_z32();
         let curr = tokio::spawn(async move {
             loop {
                 // initial delay. If the task gets aborted before this delay is over,
@@ -95,7 +96,8 @@ impl Discovery for PkarrNodeDiscovery {
                 match res {
                     Ok(info) => {
                         tracing::debug!(
-                            "pkarr publish success. published to {} nodes",
+                            "pkarr publish success. published under {} to {} nodes",
+                            z32,
                             info.stored_at().len()
                         );
                         for node in info.stored_at() {
@@ -125,11 +127,11 @@ impl Discovery for PkarrNodeDiscovery {
     ) -> BoxFuture<'a, anyhow::Result<iroh_net::AddrInfo>> {
         let this = self.clone();
         async move {
-            tracing::info!("resolving {}", node_id);
             let Ok(pkarr_public_key) = pkarr::PublicKey::try_from(*node_id.as_bytes()) else {
                 tracing::error!("invalid node id");
                 anyhow::bail!("invalid node id");
             };
+            tracing::info!("resolving {} as {}", node_id, pkarr_public_key.to_z32());
             let packet = this
                 .0
                 .pkarr
