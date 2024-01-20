@@ -30,6 +30,9 @@ const DERP_URL_KEY: &str = "_derp_url.iroh.";
 /// Republish delay for the DHT. This is only for when the info does not change.
 /// If the info changes, it will be published immediately.
 const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
+/// Initial publish delay. This is to avoid spamming the DHT when there are
+/// frequent network changes at startup.
+const INITIAL_PUBLISH_DELAY: Duration = Duration::from_millis(500);
 
 /// A discovery mechanism for iroh-net based on https://https://pkarr.org/
 ///
@@ -83,6 +86,9 @@ impl Discovery for PkarrNodeDiscovery {
         let this = self.clone();
         let curr = tokio::spawn(async move {
             loop {
+                // initial delay. If the task gets aborted before this delay is over,
+                // we have not published anything to the DHT yet.
+                tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
                 // note: the publish fn will be async only when the async feature is selected
                 // this will probably change in the next version of pkarr.
                 let res = this.0.pkarr.publish(&signed_packet).await;
@@ -106,7 +112,7 @@ impl Discovery for PkarrNodeDiscovery {
                         tracing::warn!("pkarr publish error: {}", e);
                     }
                 }
-                tokio::time::sleep(REPUBLISH_DELAY).await;
+                tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
             }
         });
         let mut task = self.0.task.lock().unwrap();

@@ -1538,7 +1538,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-pkarr-node-discovery"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "futures",
