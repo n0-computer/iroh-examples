@@ -1,16 +1,24 @@
 pub mod args;
 
-use std::collections::BTreeSet;
+use std::{
+    collections::BTreeSet,
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+};
 
 use anyhow::Context;
+use args::QueryDhtArgs;
 use clap::Parser;
-use iroh_mainline_content_discovery::protocol::{Announce, AnnounceKind, Query, QueryFlags, ALPN};
+use futures::StreamExt;
+use iroh_mainline_content_discovery::{
+    create_quinn_client,
+    protocol::{Announce, AnnounceKind, Query, QueryFlags, ALPN},
+    to_infohash,
+};
 use iroh_net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
     MagicEndpoint, NodeId,
 };
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
-use pkarr::PkarrClient;
 use tokio::io::AsyncWriteExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -21,9 +29,11 @@ async fn create_endpoint(
     port: u16,
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
-    let pkarr = PkarrClient::new();
-    let discovery_key = if publish { Some(&key) } else { None };
-    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
+    let mainline_discovery = if publish {
+        PkarrNodeDiscovery::builder().secret_key(&key).build()
+    } else {
+        PkarrNodeDiscovery::default()
+    };
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
@@ -68,7 +78,7 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     for content in &content {
         println!("    {}", content);
     }
-    let endpoint = create_endpoint(key, 11112, false).await?;
+    let endpoint = create_endpoint(key, args.magic_port.unwrap_or_default(), false).await?;
     let connection = endpoint.connect_by_node_id(&args.tracker, ALPN).await?;
     println!("connected to {:?}", connection.remote_address());
     let kind = if args.partial {
@@ -87,9 +97,11 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
 }
 
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
-    let connection =
-        iroh_mainline_content_discovery::connect(&args.tracker, args.port.unwrap_or_default())
-            .await?;
+    let connection = iroh_mainline_content_discovery::connect(
+        &args.tracker,
+        args.magic_port.unwrap_or_default(),
+    )
+    .await?;
     let q = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
@@ -104,6 +116,36 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
     );
     for peer in res.hosts {
         println!("{}", peer);
+    }
+    Ok(())
+}
+
+async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::UNSPECIFIED,
+        args.quinn_port.unwrap_or_default(),
+    ));
+    let endpoint = create_quinn_client(bind_addr, vec![ALPN.to_vec()], false)?;
+    let dht = mainline::Dht::default();
+    let q = Query {
+        content: args.content.hash_and_format(),
+        flags: QueryFlags {
+            complete: !args.partial,
+            verified: args.verified,
+        },
+    };
+    println!("content corresponds to infohash {}", to_infohash(q.content));
+    let mut stream = iroh_mainline_content_discovery::query_dht(
+        endpoint,
+        dht,
+        q,
+        args.query_parallelism.unwrap_or(4),
+    );
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(provider) => println!("found provider {}", provider),
+            Err(e) => println!("error: {}", e),
+        }
     }
     Ok(())
 }
@@ -124,6 +166,7 @@ async fn main() -> anyhow::Result<()> {
     match args.command {
         Commands::Announce(args) => announce(args).await,
         Commands::Query(args) => query(args).await,
+        Commands::QueryDht(args) => query_dht(args).await,
     }
 }
 

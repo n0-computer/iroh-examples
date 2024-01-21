@@ -25,7 +25,6 @@ use iroh_net::{
     MagicEndpoint, NodeId,
 };
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
-use pkarr::PkarrClient;
 use tokio::io::AsyncWriteExt;
 use tokio_util::task::LocalPoolHandle;
 
@@ -71,9 +70,11 @@ async fn create_endpoint(
     port: u16,
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
-    let pkarr = PkarrClient::new();
-    let discovery_key = if publish { Some(&key) } else { None };
-    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
+    let mainline_discovery = if publish {
+        PkarrNodeDiscovery::builder().secret_key(&key).build()
+    } else {
+        PkarrNodeDiscovery::default()
+    };
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))

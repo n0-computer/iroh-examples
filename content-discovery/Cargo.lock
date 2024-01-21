@@ -1641,9 +1641,8 @@ dependencies = [
  "genawaiter",
  "iroh-bytes",
  "iroh-net",
- "iroh-pkarr-node-discovery",
+ "iroh-pkarr-node-discovery 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mainline",
- "pkarr",
  "postcard",
  "quinn",
  "rcgen 0.12.0",
@@ -1657,7 +1656,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-mainline-tracker"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -1674,7 +1673,7 @@ dependencies = [
  "iroh-bytes",
  "iroh-mainline-content-discovery",
  "iroh-net",
- "iroh-pkarr-node-discovery",
+ "iroh-pkarr-node-discovery 0.1.2",
  "mainline",
  "pkarr",
  "postcard",
@@ -1795,7 +1794,21 @@ dependencies = [
 
 [[package]]
 name = "iroh-pkarr-node-discovery"
-version = "0.1.1"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "futures",
+ "iroh-net",
+ "pkarr",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "iroh-pkarr-node-discovery"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a067ad2dde4af686102cbad4f405ff42131dcdd80493ce2f0af12aa3820da5be"
 dependencies = [
  "anyhow",
  "futures",
