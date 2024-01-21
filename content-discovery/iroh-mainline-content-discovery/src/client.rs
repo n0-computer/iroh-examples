@@ -257,7 +257,7 @@ impl std::str::FromStr for TrackerId {
 pub async fn connect(tracker: &TrackerId, local_port: u16) -> anyhow::Result<quinn::Connection> {
     match tracker {
         TrackerId::Addr(tracker) => connect_socket(*tracker, local_port).await,
-        TrackerId::NodeId(tracker) => connect_magic(&tracker, local_port).await,
+        TrackerId::NodeId(tracker) => connect_magic(tracker, local_port).await,
     }
 }
 

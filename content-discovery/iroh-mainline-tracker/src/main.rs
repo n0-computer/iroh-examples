@@ -28,7 +28,7 @@ use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use tokio::io::AsyncWriteExt;
 use tokio_util::task::LocalPoolHandle;
 
-use crate::args::{Args, Commands, ServerArgs};
+use crate::args::Args;
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -100,7 +100,7 @@ fn write_defaults() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn server(args: ServerArgs) -> anyhow::Result<()> {
+async fn server(args: Args) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let tpc = LocalPoolHandle::new(2);
     let home = tracker_home()?;
@@ -143,9 +143,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     setup_logging();
     let args = Args::parse();
-    match args.command {
-        Commands::Server(args) => server(args).await,
-    }
+    server(args).await
 }
 
 /// Returns default server configuration along with its certificate.

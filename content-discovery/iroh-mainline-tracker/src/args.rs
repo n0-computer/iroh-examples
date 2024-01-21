@@ -1,19 +1,8 @@
 //! Command line arguments.
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    #[clap(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    Server(ServerArgs),
-}
-
-#[derive(Parser, Debug)]
-pub struct ServerArgs {
     /// The port to listen on.
     #[clap(long, default_value_t = 0xacacu16)]
     pub magic_port: u16,
