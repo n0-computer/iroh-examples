@@ -27,18 +27,6 @@ rcgen = { version = "0.12.0", optional = true }
 rustls = { version = "0.21", optional = true }
 genawaiter = { version = "0.99.1", features = ["futures03"], optional = true }
 
-# Optional features for the cli
-clap = { version = "4", features = ["derive"], optional = true }
-tempfile = { version = "3.4", optional = true }
-derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"], optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
-tokio = { version = "1", features = ["io-util", "rt"], optional = true }
-
 [features]
 client = ["iroh-pkarr-node-discovery", "mainline", "quinn", "tracing", "anyhow", "rcgen", "genawaiter", "rustls", "futures", "postcard"]
-cli = ["client", "clap", "tempfile", "derive_more", "tracing-subscriber", "tokio"]
 default = ["client"]
-
-[[bin]]
-name = "iroh-mainline-content-discovery"
-required-features = ["cli"]

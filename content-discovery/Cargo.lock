@@ -1628,8 +1628,6 @@ name = "iroh-mainline-content-discovery"
 version = "0.3.0"
 dependencies = [
  "anyhow",
- "clap",
- "derive_more",
  "futures",
  "genawaiter",
  "iroh-bytes",
@@ -1641,6 +1639,23 @@ dependencies = [
  "rcgen 0.12.0",
  "rustls",
  "serde",
+ "tracing",
+]
+
+[[package]]
+name = "iroh-mainline-content-discovery-cli"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "derive_more",
+ "futures",
+ "iroh-bytes",
+ "iroh-mainline-content-discovery",
+ "iroh-net",
+ "iroh-pkarr-node-discovery 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mainline",
+ "quinn",
  "tempfile",
  "tokio",
  "tracing",
