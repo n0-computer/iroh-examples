@@ -40,10 +40,10 @@ const INITIAL_PUBLISH_DELAY: Duration = Duration::from_millis(500);
 /// and publishes them to the bittorrent mainline DHT.
 ///
 /// Calling publish will start a background task that periodically publishes the node address.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PkarrNodeDiscovery(Arc<Inner>);
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Inner {
     /// Pkarr client for interacting with the DHT.
     pkarr: PkarrClient,
@@ -56,12 +56,45 @@ struct Inner {
     keypair: Option<pkarr::Keypair>,
 }
 
+/// Builder for PkarrNodeDiscovery.
+#[derive(Debug, Default)]
+pub struct Builder<'a> {
+    client: Option<PkarrClient>,
+    secret_key: Option<&'a SecretKey>,
+}
+
+impl<'a> Builder<'a> {
+    /// Explicitly set the pkarr client to use.
+    pub fn client(mut self, client: PkarrClient) -> Self {
+        self.client = Some(client);
+        self
+    }
+
+    /// Set the secret key to use for signing the DNS packets.
+    ///
+    /// Without a secret key, the node will not publish its address to the DHT.
+    pub fn secret_key(mut self, secret_key: &'a SecretKey) -> Self {
+        self.secret_key = Some(secret_key);
+        self
+    }
+
+    /// Build the discovery mechanism.
+    pub fn build(self) -> PkarrNodeDiscovery {
+        let client = self.client.unwrap_or_else(PkarrClient::new);
+        PkarrNodeDiscovery::new(client, self.secret_key)
+    }
+}
+
 impl PkarrNodeDiscovery {
+    pub fn builder() -> Builder<'static> {
+        Builder::default()
+    }
+
     /// Create a new discovery mechanism.
     ///
     /// If a secret key is provided, the node will publish its address to the DHT.
     /// If no secret key is provided, publish will be a no-op, but resolving other nodes will still work.
-    pub fn new(pkarr: PkarrClient, secret_key: Option<&SecretKey>) -> Self {
+    fn new(pkarr: PkarrClient, secret_key: Option<&SecretKey>) -> Self {
         let keypair =
             secret_key.map(|secret_key| pkarr::Keypair::from_secret_key(&secret_key.to_bytes()));
         Self(Arc::new(Inner {

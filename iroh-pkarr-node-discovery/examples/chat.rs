@@ -12,15 +12,15 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
-use pkarr::PkarrClient;
 
 const CHAT_ALPN: &[u8] = b"pkarr-discovery-demo-chat";
 
 async fn chat_server() -> anyhow::Result<()> {
-    let pkarr = PkarrClient::new();
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::new(pkarr, Some(&secret_key));
+    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder()
+        .secret_key(&secret_key)
+        .build();
     let endpoint = MagicEndpoint::builder()
         .alpns(vec![CHAT_ALPN.to_vec()])
         .secret_key(secret_key)
@@ -51,11 +51,10 @@ async fn chat_server() -> anyhow::Result<()> {
 }
 
 async fn chat_client(remote_node_id: NodeId) -> anyhow::Result<()> {
-    let pkarr = PkarrClient::new();
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
     // note: we don't pass a secret key here, because we don't need to publish our address, don't spam the DHT
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::new(pkarr, None);
+    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder().build();
     // we do not need to specify the alpn here, because we are not going to accept connections
     let endpoint = MagicEndpoint::builder()
         .secret_key(secret_key)
