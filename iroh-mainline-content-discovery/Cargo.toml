@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
-bao-tree = { version = "0.9.1", features = ["tokio_fsm"], default-features = false }
+bao-tree = { version = "0.9.1", features = ["tokio_fsm"], default-features = false, optional = true }
 bytes = "1"
 clap = { version = "4", features = ["derive"], optional = true }
 derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"] }
@@ -44,7 +44,8 @@ flume = "0.11.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
 
 [features]
-cli = ["clap"]
+cli = ["clap", "tracker"]
+tracker = ["bao-tree"]
 default = ["cli"]
 
 [[bin]]
