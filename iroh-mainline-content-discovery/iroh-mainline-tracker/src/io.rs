@@ -8,11 +8,13 @@ use std::{
 };
 
 use anyhow::Context;
-use iroh::bytes::{get::Stats, HashAndFormat};
+use iroh_bytes::{get::Stats, HashAndFormat};
+use iroh_mainline_content_discovery::protocol::AnnounceKind;
+use iroh_net::NodeId;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use crate::{protocol::AnnounceKind, tracker::ProbeKind, NodeId};
+use crate::tracker::ProbeKind;
 
 pub const CONFIG_DEFAULTS_FILE: &str = "config.defaults.toml";
 pub const CONFIG_FILE: &str = "config.toml";

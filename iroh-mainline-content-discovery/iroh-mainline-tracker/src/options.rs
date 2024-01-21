@@ -29,6 +29,10 @@ pub struct Options {
     pub announce_data_path: Option<PathBuf>,
     // number of peers to probe in parallel
     pub probe_parallelism: usize,
+
+    pub dht_announce_parallelism: usize,
+
+    pub dht_announce_interval: Duration,
 }
 
 impl Default for Options {
@@ -43,6 +47,8 @@ impl Default for Options {
             probe_log: Some("probe.log".into()),
             announce_data_path: Some("announce.data.toml".into()),
             probe_parallelism: 4,
+            dht_announce_parallelism: 4,
+            dht_announce_interval: Duration::from_secs(10),
         }
     }
 }

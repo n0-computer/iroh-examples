@@ -1,10 +1,9 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
-use iroh::bytes::{Hash, HashAndFormat};
-use iroh::ticket::blob::Ticket;
+use iroh_bytes::{Hash, HashAndFormat};
+use iroh_mainline_content_discovery::TrackerId;
+use iroh_net::{ticket::BlobTicket, NodeId};
 use std::{fmt::Display, str::FromStr};
-
-use crate::NodeId;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -14,19 +13,8 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    Server(ServerArgs),
     Announce(AnnounceArgs),
     Query(QueryArgs),
-}
-
-#[derive(Parser, Debug)]
-pub struct ServerArgs {
-    /// The port to listen on.
-    #[clap(long, default_value_t = 0xacacu16)]
-    pub port: u16,
-
-    #[clap(long)]
-    pub quiet: bool,
 }
 
 /// Various ways to specify content.
@@ -34,7 +22,7 @@ pub struct ServerArgs {
 pub enum ContentArg {
     Hash(Hash),
     HashAndFormat(HashAndFormat),
-    Ticket(Ticket),
+    Ticket(BlobTicket),
 }
 
 impl ContentArg {
@@ -78,7 +66,7 @@ impl FromStr for ContentArg {
             Ok(hash.into())
         } else if let Ok(haf) = HashAndFormat::from_str(s) {
             Ok(haf.into())
-        } else if let Ok(ticket) = Ticket::from_str(s) {
+        } else if let Ok(ticket) = BlobTicket::from_str(s) {
             Ok(ticket.into())
         } else {
             anyhow::bail!("invalid hash and format")
@@ -115,7 +103,7 @@ pub struct AnnounceArgs {
 #[derive(Parser, Debug)]
 pub struct QueryArgs {
     #[clap(long)]
-    pub tracker: NodeId,
+    pub tracker: TrackerId,
 
     /// the port to use for querying
     #[clap(long)]

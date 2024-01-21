@@ -1,0 +1,25 @@
+[workspace]
+members = [
+  "iroh-mainline-content-discovery",
+  "iroh-mainline-tracker",
+]
+resolver = "2"
+
+[profile.release]
+debug = true
+
+[profile.optimized-release]
+inherits = 'release'
+debug = false
+lto = true
+debug-assertions = false
+opt-level = 3
+panic = 'abort'
+incremental = false
+
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+unused-async = "warn"
