@@ -8,12 +8,14 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# Required features for the protocol types
+# Required features for the protocol types.
+#
+# The protocol is using postcard, but we don't need a postcard dependency for just the type definitions
 iroh-net = "0.12.0"
 iroh-bytes = "0.12.0"
 serde = { version = "1", features = ["derive"] }
 
-# Optional features for the client
+# Optional features for the client functionality
 tracing = { version = "0.1", optional = true }
 quinn = { version = "0.10", optional = true }
 iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", optional = true }
