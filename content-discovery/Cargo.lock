@@ -1658,7 +1658,6 @@ dependencies = [
  "quinn",
  "tempfile",
  "tokio",
- "tracing",
  "tracing-subscriber",
 ]
 
