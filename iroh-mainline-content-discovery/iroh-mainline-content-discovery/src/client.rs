@@ -6,43 +6,16 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Context;
-use futures::{
-    future::{self, BoxFuture},
-    FutureExt, Stream, StreamExt,
-};
+use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
 use iroh_bytes::HashAndFormat;
-use iroh_net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    MagicEndpoint, NodeId,
-};
+use iroh_net::{MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use mainline::common::{GetPeerResponse, StoreQueryMetdata};
 use pkarr::PkarrClient;
-use protocol::QueryResponse;
-use tokio::io::AsyncWriteExt;
 
-use crate::protocol::{Announce, Query, Request, Response, REQUEST_SIZE_LIMIT, TRACKER_ALPN};
-
-#[cfg(feature = "tracker")]
-pub mod io;
-#[cfg(feature = "tracker")]
-pub mod iroh_bytes_util;
-#[cfg(feature = "tracker")]
-pub mod options;
-pub mod protocol;
-#[cfg(feature = "tracker")]
-pub mod tracker;
-
-/// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
-pub(crate) async fn accept_conn(
-    mut conn: quinn::Connecting,
-) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
-    let alpn = get_alpn(&mut conn).await?;
-    let conn = conn.await?;
-    let peer_id = get_remote_node_id(&conn)?;
-    Ok((peer_id, alpn, conn))
-}
+use crate::protocol::{
+    Announce, Query, QueryResponse, Request, Response, ALPN, REQUEST_SIZE_LIMIT,
+};
 
 /// Announce to a tracker.
 ///
@@ -64,7 +37,9 @@ pub async fn announce(connection: quinn::Connection, args: Announce) -> anyhow::
     Ok(())
 }
 
-/// The mapping from a [`HashAndFormat`] to a [`mainline::Id`].
+/// The mapping from an iroh [HashAndFormat] to a bittorrent infohash, aka [mainline::Id].
+///
+/// Since an infohash is just 20 bytes, this can not be a bidirectional mapping.
 pub fn to_infohash(haf: HashAndFormat) -> mainline::Id {
     let mut data = [0u8; 20];
     data.copy_from_slice(&haf.hash.as_bytes()[..20]);
@@ -88,7 +63,7 @@ fn unique_tracker_addrs(
 }
 
 async fn query_socket_one(
-    endpoint: impl ConnectionProvider,
+    endpoint: impl QuinnConnectionProvider<SocketAddr>,
     addr: SocketAddr,
     args: Query,
 ) -> anyhow::Result<Vec<NodeId>> {
@@ -102,9 +77,7 @@ async fn query_magic_one(
     node_id: &NodeId,
     args: Query,
 ) -> anyhow::Result<Vec<NodeId>> {
-    let connection = endpoint
-        .connect_by_node_id(node_id, protocol::TRACKER_ALPN)
-        .await?;
+    let connection = endpoint.connect_by_node_id(node_id, ALPN).await?;
     let result = query(connection, args).await?;
     Ok(result.hosts)
 }
@@ -113,16 +86,17 @@ async fn query_magic_one(
 ///
 /// This can either be a [`quinn::Endpoint`] where connections are created on demand,
 /// or some sort of connection pool.
-pub trait ConnectionProvider: Clone {
-    fn connect(&self, addr: SocketAddr) -> BoxFuture<anyhow::Result<quinn::Connection>>;
+pub trait QuinnConnectionProvider<Addr>: Clone {
+    fn connect(&self, addr: Addr) -> BoxFuture<anyhow::Result<quinn::Connection>>;
 }
 
-impl ConnectionProvider for quinn::Endpoint {
+impl QuinnConnectionProvider<SocketAddr> for quinn::Endpoint {
     fn connect(&self, addr: SocketAddr) -> BoxFuture<anyhow::Result<quinn::Connection>> {
         async move { Ok(self.connect(addr, "localhost")?.await?) }.boxed()
     }
 }
 
+/// Query multiple trackers in parallel and merge the results.
 pub fn query_trackers(
     endpoint: MagicEndpoint,
     trackers: impl IntoIterator<Item = NodeId>,
@@ -146,7 +120,7 @@ pub fn query_trackers(
 
 /// Query the mainline DHT for trackers for the given content, then query each tracker for peers.
 pub fn query_dht(
-    endpoint: impl ConnectionProvider,
+    endpoint: impl QuinnConnectionProvider<SocketAddr>,
     dht: mainline::dht::Dht,
     args: Query,
     query_parallelism: usize,
@@ -174,7 +148,6 @@ pub fn query_dht(
 ///
 /// Note that this should only be called from a publicly reachable node, where port is the port
 /// on which the tracker protocol is reachable.
-#[cfg(feature = "tracker")]
 pub fn announce_dht(
     dht: mainline::dht::Dht,
     content: BTreeSet<HashAndFormat>,
@@ -211,13 +184,8 @@ pub async fn query(connection: quinn::Connection, args: Query) -> anyhow::Result
     })
 }
 
-/// Returns default server configuration along with its certificate.
-#[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
-fn configure_server(secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
-    make_server_config(secret_key, 8, 1024, vec![TRACKER_ALPN.to_vec()])
-}
-
-pub fn create_quinn_client(
+/// Create a quinn client endpoint.
+fn create_quinn_client(
     bind_addr: SocketAddr,
     alpn_protocols: Vec<Vec<u8>>,
     keylog: bool,
@@ -234,67 +202,6 @@ pub fn create_quinn_client(
     Ok(endpoint)
 }
 
-/// Create a [`quinn::ServerConfig`] with the given secret key and limits.
-fn make_server_config(
-    secret_key: &iroh_net::key::SecretKey,
-    max_streams: u64,
-    max_connections: u32,
-    alpn_protocols: Vec<Vec<u8>>,
-) -> anyhow::Result<quinn::ServerConfig> {
-    let tls_server_config = iroh_net::tls::make_server_config(secret_key, alpn_protocols, false)?;
-    let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_server_config));
-    let mut transport_config = quinn::TransportConfig::default();
-    transport_config
-        .max_concurrent_bidi_streams(max_streams.try_into()?)
-        .max_concurrent_uni_streams(0u32.into());
-
-    server_config
-        .transport_config(Arc::new(transport_config))
-        .concurrent_connections(max_connections);
-    Ok(server_config)
-}
-
-/// Loads a [`SecretKey`] from the provided file.
-#[cfg(feature = "tracker")]
-pub async fn load_secret_key(
-    key_path: std::path::PathBuf,
-) -> anyhow::Result<iroh_net::key::SecretKey> {
-    if key_path.exists() {
-        let keystr = tokio::fs::read(key_path).await?;
-        let secret_key =
-            iroh_net::key::SecretKey::try_from_openssh(keystr).context("invalid keyfile")?;
-        Ok(secret_key)
-    } else {
-        let secret_key = iroh_net::key::SecretKey::generate();
-        let ser_key = secret_key.to_openssh()?;
-
-        // Try to canoncialize if possible
-        let key_path = key_path.canonicalize().unwrap_or(key_path);
-        let key_path_parent = key_path.parent().ok_or_else(|| {
-            anyhow::anyhow!("no parent directory found for '{}'", key_path.display())
-        })?;
-        tokio::fs::create_dir_all(&key_path_parent).await?;
-
-        // write to tempfile
-        let (file, temp_file_path) = tempfile::NamedTempFile::new_in(key_path_parent)
-            .context("unable to create tempfile")?
-            .into_parts();
-        let mut file = tokio::fs::File::from_std(file);
-        file.write_all(ser_key.as_bytes())
-            .await
-            .context("unable to write keyfile")?;
-        file.flush().await?;
-        drop(file);
-
-        // move file
-        tokio::fs::rename(temp_file_path, key_path)
-            .await
-            .context("failed to rename keyfile")?;
-
-        Ok(secret_key)
-    }
-}
-
 async fn create_endpoint(
     key: iroh_net::key::SecretKey,
     port: u16,
@@ -306,7 +213,7 @@ async fn create_endpoint(
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
-        .alpns(vec![TRACKER_ALPN.to_vec()])
+        .alpns(vec![ALPN.to_vec()])
         .bind(port)
         .await
 }
@@ -341,7 +248,7 @@ impl std::str::FromStr for TrackerId {
     }
 }
 
-/// Connect to a tracker using the [protocol::TRACKER_ALPN] protocol, using either
+/// Connect to a tracker using the [crate::protocol::ALPN] protocol, using either
 /// a node id or an address.
 ///
 /// Note that this is less efficient than using an existing endpoint when doing multiple requests.
@@ -353,7 +260,7 @@ pub async fn connect(tracker: &TrackerId, local_port: u16) -> anyhow::Result<qui
     }
 }
 
-/// Create a magic endpoint and connect to a tracker using the [protocol::TRACKER_ALPN] protocol.
+/// Create a magic endpoint and connect to a tracker using the [crate::protocol::ALPN] protocol.
 async fn connect_magic(tracker: &NodeId, local_port: u16) -> anyhow::Result<quinn::Connection> {
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
@@ -361,14 +268,14 @@ async fn connect_magic(tracker: &NodeId, local_port: u16) -> anyhow::Result<quin
     let key = iroh_net::key::SecretKey::generate();
     let endpoint = create_endpoint(key, local_port, false).await?;
     tracing::info!("trying to connect to tracker at {:?}", tracker);
-    let connection = endpoint.connect_by_node_id(tracker, TRACKER_ALPN).await?;
+    let connection = endpoint.connect_by_node_id(tracker, ALPN).await?;
     Ok(connection)
 }
 
-/// Create a quinn endpoint and connect to a tracker using the [protocol::TRACKER_ALPN] protocol.
+/// Create a quinn endpoint and connect to a tracker using the [crate::protocol::ALPN] protocol.
 async fn connect_socket(tracker: SocketAddr, local_port: u16) -> anyhow::Result<quinn::Connection> {
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, local_port));
-    let endpoint = create_quinn_client(bind_addr, vec![TRACKER_ALPN.to_vec()], false)?;
+    let endpoint = create_quinn_client(bind_addr, vec![ALPN.to_vec()], false)?;
     tracing::info!("trying to connect to tracker at {:?}", tracker);
     let connection = endpoint.connect(tracker, "localhost")?.await?;
     Ok(connection)

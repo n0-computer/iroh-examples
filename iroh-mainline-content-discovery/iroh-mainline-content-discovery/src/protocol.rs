@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 /// The ALPN string for this protocol
-pub const TRACKER_ALPN: &[u8] = b"n0/tracker/1";
+pub const ALPN: &[u8] = b"n0/tracker/1";
 /// Maximum size of a request
 pub const REQUEST_SIZE_LIMIT: usize = 1024 * 16;
 

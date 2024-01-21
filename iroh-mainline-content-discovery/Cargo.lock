@@ -1634,6 +1634,32 @@ name = "iroh-mainline-content-discovery"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "clap",
+ "derive_more",
+ "ed25519-dalek",
+ "futures",
+ "genawaiter",
+ "iroh-bytes",
+ "iroh-net",
+ "iroh-pkarr-node-discovery",
+ "mainline",
+ "pkarr",
+ "postcard",
+ "quinn",
+ "rcgen 0.12.0",
+ "rustls",
+ "serde",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "iroh-mainline-tracker"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
  "bao-tree",
  "bytes",
  "clap",
@@ -1646,6 +1672,7 @@ dependencies = [
  "hex",
  "humantime",
  "iroh-bytes",
+ "iroh-mainline-content-discovery",
  "iroh-net",
  "iroh-pkarr-node-discovery",
  "mainline",

@@ -1,7 +1,6 @@
 pub mod args;
 
 use std::{
-    collections::BTreeSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -12,13 +11,13 @@ use std::{
 
 use anyhow::Context;
 use clap::Parser;
-use iroh_mainline_content_discovery::{
+use iroh_mainline_content_discovery::protocol::ALPN;
+use iroh_mainline_tracker::{
     io::{
         self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE,
         CONFIG_FILE, SERVER_KEY_FILE,
     },
     options::Options,
-    protocol::{Announce, AnnounceKind, Query, QueryFlags, TRACKER_ALPN},
     tracker::Tracker,
 };
 use iroh_net::{
@@ -30,7 +29,7 @@ use pkarr::PkarrClient;
 use tokio::io::AsyncWriteExt;
 use tokio_util::task::LocalPoolHandle;
 
-use crate::args::{AnnounceArgs, Args, Commands, QueryArgs, ServerArgs};
+use crate::args::{Args, Commands, ServerArgs};
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -78,7 +77,7 @@ async fn create_endpoint(
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
-        .alpns(vec![TRACKER_ALPN.to_vec()])
+        .alpns(vec![ALPN.to_vec()])
         .bind(port)
         .await
 }
@@ -139,89 +138,19 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
-    // todo: uncomment once the connection problems are fixed
-    // for now, a random node id is more reliable.
-    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh_net::key::SecretKey::generate();
-    let content = args.content.iter().map(|x| x.hash_and_format()).collect();
-    let host = if let Some(host) = args.host {
-        host
-    } else {
-        let hosts = args
-            .content
-            .iter()
-            .filter_map(|x| x.host())
-            .collect::<BTreeSet<_>>();
-        if hosts.len() != 1 {
-            anyhow::bail!(
-                "content for all tickets must be from the same host, unless a host is specified"
-            );
-        }
-        *hosts.iter().next().unwrap()
-    };
-    println!("announcing to {}", args.tracker);
-    println!("host {} has", host);
-    for content in &content {
-        println!("    {}", content);
-    }
-    let endpoint = create_endpoint(key, 11112, false).await?;
-    let connection = endpoint
-        .connect_by_node_id(&args.tracker, TRACKER_ALPN)
-        .await?;
-    println!("connected to {:?}", connection.remote_address());
-    let kind = if args.partial {
-        AnnounceKind::Partial
-    } else {
-        AnnounceKind::Complete
-    };
-    let announce = Announce {
-        host,
-        kind,
-        content,
-    };
-    iroh_mainline_content_discovery::announce(connection, announce).await?;
-    println!("done");
-    Ok(())
-}
-
-async fn query(args: QueryArgs) -> anyhow::Result<()> {
-    let connection =
-        iroh_mainline_content_discovery::connect(&args.tracker, args.port.unwrap_or_default())
-            .await?;
-    let q = Query {
-        content: args.content.hash_and_format(),
-        flags: QueryFlags {
-            complete: !args.partial,
-            verified: args.verified,
-        },
-    };
-    let res = iroh_mainline_content_discovery::query(connection, q).await?;
-    println!(
-        "querying tracker {} for content {}",
-        args.tracker, args.content
-    );
-    for peer in res.hosts {
-        println!("{}", peer);
-    }
-    Ok(())
-}
-
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     setup_logging();
     let args = Args::parse();
     match args.command {
         Commands::Server(args) => server(args).await,
-        Commands::Announce(args) => announce(args).await,
-        Commands::Query(args) => query(args).await,
     }
 }
 
 /// Returns default server configuration along with its certificate.
 #[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
 fn configure_server(secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
-    make_server_config(secret_key, 8, 1024, vec![TRACKER_ALPN.to_vec()])
+    make_server_config(secret_key, 8, 1024, vec![ALPN.to_vec()])
 }
 
 /// Create a [`quinn::ServerConfig`] with the given secret key and limits.

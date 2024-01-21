@@ -1,0 +1,53 @@
+[package]
+name = "iroh-mainline-tracker"
+version = "0.3.0"
+edition = "2021"
+description = "Content discovery for iroh, using the bittorrent mainline DHT"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+bao-tree = { version = "0.9.1", features = ["tokio_fsm"], default-features = false }
+bytes = "1"
+clap = { version = "4", features = ["derive"], optional = true }
+derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"] }
+dirs-next = "2"
+ed25519-dalek = "2.1.0"
+futures = "0.3.25"
+hex = "0.4.3"
+humantime = "2.1.0"
+iroh-net = "0.12.0"
+iroh-bytes = "0.12.0"
+iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery" }
+mainline = "1.0.0"
+pkarr = { version = "1.0.1", features = ["async"] }
+postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
+quinn = "0.10"
+rand = "0.8"
+rcgen = "0.12.0"
+redb = "1.5.0"
+rustls = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.107"
+simple-mdns = { version = "0.5.0", features = ["async-tokio"] }
+tempfile = "3.4"
+tokio = { version = "1", features = ["io-util", "rt"] }
+tokio-util = { version = "0.7", features = ["io-util", "io", "rt"] }
+toml = "0.7.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ttl_cache = "0.5.1"
+url = "2.5.0"
+flume = "0.11.0"
+genawaiter = { version = "0.99.1", features = ["futures03"] }
+iroh-mainline-content-discovery = { path = "../iroh-mainline-content-discovery", features = ["client"] }
+
+[features]
+cli = ["clap"]
+default = ["cli"]
+
+[[bin]]
+name = "iroh-mainline-tracker"
+required-features = ["cli"]

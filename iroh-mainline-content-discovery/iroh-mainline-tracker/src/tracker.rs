@@ -13,20 +13,24 @@ use iroh_bytes::{
     protocol::GetRequest,
     BlobFormat, Hash, HashAndFormat,
 };
-use iroh_net::{MagicEndpoint, NodeId};
+use iroh_mainline_content_discovery::{
+    announce_dht,
+    protocol::{
+        Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
+    },
+};
+use iroh_net::{
+    magic_endpoint::{get_alpn, get_remote_node_id},
+    MagicEndpoint, NodeId,
+};
 use rand::Rng;
 
 use crate::{
-    accept_conn, announce_dht,
     io::{log_connection_attempt, log_probe_attempt, AnnounceData},
     iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
     },
     options::Options,
-    protocol::{
-        Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
-    },
-    to_infohash,
 };
 
 /// The tracker server.
@@ -515,4 +519,14 @@ impl Tracker {
         }
         anyhow::Ok((host, results))
     }
+}
+
+/// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
+async fn accept_conn(
+    mut conn: quinn::Connecting,
+) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
+    let alpn = get_alpn(&mut conn).await?;
+    let conn = conn.await?;
+    let peer_id = get_remote_node_id(&conn)?;
+    Ok((peer_id, alpn, conn))
 }
