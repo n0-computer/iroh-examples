@@ -11,7 +11,6 @@ use iroh_bytes::HashAndFormat;
 use iroh_net::{MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use mainline::common::{GetPeerResponse, StoreQueryMetdata};
-use pkarr::PkarrClient;
 
 use crate::protocol::{
     Announce, Query, QueryResponse, Request, Response, ALPN, REQUEST_SIZE_LIMIT,
@@ -52,7 +51,7 @@ fn unique_tracker_addrs(
     Gen::new(|co| async move {
         let mut found = HashSet::new();
         while let Some(response) = response.next_async().await {
-            println!("got get_peers response: {:?}", response);
+            tracing::info!("got get_peers response: {:?}", response);
             let tracker = response.peer;
             if !found.insert(tracker) {
                 continue;
@@ -185,7 +184,7 @@ pub async fn query(connection: quinn::Connection, args: Query) -> anyhow::Result
 }
 
 /// Create a quinn client endpoint.
-fn create_quinn_client(
+pub fn create_quinn_client(
     bind_addr: SocketAddr,
     alpn_protocols: Vec<Vec<u8>>,
     keylog: bool,
@@ -207,9 +206,11 @@ async fn create_endpoint(
     port: u16,
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
-    let pkarr = PkarrClient::new();
-    let discovery_key = if publish { Some(&key) } else { None };
-    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
+    let mainline_discovery = if publish {
+        PkarrNodeDiscovery::builder().secret_key(&key).build()
+    } else {
+        PkarrNodeDiscovery::default()
+    };
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
@@ -256,7 +257,7 @@ impl std::str::FromStr for TrackerId {
 pub async fn connect(tracker: &TrackerId, local_port: u16) -> anyhow::Result<quinn::Connection> {
     match tracker {
         TrackerId::Addr(tracker) => connect_socket(*tracker, local_port).await,
-        TrackerId::NodeId(tracker) => connect_magic(&tracker, local_port).await,
+        TrackerId::NodeId(tracker) => connect_magic(tracker, local_port).await,
     }
 }
 

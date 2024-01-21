@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "iroh-mainline-content-discovery",
+  "iroh-mainline-content-discovery-cli",
   "iroh-mainline-tracker",
 ]
 resolver = "2"

@@ -25,11 +25,10 @@ use iroh_net::{
     MagicEndpoint, NodeId,
 };
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
-use pkarr::PkarrClient;
 use tokio::io::AsyncWriteExt;
 use tokio_util::task::LocalPoolHandle;
 
-use crate::args::{Args, Commands, ServerArgs};
+use crate::args::Args;
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -71,9 +70,11 @@ async fn create_endpoint(
     port: u16,
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
-    let pkarr = PkarrClient::new();
-    let discovery_key = if publish { Some(&key) } else { None };
-    let mainline_discovery = PkarrNodeDiscovery::new(pkarr, discovery_key);
+    let mainline_discovery = if publish {
+        PkarrNodeDiscovery::builder().secret_key(&key).build()
+    } else {
+        PkarrNodeDiscovery::default()
+    };
     iroh_net::MagicEndpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
@@ -99,7 +100,7 @@ fn write_defaults() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn server(args: ServerArgs) -> anyhow::Result<()> {
+async fn server(args: Args) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let tpc = LocalPoolHandle::new(2);
     let home = tracker_home()?;
@@ -142,9 +143,7 @@ async fn server(args: ServerArgs) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     setup_logging();
     let args = Args::parse();
-    match args.command {
-        Commands::Server(args) => server(args).await,
-    }
+    server(args).await
 }
 
 /// Returns default server configuration along with its certificate.

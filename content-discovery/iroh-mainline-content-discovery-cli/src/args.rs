@@ -15,6 +15,7 @@ pub struct Args {
 pub enum Commands {
     Announce(AnnounceArgs),
     Query(QueryArgs),
+    QueryDht(QueryDhtArgs),
 }
 
 /// Various ways to specify content.
@@ -80,10 +81,6 @@ pub struct AnnounceArgs {
     #[clap(long)]
     pub tracker: NodeId,
 
-    /// the port to use for announcing
-    #[clap(long)]
-    pub port: Option<u16>,
-
     /// The host to announce. Not needed if content is a ticket.
     #[clap(long)]
     pub host: Option<NodeId>,
@@ -98,16 +95,17 @@ pub struct AnnounceArgs {
     /// Announce that the peer has only partial data.
     #[clap(long)]
     pub partial: bool,
+
+    /// the port to use for announcing
+    #[clap(long)]
+    pub magic_port: Option<u16>,
 }
 
 #[derive(Parser, Debug)]
 pub struct QueryArgs {
+    /// the tracker to query
     #[clap(long)]
     pub tracker: TrackerId,
-
-    /// the port to use for querying
-    #[clap(long)]
-    pub port: Option<u16>,
 
     /// The content to find hosts for.
     pub content: ContentArg,
@@ -119,4 +117,30 @@ pub struct QueryArgs {
     /// Ask for hosts that were recently checked and found to have some data
     #[clap(long)]
     pub verified: bool,
+
+    /// the port to use for querying
+    #[clap(long)]
+    pub magic_port: Option<u16>,
+}
+
+#[derive(Parser, Debug)]
+pub struct QueryDhtArgs {
+    /// The content to find hosts for.
+    pub content: ContentArg,
+
+    /// Ask for hosts that were announced as having just partial data
+    #[clap(long)]
+    pub partial: bool,
+
+    /// Ask for hosts that were recently checked and found to have some data
+    #[clap(long)]
+    pub verified: bool,
+
+    /// Parallelism for querying the dht
+    #[clap(long)]
+    pub query_parallelism: Option<usize>,
+
+    /// the port to use for querying
+    #[clap(long)]
+    pub quinn_port: Option<u16>,
 }

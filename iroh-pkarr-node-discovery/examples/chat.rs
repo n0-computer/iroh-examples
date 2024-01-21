@@ -1,23 +1,36 @@
+//! An example chat application using the iroh-net magic endpoint and
+//! pkarr node discovery.
+//!
+//! Starting the example without args creates a server that publishes its
+//! address to the DHT. Starting the example with a node id as argument
+//! looks up the address of the node id in the DHT and connects to it.
+//!
+//! You can look at the published pkarr DNS record using <https://app.pkarr.org/>.
+//!
+//! To see what is going on, run with `RUST_LOG=iroh_pkarr_node_discovery=debug`.
 use std::str::FromStr;
 
 use anyhow::Context;
 use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
-use pkarr::PkarrClient;
 
 const CHAT_ALPN: &[u8] = b"pkarr-discovery-demo-chat";
 
 async fn chat_server() -> anyhow::Result<()> {
-    let pkarr = PkarrClient::new();
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::new(pkarr, Some(&secret_key));
+    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder()
+        .secret_key(&secret_key)
+        .build();
     let endpoint = MagicEndpoint::builder()
         .alpns(vec![CHAT_ALPN.to_vec()])
         .secret_key(secret_key)
         .discovery(Box::new(discovery))
         .bind(0)
         .await?;
+    let zid = pkarr::PublicKey::try_from(*node_id.as_bytes())?.to_z32();
     println!("Listening on {}", node_id);
+    println!("pkarr z32: {}", zid);
+    println!("see https://app.pkarr.org/?pk={}", zid);
     while let Some(connecting) = endpoint.accept().await {
         tokio::spawn(async move {
             let connection = connecting.await?;
@@ -39,11 +52,10 @@ async fn chat_server() -> anyhow::Result<()> {
 }
 
 async fn chat_client(remote_node_id: NodeId) -> anyhow::Result<()> {
-    let pkarr = PkarrClient::new();
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
     // note: we don't pass a secret key here, because we don't need to publish our address, don't spam the DHT
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::new(pkarr, None);
+    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder().build();
     // we do not need to specify the alpn here, because we are not going to accept connections
     let endpoint = MagicEndpoint::builder()
         .secret_key(secret_key)

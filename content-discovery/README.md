@@ -1,6 +1,12 @@
 # Iroh content discovery
 
-This library provides global content discovery for iroh.
+This rust workspace provides global content discovery for iroh.
+
+*iroh-mainline-content-discovery* is a library that provides a discovery protocol,
+a client implementation, and a client command line utility.
+
+*iroh-mainline-tracker* is a server implementation for the content discovery
+protocol.
 
 ## Building from source
 
@@ -9,12 +15,12 @@ Make sure you have an up to date version of [rust](https://www.rust-lang.org/) i
 `cargo` for your platform.
 
 Then run `cargo build --release` from the root directory. The resulting binary
-will be in `target/release/tracker`
+will be in `target/release/iroh-mainline-tracker`
 
 ## Running the tracker
 
 ```sh
-tracker server
+iroh-mainline-tracker
 ```
 
 Will run the server with a persistent node id and announce information.
@@ -24,7 +30,7 @@ Will run the server with a persistent node id and announce information.
 When announcing content, you can give either iroh tickets or content hashes.
 
 ```sh
-tracker announce \
+iroh-mainline-content-discovery announce \
     --tracker t3od3nblvk6csozc3oe7rjum7oebnnwwfkebolbxf2o66clzdyha \
     blob:ealcoyhcjxyklzee4manl3b5see3k3nwekf6npw5oollcsflrsduiaicaiafetezhwjouayaycuadbes5ibqaq7qasiyqmqo74ijal7k7ec4pni5htntx4tpoawgvmbhaa3txa4uaa
 ```
@@ -36,7 +42,7 @@ When querying content, you can use tickets, hashes, or hash and format.
 When using tickets, the address part of the ticket will be ignored.
 
 ```sh
-tracker query \
+iroh-mainline-content-discovery query \
     --tracker t3od3nblvk6csozc3oe7rjum7oebnnwwfkebolbxf2o66clzdyha \
     blob:ealcoyhcjxyklzee4manl3b5see3k3nwekf6npw5oollcsflrsduiaicaiafetezhwjouayaycuadbes5ibqaq7qasiyqmqo74ijal7k7ec4pni5htntx4tpoawgvmbhaa3txa4uaa
 ```

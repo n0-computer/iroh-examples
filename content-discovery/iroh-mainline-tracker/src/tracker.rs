@@ -165,10 +165,10 @@ impl Tracker {
     pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
         let dht = mainline::Dht::default();
         loop {
-            let state = self.0.state.read().unwrap();
-            let content: BTreeSet<HashAndFormat> =
-                state.announce_data.iter().map(|(haf, _)| *haf).collect();
-            drop(state);
+            let content: BTreeSet<HashAndFormat> = {
+                let state = self.0.state.read().unwrap();
+                state.announce_data.keys().copied().collect()
+            };
             let mut announce = announce_dht(
                 dht.clone(),
                 content,
@@ -489,7 +489,7 @@ impl Tracker {
     )> {
         let t0 = Instant::now();
         let res = endpoint
-            .connect_by_node_id(&host, &iroh_bytes::protocol::ALPN)
+            .connect_by_node_id(&host, iroh_bytes::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
         let connection = match res {
