@@ -30,6 +30,7 @@ async fn chat_server() -> anyhow::Result<()> {
     let zid = pkarr::PublicKey::try_from(*node_id.as_bytes())?.to_z32();
     println!("Listening on {}", node_id);
     println!("pkarr z32: {}", zid);
+    println!("see https://app.pkarr.org/?pk={}", zid);
     while let Some(connecting) = endpoint.accept().await {
         tokio::spawn(async move {
             let connection = connecting.await?;
