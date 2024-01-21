@@ -80,7 +80,7 @@ impl<'a> Builder<'a> {
 
     /// Build the discovery mechanism.
     pub fn build(self) -> PkarrNodeDiscovery {
-        let client = self.client.unwrap_or_else(PkarrClient::new);
+        let client = self.client.unwrap_or_default();
         PkarrNodeDiscovery::new(client, self.secret_key)
     }
 }
