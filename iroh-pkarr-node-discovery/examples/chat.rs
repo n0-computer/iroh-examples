@@ -1,3 +1,13 @@
+//! An example chat application using the iroh-net magic endpoint and
+//! pkarr node discovery.
+//!
+//! Starting the example without args creates a server that publishes its
+//! address to the DHT. Starting the example with a node id as argument
+//! looks up the address of the node id in the DHT and connects to it.
+//!
+//! You can look at the published pkarr DNS record using <https://app.pkarr.org/>.
+//!
+//! To see what is going on, run with `RUST_LOG=iroh_pkarr_node_discovery=debug`.
 use std::str::FromStr;
 
 use anyhow::Context;
@@ -17,7 +27,9 @@ async fn chat_server() -> anyhow::Result<()> {
         .discovery(Box::new(discovery))
         .bind(0)
         .await?;
+    let zid = pkarr::PublicKey::try_from(*node_id.as_bytes())?.to_z32();
     println!("Listening on {}", node_id);
+    println!("pkarr z32: {}", zid);
     while let Some(connecting) = endpoint.accept().await {
         tokio::spawn(async move {
             let connection = connecting.await?;
