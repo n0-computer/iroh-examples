@@ -35,13 +35,42 @@ impl AnnounceKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Announce {
     /// The peer that supposedly has the data.
-    ///
-    /// Should we get this from the connection?
     pub host: NodeId,
     /// The blobs or sets that the peer claims to have.
     pub content: BTreeSet<HashAndFormat>,
     /// The kind of the announcement.
     pub kind: AnnounceKind,
+    /// The timestamp of the announce.
+    pub timestamp: u64,
+}
+
+/// A signed announce.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignedAnnounce {
+    /// Postcard-encoded announce
+    pub announce: Vec<u8>,
+    /// Signature of the announce
+    pub signature: Vec<u8>,
+}
+
+impl SignedAnnounce {
+    /// Create a new signed announce.
+    pub fn new(announce: Announce, secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<Self> {
+        let announce = postcard::to_allocvec(&announce)?;
+        let signature = secret_key.sign(&announce).to_vec();
+        Ok(Self {
+            announce,
+            signature,
+        })
+    }
+
+    /// Verify the announce, and return the announce if it's valid.
+    pub fn verify(&self) -> anyhow::Result<Announce> {
+        let announce: Announce = postcard::from_bytes(&self.announce)?;
+        let signature = iroh_net::key::Signature::from_slice(&self.signature)?;
+        announce.host.verify(&self.announce, &signature)?;
+        Ok(announce)
+    }
 }
 
 ///
@@ -83,6 +112,11 @@ pub struct QueryResponse {
     /// If there are any addrs, they are as seen from the tracker,
     /// so they might or might not be useful.
     pub hosts: Vec<NodeId>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryResponse2 {
+    pub announces: Vec<SignedAnnounce>,
 }
 
 /// A request to the tracker.

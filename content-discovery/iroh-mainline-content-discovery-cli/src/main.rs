@@ -3,6 +3,7 @@ pub mod args;
 use std::{
     collections::BTreeSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::Context;
@@ -86,10 +87,15 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     } else {
         AnnounceKind::Complete
     };
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
     let announce = Announce {
         host,
         kind,
         content,
+        timestamp,
     };
     iroh_mainline_content_discovery::announce(connection, announce).await?;
     println!("done");
