@@ -8,12 +8,12 @@ use std::{
 
 use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
 use iroh_bytes::HashAndFormat;
-use iroh_net::{MagicEndpoint, NodeId};
+use iroh_net::{key::SecretKey, MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use mainline::common::{GetPeerResponse, StoreQueryMetdata};
 
 use crate::protocol::{
-    Announce, Query, QueryResponse, Request, Response, ALPN, REQUEST_SIZE_LIMIT,
+    Announce, Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
 };
 
 /// Announce to a tracker.
@@ -24,10 +24,15 @@ use crate::protocol::{
 /// `tracker` is the node id of the tracker to announce to. It must understand the [TRACKER_ALPN] protocol.
 /// `content` is the content to announce.
 /// `kind` is the kind of the announcement. We can claim to have the complete data or only some of it.
-pub async fn announce(connection: quinn::Connection, args: Announce) -> anyhow::Result<()> {
+pub async fn announce(
+    connection: quinn::Connection,
+    args: Announce,
+    secret_key: &SecretKey,
+) -> anyhow::Result<()> {
     let (mut send, mut recv) = connection.open_bi().await?;
     tracing::debug!("opened bi stream");
-    let request = Request::Announce(args);
+    let signed_announce = SignedAnnounce::new(args, secret_key)?;
+    let request = Request::Announce(signed_announce);
     let request = postcard::to_stdvec(&request)?;
     tracing::debug!("sending announce");
     send.write_all(&request).await?;
@@ -65,7 +70,7 @@ async fn query_socket_one(
     endpoint: impl QuinnConnectionProvider<SocketAddr>,
     addr: SocketAddr,
     args: Query,
-) -> anyhow::Result<Vec<NodeId>> {
+) -> anyhow::Result<Vec<SignedAnnounce>> {
     let connection = endpoint.connect(addr).await?;
     let result = query(connection, args).await?;
     Ok(result.hosts)
@@ -75,7 +80,7 @@ async fn query_magic_one(
     endpoint: MagicEndpoint,
     node_id: &NodeId,
     args: Query,
-) -> anyhow::Result<Vec<NodeId>> {
+) -> anyhow::Result<Vec<SignedAnnounce>> {
     let connection = endpoint.connect_by_node_id(node_id, ALPN).await?;
     let result = query(connection, args).await?;
     Ok(result.hosts)
@@ -101,7 +106,7 @@ pub fn query_trackers(
     trackers: impl IntoIterator<Item = NodeId>,
     args: Query,
     query_parallelism: usize,
-) -> impl Stream<Item = anyhow::Result<NodeId>> {
+) -> impl Stream<Item = anyhow::Result<SignedAnnounce>> {
     futures::stream::iter(trackers)
         .map(move |tracker| {
             let endpoint = endpoint.clone();
@@ -123,7 +128,7 @@ pub fn query_dht(
     dht: mainline::dht::Dht,
     args: Query,
     query_parallelism: usize,
-) -> impl Stream<Item = anyhow::Result<NodeId>> {
+) -> impl Stream<Item = anyhow::Result<SignedAnnounce>> {
     let dht = dht.as_async();
     let info_hash = to_infohash(args.content);
     let response: mainline::common::Response<GetPeerResponse> = dht.get_peers(info_hash);

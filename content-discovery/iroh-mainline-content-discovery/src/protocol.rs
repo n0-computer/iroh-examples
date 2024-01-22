@@ -2,7 +2,6 @@
 use iroh_bytes::HashAndFormat;
 use iroh_net::NodeId;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
 
 /// The ALPN string for this protocol
 pub const ALPN: &[u8] = b"n0/tracker/1";
@@ -36,8 +35,8 @@ impl AnnounceKind {
 pub struct Announce {
     /// The peer that supposedly has the data.
     pub host: NodeId,
-    /// The blobs or sets that the peer claims to have.
-    pub content: BTreeSet<HashAndFormat>,
+    /// The content that the peer claims to have.
+    pub content: HashAndFormat,
     /// The kind of the announcement.
     pub kind: AnnounceKind,
     /// The timestamp of the announce.
@@ -49,7 +48,7 @@ pub struct Announce {
 pub struct SignedAnnounce {
     /// Postcard-encoded announce
     pub announce: Vec<u8>,
-    /// Signature of the announce
+    /// Signature of the announce, signed by the host of the announce.
     pub signature: Vec<u8>,
 }
 
@@ -105,25 +104,18 @@ pub struct Query {
 /// A response to a query.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryResponse {
-    /// The content that was queried.
-    pub content: HashAndFormat,
     /// The hosts that supposedly have the content.
     ///
     /// If there are any addrs, they are as seen from the tracker,
     /// so they might or might not be useful.
-    pub hosts: Vec<NodeId>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueryResponse2 {
-    pub announces: Vec<SignedAnnounce>,
+    pub hosts: Vec<SignedAnnounce>,
 }
 
 /// A request to the tracker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
     /// Announce info
-    Announce(Announce),
+    Announce(SignedAnnounce),
     /// Query info
     Query(Query),
 }

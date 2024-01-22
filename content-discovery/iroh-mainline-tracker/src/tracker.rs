@@ -16,7 +16,7 @@ use iroh_bytes::{
 use iroh_mainline_content_discovery::{
     announce_dht,
     protocol::{
-        Announce, AnnounceKind, Query, QueryResponse, Request, Response, REQUEST_SIZE_LIMIT,
+        AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce, REQUEST_SIZE_LIMIT,
     },
 };
 use iroh_net::{
@@ -62,10 +62,13 @@ impl State {
     fn get_persisted_announce_data(&self) -> AnnounceData {
         let mut data: AnnounceData = Default::default();
         for (content, by_kind_and_peers) in self.announce_data.iter() {
-            let mut peers = BTreeMap::<AnnounceKind, BTreeSet<NodeId>>::new();
+            let mut peers = BTreeMap::<AnnounceKind, BTreeMap<NodeId, SignedAnnounce>>::new();
             for (kind, by_peer) in by_kind_and_peers {
-                for peer in by_peer.keys() {
-                    peers.entry(*kind).or_default().insert(*peer);
+                for (peer, peer_info) in by_peer {
+                    peers
+                        .entry(*kind)
+                        .or_default()
+                        .insert(*peer, peer_info.announce.clone());
                 }
             }
             data.0.insert(*content, peers);
@@ -98,12 +101,14 @@ impl From<ProbeKind> for AnnounceKind {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct PeerInfo {
     /// The last time the peer was announced by itself or another peer.
     last_announced: Option<Instant>,
     /// last time the peer was randomly probed for the data and answered.
     last_probed: Option<Instant>,
+    /// The signed announce from the peer.
+    announce: SignedAnnounce,
 }
 
 impl Tracker {
@@ -120,13 +125,17 @@ impl Tracker {
         let now = Instant::now();
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
-                for peer in peers {
+                for (peer, announce) in peers {
                     let by_kind_and_peer = state.announce_data.entry(content).or_default();
                     let peer_info = by_kind_and_peer
                         .entry(kind)
                         .or_default()
                         .entry(peer)
-                        .or_default();
+                        .or_insert(PeerInfo {
+                            last_announced: None,
+                            last_probed: None,
+                            announce,
+                        });
                     // set the last announced time to now on startup, otherwise
                     // it would be considered too old
                     peer_info.last_announced = Some(now);
@@ -377,18 +386,25 @@ impl Tracker {
         Ok(stats)
     }
 
-    fn handle_announce(&self, announce: Announce) -> anyhow::Result<()> {
+    fn handle_announce(&self, signed_announce: SignedAnnounce) -> anyhow::Result<()> {
+        tracing::info!("got announce");
+        let announce = signed_announce.verify()?;
+        tracing::info!("verified announce: {:?}", announce);
         let mut state = self.0.state.write().unwrap();
-        for content in announce.content {
-            let entry = state.announce_data.entry(content).or_default();
-            let peer_info = entry
-                .entry(announce.kind)
-                .or_default()
-                .entry(announce.host)
-                .or_default();
-            let now = Instant::now();
-            peer_info.last_announced = Some(now);
-        }
+        let content = announce.content;
+        let entry = state.announce_data.entry(content).or_default();
+        let peer_info = entry
+            .entry(announce.kind)
+            .or_default()
+            .entry(announce.host)
+            .or_insert(PeerInfo {
+                last_announced: None,
+                last_probed: None,
+                announce: signed_announce.clone(),
+            });
+        let now = Instant::now();
+        peer_info.announce = signed_announce.clone();
+        peer_info.last_announced = Some(now);
         if let Some(path) = &self.0.options.announce_data_path {
             let data = state.get_persisted_announce_data();
             drop(state);
@@ -405,7 +421,7 @@ impl Tracker {
         let mut peers = vec![];
         if let Some(by_kind_and_peer) = entry {
             if let Some(entry) = by_kind_and_peer.get(&kind) {
-                for (peer_id, peer_info) in entry {
+                for peer_info in entry.values() {
                     let recently_announced = peer_info
                         .last_announced
                         .map(|t| t.elapsed() <= options.announce_timeout)
@@ -424,16 +440,13 @@ impl Tracker {
                         tracing::error!("verification of complete data is too old");
                         continue;
                     }
-                    peers.push(*peer_id);
+                    peers.push(peer_info.announce.clone());
                 }
             }
         } else {
             tracing::error!("no peers for content");
         }
-        Ok(QueryResponse {
-            content: query.content,
-            hosts: peers,
-        })
+        Ok(QueryResponse { hosts: peers })
     }
 
     /// Get the content that is supposedly available, grouped by peers
@@ -463,12 +476,13 @@ impl Tracker {
             for (content, announce_kind, result) in probes {
                 if result.is_ok() {
                     let state_for_content = state.announce_data.entry(content).or_default();
-                    let peer_info = state_for_content
+                    if let Some(peer_info) = state_for_content
                         .entry(announce_kind)
                         .or_default()
-                        .entry(peer)
-                        .or_default();
-                    peer_info.last_probed = Some(now);
+                        .get_mut(&peer)
+                    {
+                        peer_info.last_probed = Some(now);
+                    }
                 }
             }
         }
