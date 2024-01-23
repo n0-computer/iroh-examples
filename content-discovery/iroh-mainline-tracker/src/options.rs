@@ -34,8 +34,11 @@ pub struct Options {
     // can use either toml, json or postcard
     pub announce_data_path: Option<PathBuf>,
 
+    // binary database for announce data
+    pub announce_data_path_2: PathBuf,
+
     /// Interval between DHT announces.
-    /// 
+    ///
     /// The tracker will announce itself to the DHT for each hash it knows about
     /// every `dht_announce_interval` seconds. Setting this to a very low value
     /// risks getting throttled by the DHT.
@@ -61,6 +64,7 @@ impl Default for Options {
             dial_log: Some("dial.log".into()),
             probe_log: Some("probe.log".into()),
             announce_data_path: Some("announce.data.toml".into()),
+            announce_data_path_2: "announce.db".into(),
             dht_announce_interval: Duration::from_secs(10),
             quinn_port: 0,
             magic_port: 0,

@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::{Arc, Mutex}};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+};
 
 use derive_more::Debug;
 use iroh_net::util::AbortingJoinHandle;
@@ -24,13 +27,13 @@ impl<T: Ord + Debug> Default for TaskMap<T> {
 
 #[derive(Debug)]
 struct Inner<T: Ord> {
-    tasks: Mutex<BTreeMap<T, AbortingJoinHandle<()>>>
+    tasks: Mutex<BTreeMap<T, AbortingJoinHandle<()>>>,
 }
 
 impl<T: Ord + Debug> Default for Inner<T> {
     fn default() -> Self {
         Self {
-            tasks: Default::default()
+            tasks: Default::default(),
         }
     }
 }

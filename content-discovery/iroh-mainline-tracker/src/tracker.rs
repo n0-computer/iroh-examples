@@ -16,18 +16,24 @@ use iroh_mainline_content_discovery::{
     protocol::{
         AbsoluteTime, AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce,
         REQUEST_SIZE_LIMIT,
-    }, to_infohash
+    },
+    to_infohash,
 };
 use iroh_net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
     MagicEndpoint, NodeId,
 };
 use rand::Rng;
+use redb::ReadableTable;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    io::{log_connection_attempt, log_probe_attempt, AnnounceData}, iroh_bytes_util::{
+    io::{log_connection_attempt, log_probe_attempt, AnnounceData},
+    iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
-    }, options::Options, task_map::TaskMap
+    },
+    options::Options,
+    task_map::TaskMap,
 };
 
 /// The tracker server.
@@ -52,8 +58,148 @@ struct Inner {
     /// The magic endpoint, which is used to accept incoming connections and to probe peers.
     magic_endpoint: MagicEndpoint,
     /// To spawn non-send futures.
-    tpc: tokio_util::task::LocalPoolHandle,
+    local_pool: tokio_util::task::LocalPoolHandle,
+    ///
+    announce_db: redb::Database,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct AnnouncePath {
+    hash: [u8; 32],
+    format: u8,
+    kind: u8,
+    node: [u8; 32],
+}
+
+impl AnnouncePath {
+    fn new(content: HashAndFormat, kind: AnnounceKind, node: NodeId) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: content.format as u8,
+            kind: kind as u8,
+            node: *node.as_bytes(),
+        }
+    }
+
+    fn content_min(content: HashAndFormat) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: 0,
+            kind: 0,
+            node: [0; 32],
+        }
+    }
+
+    fn content_max(content: HashAndFormat) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: 255,
+            kind: 255,
+            node: [255; 32],
+        }
+    }
+
+    fn content_and_kind_min(content: HashAndFormat, kind: AnnounceKind) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: content.format as u8,
+            kind: kind as u8,
+            node: [0; 32],
+        }
+    }
+
+    fn content_and_kind_max(content: HashAndFormat, kind: AnnounceKind) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: content.format as u8,
+            kind: kind as u8,
+            node: [255; 32],
+        }
+    }
+}
+
+impl redb::RedbValue for AnnouncePath {
+    type SelfType<'a> = Self;
+
+    type AsBytes<'a> = [u8; 66];
+
+    fn fixed_width() -> Option<usize> {
+        Some(66)
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        let mut hash = [0; 32];
+        hash.copy_from_slice(&data[0..32]);
+        let format = data[32];
+        let kind = data[33];
+        let mut node = [0; 32];
+        node.copy_from_slice(&data[34..66]);
+        Self {
+            hash,
+            format,
+            kind,
+            node,
+        }
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'a,
+        Self: 'b,
+    {
+        let mut res = [0; 66];
+        res[0..32].copy_from_slice(&value.hash);
+        res[32] = value.format;
+        res[33] = value.kind;
+        res[34..66].copy_from_slice(&value.node);
+        res
+    }
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("AnnouncePath")
+    }
+}
+
+impl redb::RedbKey for AnnouncePath {
+    fn compare(data1: &[u8], data2: &[u8]) -> std::cmp::Ordering {
+        data1.cmp(data2)
+    }
+}
+
+impl redb::RedbValue for PeerInfo {
+    type SelfType<'a> = Self;
+
+    type AsBytes<'a> = Vec<u8>;
+
+    fn fixed_width() -> Option<usize> {
+        None
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        postcard::from_bytes(data).unwrap()
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'a,
+        Self: 'b,
+    {
+        postcard::to_stdvec(value).unwrap()
+    }
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("PeerInfo")
+    }
+}
+
+const ANNONCE_TABLE_V0: redb::TableDefinition<AnnouncePath, PeerInfo> =
+    redb::TableDefinition::new("announces_v0");
 
 /// The mutable state of the tracker server.
 #[derive(Debug, Clone, Default)]
@@ -110,7 +256,7 @@ impl From<ProbeKind> for AnnounceKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct PeerInfo {
     /// The signed announce from the peer.
     signed_announce: SignedAnnounce,
@@ -143,6 +289,8 @@ impl Tracker {
         } else {
             Default::default()
         };
+        let announce_db = redb::Database::open(&options.announce_data_path_2)?;
+
         let mut state = State::default();
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
@@ -175,8 +323,9 @@ impl Tracker {
             options,
             announce_tasks: Default::default(),
             probe_tasks: Default::default(),
+            announce_db,
             magic_endpoint,
-            tpc,
+            local_pool: tpc,
             dht,
         }));
         // spawn independent announce tasks for each content item
@@ -192,25 +341,22 @@ impl Tracker {
     fn setup_probe_task(&self, node: NodeId) {
         let this = self.clone();
         // announce task only captures this, an Arc, and the content.
-        let task = self.0.tpc.spawn_pinned(move || async move {
+        let task = self.0.local_pool.spawn_pinned(move || async move {
             loop {
                 let content_for_node = this.get_content_for_node(node);
                 let now = AbsoluteTime::now();
                 let res = this.probe_one(node, content_for_node).await;
                 match res {
-                    Ok(x) => {
+                    Ok(results) => {
                         tracing::info!("probed {node}, applying result");
-                        this.apply_result(
-                            [(node, x)]
-                                .into_iter()
-                                .collect::<BTreeMap<_, _>>(),
-                            now,
-                        );
+                        if let Err(cause) = this.apply_result(node, results, now) {
+                            tracing::error!("error applying result: {}", cause);
+                        }
                     }
                     Err(cause) => {
                         tracing::warn!("error probing {node}: {cause}");
                     }
-                } 
+                }
                 tokio::time::sleep(this.0.options.probe_interval).await;
             }
         });
@@ -223,7 +369,11 @@ impl Tracker {
         let task = tokio::spawn(async move {
             let info_hash = to_infohash(content);
             loop {
-                let res = this.0.dht.announce_peer(info_hash, Some(this.0.options.quinn_port)).await;
+                let res = this
+                    .0
+                    .dht
+                    .announce_peer(info_hash, Some(this.0.options.quinn_port))
+                    .await;
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
@@ -434,12 +584,30 @@ impl Tracker {
         let content = signed_announce.content;
         let mut new_content = false;
         let mut new_host = false;
+        let tx = self.0.announce_db.begin_write()?;
+        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let path = AnnouncePath::new(content, signed_announce.kind, signed_announce.host);
+        let new_content_2 = table
+            .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
+            .next()
+            .transpose()?
+            .is_none();
+        let prev = table.get(path)?.map(|x| x.value());
+        let new_host_2 = !prev.is_none();
+        let curr = PeerInfo {
+            signed_announce,
+            last_probed: prev.and_then(|x| x.last_probed),
+        };
+        table.insert(
+            AnnouncePath::new(content, signed_announce.kind, signed_announce.host),
+            curr,
+        )?;
+        drop(table);
+        tx.commit()?;
         let entry = state.announce_data.entry(content).or_insert_with(|| {
             new_content = true;
             Default::default()
         });
-        // set up a probe task for node in any case
-        self.setup_probe_task(signed_announce.host);
         let peer_info = entry
             .entry(signed_announce.kind)
             .or_default()
@@ -507,8 +675,7 @@ impl Tracker {
         for (content, by_kind_and_node) in state.announce_data.iter() {
             for (kind, by_node) in by_kind_and_node {
                 if let Some(_info) = by_node.get(&node) {
-                    content_for_node
-                        .insert(*kind, *content);
+                    content_for_node.insert(*kind, *content);
                 }
             }
         }
@@ -517,24 +684,38 @@ impl Tracker {
 
     fn apply_result(
         &self,
-        results: BTreeMap<NodeId, Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>>,
+        node: NodeId,
+        results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
         now: AbsoluteTime,
-    ) {
+    ) -> anyhow::Result<()> {
         let mut state = self.0.state.write().unwrap();
-        for (peer, probes) in results {
-            for (content, announce_kind, result) in probes {
-                if result.is_ok() {
-                    let state_for_content = state.announce_data.entry(content).or_default();
-                    if let Some(peer_info) = state_for_content
-                        .entry(announce_kind)
-                        .or_default()
-                        .get_mut(&peer)
-                    {
-                        peer_info.last_probed = Some(now);
-                    }
+        let tx = self.0.announce_db.begin_write()?;
+        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
+        for (content, announce_kind, result) in &results {
+            if result.is_ok() {
+                let path = AnnouncePath::new(*content, *announce_kind, node);
+                let peer_info_opt = table.get(&path)?.map(|x| x.value());
+                if let Some(mut peer_info) = peer_info_opt {
+                    peer_info.last_probed = Some(now);
+                    table.insert(path, peer_info)?;
                 }
             }
         }
+        drop(table);
+        tx.commit()?;
+        for (content, announce_kind, result) in results {
+            if result.is_ok() {
+                let state_for_content = state.announce_data.entry(content).or_default();
+                if let Some(peer_info) = state_for_content
+                    .entry(announce_kind)
+                    .or_default()
+                    .get_mut(&node)
+                {
+                    peer_info.last_probed = Some(now);
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Execute probes for a single peer.
@@ -545,11 +726,11 @@ impl Tracker {
         &self,
         host: NodeId,
         by_kind_and_content: BTreeMap<AnnounceKind, HashAndFormat>,
-    ) -> anyhow::Result<
-        Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
-    > {
+    ) -> anyhow::Result<Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>> {
         let t0 = Instant::now();
-        let res = self.0.magic_endpoint
+        let res = self
+            .0
+            .magic_endpoint
             .connect_by_node_id(&host, iroh_bytes::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
