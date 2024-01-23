@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-mainline-content-discovery"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "futures",
@@ -1645,7 +1645,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-mainline-content-discovery-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1664,7 +1664,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-mainline-tracker"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bao-tree",
