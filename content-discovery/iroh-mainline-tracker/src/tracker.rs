@@ -81,6 +81,25 @@ impl AnnouncePath {
         }
     }
 
+    fn content(&self) -> HashAndFormat {
+        HashAndFormat {
+            hash: Hash::from_bytes(self.hash),
+            format: if self.format == 0 {
+                BlobFormat::Raw
+            } else {
+                BlobFormat::HashSeq
+            },
+        }
+    }
+
+    fn announce_kind(&self) -> AnnounceKind {
+        if self.kind == 0 {
+            AnnounceKind::Partial
+        } else {
+            AnnounceKind::Complete
+        }
+    }
+
     fn content_min(content: HashAndFormat) -> Self {
         Self {
             hash: *content.hash.as_bytes(),
@@ -289,7 +308,25 @@ impl Tracker {
         } else {
             Default::default()
         };
-        let announce_db = redb::Database::open(&options.announce_data_path_2)?;
+        let announce_db = redb::Database::create(&options.announce_data_path_2)?;
+        let tx = announce_db.begin_write()?;
+        {
+            let _table = tx.open_table(ANNONCE_TABLE_V0)?;
+        }
+        tx.commit()?;
+        let tx = announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let mut distinct_content_2 = Vec::new();
+        let mut distinct_nodes_2 = BTreeSet::new();
+        for entry in table.iter()? {
+            let (path, peer_info) = entry?;
+            let path = path.value();
+            let peer_info = peer_info.value();
+            distinct_content_2.push(path.content());
+            distinct_nodes_2.insert(peer_info.signed_announce.host);
+        }
+        drop(table);
+        drop(tx);
 
         let mut state = State::default();
         for (content, peers_by_kind) in announce_data.0 {

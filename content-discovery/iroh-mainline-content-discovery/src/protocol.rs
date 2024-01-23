@@ -18,7 +18,7 @@ pub const REQUEST_SIZE_LIMIT: usize = 1024 * 16;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AnnounceKind {
     /// The peer supposedly has some of the data.
-    Partial,
+    Partial = 0,
     /// The peer supposedly has the complete data.
     Complete,
 }

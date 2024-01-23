@@ -84,6 +84,7 @@ impl Options {
         if let Some(path) = &mut self.announce_data_path {
             *path = base.join(&path);
         }
+        self.announce_data_path_2 = base.join(&self.announce_data_path_2);
     }
 }
 mod serde_duration {
