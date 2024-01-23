@@ -6,7 +6,6 @@ use std::{
 };
 
 use bao_tree::{ByteNum, ChunkNum};
-use futures::StreamExt;
 use iroh_bytes::{
     get::{fsm::EndBlobNext, Stats},
     hashseq::HashSeq,
@@ -14,11 +13,10 @@ use iroh_bytes::{
     BlobFormat, Hash, HashAndFormat,
 };
 use iroh_mainline_content_discovery::{
-    announce_dht,
     protocol::{
         AbsoluteTime, AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce,
         REQUEST_SIZE_LIMIT,
-    },
+    }, to_infohash
 };
 use iroh_net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
@@ -27,24 +25,34 @@ use iroh_net::{
 use rand::Rng;
 
 use crate::{
-    io::{log_connection_attempt, log_probe_attempt, AnnounceData},
-    iroh_bytes_util::{
+    io::{log_connection_attempt, log_probe_attempt, AnnounceData}, iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
-    },
-    options::Options,
+    }, options::Options, task_map::TaskMap
 };
 
 /// The tracker server.
 ///
 /// This is a cheaply cloneable handle to the state and the options.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Tracker(Arc<Inner>);
 
 /// The inner state of the tracker server. Options are immutable and don't need to be locked.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Inner {
     state: RwLock<State>,
+    /// The options for the tracker server.
     options: Options,
+    /// Tasks that announce to the DHT. There is one task per content item, just to inform the DHT
+    /// that we know about the content.
+    announce_tasks: TaskMap<HashAndFormat>,
+    /// Tasks that probe nodes. There is one task per node, and it probes all content items for that peer.
+    probe_tasks: TaskMap<NodeId>,
+    /// A handle to the DHT client, which is used to announce to the DHT.
+    dht: Arc<mainline::async_dht::AsyncDht>,
+    /// The magic endpoint, which is used to accept incoming connections and to probe peers.
+    magic_endpoint: MagicEndpoint,
+    /// To spawn non-send futures.
+    tpc: tokio_util::task::LocalPoolHandle,
 }
 
 /// The mutable state of the tracker server.
@@ -129,7 +137,7 @@ impl Tracker {
     /// Create a new tracker server.
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
-    pub fn new(options: Options) -> anyhow::Result<Self> {
+    pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
         let announce_data = if let Some(data_path) = &options.announce_data_path {
             crate::io::load_from_file::<AnnounceData>(data_path)?
         } else {
@@ -139,62 +147,83 @@ impl Tracker {
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
                 for (peer, signed_announce) in peers {
-                    signed_announce.verify()?;
+                    if let Err(cause) = signed_announce.verify() {
+                        tracing::error!("invalid signed announce for peer {}: {}", peer, cause);
+                        continue;
+                    }
                     let by_kind_and_peer = state.announce_data.entry(content).or_default();
                     by_kind_and_peer
                         .entry(kind)
                         .or_default()
                         .entry(peer)
-                        .or_insert(PeerInfo {
-                            signed_announce,
-                            last_probed: None,
-                        });
+                        .or_insert(PeerInfo::from(signed_announce));
                 }
             }
         }
-        Ok(Self(Arc::new(Inner {
+        let dht = Arc::new(mainline::Dht::default().as_async());
+        let distinct_content = state.announce_data.keys().copied().collect::<Vec<_>>();
+        let distinct_nodes = state
+            .announce_data
+            .values()
+            .flat_map(|by_kind_and_peer| by_kind_and_peer.values())
+            .flat_map(|x| x.values())
+            .map(|x| x.signed_announce.host)
+            .collect::<BTreeSet<_>>();
+        let tpc = tokio_util::task::LocalPoolHandle::new(1);
+        let res = Self(Arc::new(Inner {
             state: RwLock::new(state),
             options,
-        })))
-    }
-
-    /// The main loop that probes peers.
-    pub async fn probe_loop(self, endpoint: MagicEndpoint) -> anyhow::Result<()> {
-        loop {
-            let content_by_peers = self.get_content_by_peers();
-            let now = AbsoluteTime::now();
-            let results = futures::stream::iter(content_by_peers.into_iter())
-                .map(|(peer, by_kind_and_content)| {
-                    let endpoint = endpoint.clone();
-                    let this = self.clone();
-                    this.probe_one(endpoint, peer, by_kind_and_content)
-                })
-                .buffer_unordered(self.0.options.probe_parallelism)
-                .collect::<Vec<_>>()
-                .await;
-            let results = results
-                .into_iter()
-                .filter_map(|x| x.ok())
-                .collect::<BTreeMap<_, _>>();
-            self.apply_result(results, now);
-            tokio::time::sleep(self.0.options.probe_interval).await;
+            announce_tasks: Default::default(),
+            probe_tasks: Default::default(),
+            magic_endpoint,
+            tpc,
+            dht,
+        }));
+        // spawn independent announce tasks for each content item
+        for content in distinct_content {
+            res.setup_dht_announce_task(content);
         }
+        for node in distinct_nodes {
+            res.setup_probe_task(node);
+        }
+        Ok(res)
     }
 
-    pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
-        let dht = mainline::Dht::default();
-        loop {
-            let content: BTreeSet<HashAndFormat> = {
-                let state = self.0.state.read().unwrap();
-                state.announce_data.keys().copied().collect()
-            };
-            let mut announce = announce_dht(
-                dht.clone(),
-                content,
-                port,
-                self.0.options.dht_announce_parallelism,
-            );
-            while let Some((content, res)) = announce.next().await {
+    fn setup_probe_task(&self, node: NodeId) {
+        let this = self.clone();
+        // announce task only captures this, an Arc, and the content.
+        let task = self.0.tpc.spawn_pinned(move || async move {
+            loop {
+                let content_for_node = this.get_content_for_node(node);
+                let now = AbsoluteTime::now();
+                let res = this.probe_one(node, content_for_node).await;
+                match res {
+                    Ok(x) => {
+                        tracing::info!("probed {node}, applying result");
+                        this.apply_result(
+                            [(node, x)]
+                                .into_iter()
+                                .collect::<BTreeMap<_, _>>(),
+                            now,
+                        );
+                    }
+                    Err(cause) => {
+                        tracing::warn!("error probing {node}: {cause}");
+                    }
+                } 
+                tokio::time::sleep(this.0.options.probe_interval).await;
+            }
+        });
+        self.0.probe_tasks.publish(node, task);
+    }
+
+    fn setup_dht_announce_task(&self, content: HashAndFormat) {
+        let this = self.clone();
+        // announce task only captures this, an Arc, and the content.
+        let task = tokio::spawn(async move {
+            let info_hash = to_infohash(content);
+            loop {
+                let res = this.0.dht.announce_peer(info_hash, Some(this.0.options.quinn_port)).await;
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
@@ -212,9 +241,10 @@ impl Tracker {
                         tracing::warn!("error announcing: {}", cause);
                     }
                 }
+                tokio::time::sleep(this.0.options.dht_announce_interval).await;
             }
-            tokio::time::sleep(self.0.options.dht_announce_interval).await;
-        }
+        });
+        self.0.announce_tasks.publish(content, task);
     }
 
     pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
@@ -402,13 +432,31 @@ impl Tracker {
         tracing::info!("verified announce: {:?}", signed_announce);
         let mut state = self.0.state.write().unwrap();
         let content = signed_announce.content;
-        let entry = state.announce_data.entry(content).or_default();
+        let mut new_content = false;
+        let mut new_host = false;
+        let entry = state.announce_data.entry(content).or_insert_with(|| {
+            new_content = true;
+            Default::default()
+        });
+        // set up a probe task for node in any case
+        self.setup_probe_task(signed_announce.host);
         let peer_info = entry
             .entry(signed_announce.kind)
             .or_default()
             .entry(signed_announce.host)
-            .or_insert(PeerInfo::from(signed_announce));
+            .or_insert_with(|| {
+                new_host = true;
+                PeerInfo::from(signed_announce)
+            });
         peer_info.signed_announce = signed_announce;
+        if new_content {
+            // if this is a new content, start announcing it to the DHT
+            self.setup_dht_announce_task(signed_announce.content);
+        }
+        if new_host {
+            // if this is a new host for this content, start probing it
+            self.setup_probe_task(signed_announce.host);
+        }
         if let Some(path) = &self.0.options.announce_data_path {
             let data = state.get_persisted_announce_data();
             drop(state);
@@ -453,20 +501,18 @@ impl Tracker {
     }
 
     /// Get the content that is supposedly available, grouped by peers
-    fn get_content_by_peers(&self) -> BTreeMap<NodeId, BTreeMap<AnnounceKind, HashAndFormat>> {
+    fn get_content_for_node(&self, node: NodeId) -> BTreeMap<AnnounceKind, HashAndFormat> {
         let state = self.0.state.read().unwrap();
-        let mut content_by_peers = BTreeMap::<NodeId, BTreeMap<AnnounceKind, HashAndFormat>>::new();
-        for (content, by_kind_and_peer) in state.announce_data.iter() {
-            for (kind, by_peer) in by_kind_and_peer {
-                for peer in by_peer.keys() {
-                    content_by_peers
-                        .entry(*peer)
-                        .or_default()
+        let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
+        for (content, by_kind_and_node) in state.announce_data.iter() {
+            for (kind, by_node) in by_kind_and_node {
+                if let Some(_info) = by_node.get(&node) {
+                    content_for_node
                         .insert(*kind, *content);
                 }
             }
         }
-        content_by_peers
+        content_for_node
     }
 
     fn apply_result(
@@ -496,16 +542,14 @@ impl Tracker {
     /// This will fail if the connection fails, or if local logging fails.
     /// Individual probes can fail, but the probe will continue.
     async fn probe_one(
-        self,
-        endpoint: MagicEndpoint,
+        &self,
         host: NodeId,
         by_kind_and_content: BTreeMap<AnnounceKind, HashAndFormat>,
-    ) -> anyhow::Result<(
-        NodeId,
+    ) -> anyhow::Result<
         Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
-    )> {
+    > {
         let t0 = Instant::now();
-        let res = endpoint
+        let res = self.0.magic_endpoint
             .connect_by_node_id(&host, iroh_bytes::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
@@ -534,7 +578,7 @@ impl Tracker {
             }
             results.push((content, announce_kind, res));
         }
-        anyhow::Ok((host, results))
+        anyhow::Ok(results)
     }
 }
 

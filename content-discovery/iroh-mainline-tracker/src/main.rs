@@ -26,7 +26,6 @@ use iroh_net::{
 };
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use tokio::io::AsyncWriteExt;
-use tokio_util::task::LocalPoolHandle;
 
 use crate::args::Args;
 
@@ -102,19 +101,30 @@ fn write_defaults() -> anyhow::Result<()> {
 
 async fn server(args: Args) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
-    let tpc = LocalPoolHandle::new(2);
     let home = tracker_home()?;
-    log!("tracker starting using {}", home.display());
-    let key_path = tracker_path(SERVER_KEY_FILE)?;
-    let key = load_secret_key(key_path).await?;
-    let endpoint = create_endpoint(key.clone(), args.magic_port, true).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
     let mut options = load_from_file::<Options>(&config_path)?;
     options.make_paths_relative(&home);
-    let db = Tracker::new(options)?;
-    await_derp_region(&endpoint).await?;
-    let addr = endpoint.my_addr().await?;
+    // override options with args
+    if let Some(quinn_port) = args.quinn_port {
+        options.quinn_port = quinn_port;
+    }
+    if let Some(magic_port) = args.magic_port {
+        options.magic_port = magic_port;
+    }
+    log!("tracker starting using {}", home.display());
+    let key_path = tracker_path(SERVER_KEY_FILE)?;
+    let key = load_secret_key(key_path).await?;
+    let server_config = configure_server(&key)?;
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
+    let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
+    // set the quinn port to the actual port we bound to so the DHT will announce it correctly
+    options.quinn_port = quinn_endpoint.local_addr()?.port();
+    let magic_endpoint = create_endpoint(key.clone(), options.magic_port, true).await?;
+    let db = Tracker::new(options, magic_endpoint.clone())?;
+    await_derp_region(&magic_endpoint).await?;
+    let addr = magic_endpoint.my_addr().await?;
     log!("listening on {:?}", addr);
     log!("tracker addr: {}\n", addr.node_id);
     log!("usage:");
@@ -124,16 +134,8 @@ async fn server(args: Args) -> anyhow::Result<()> {
         addr.node_id
     );
     let db2 = db.clone();
-    let db3 = db.clone();
-    let db4 = db.clone();
-    let endpoint2 = endpoint.clone();
-    let _probe_task = tpc.spawn_pinned(move || db2.probe_loop(endpoint2));
-    let _announce_task = tpc.spawn_pinned(move || db3.dht_announce_loop(args.quinn_port));
-    let magic_accept_task = tokio::spawn(db.magic_accept_loop(endpoint));
-    let server_config = configure_server(&key)?;
-    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, args.quinn_port));
-    let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
-    let quinn_accept_task = tokio::spawn(db4.quinn_accept_loop(quinn_endpoint));
+    let magic_accept_task = tokio::spawn(db.magic_accept_loop(magic_endpoint));
+    let quinn_accept_task = tokio::spawn(db2.quinn_accept_loop(quinn_endpoint));
     magic_accept_task.await??;
     quinn_accept_task.await??;
     Ok(())

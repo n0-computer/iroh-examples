@@ -20,7 +20,7 @@ humantime = "2.1.0"
 iroh-net = "0.12.0"
 iroh-bytes = "0.12.0"
 iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", default-features = false }
-mainline = "1.0.0"
+mainline = { version = "1.0.0", features = ["async"] }
 pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"] }
 quinn = "0.10"
