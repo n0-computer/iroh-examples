@@ -38,15 +38,6 @@ impl ContentArg {
             },
         }
     }
-
-    /// Get the host of the content. Only defined for tickets.
-    pub fn host(&self) -> Option<NodeId> {
-        match self {
-            ContentArg::Hash(_) => None,
-            ContentArg::HashAndFormat(_) => None,
-            ContentArg::Ticket(ticket) => Some(ticket.node_addr().node_id),
-        }
-    }
 }
 
 impl Display for ContentArg {
@@ -81,16 +72,12 @@ pub struct AnnounceArgs {
     #[clap(long)]
     pub tracker: NodeId,
 
-    /// The host to announce. Not needed if content is a ticket.
-    #[clap(long)]
-    pub host: Option<NodeId>,
-
     /// The content to announce.
     ///
     /// Content can be specified as a hash, a hash and format, or a ticket.
     /// If a hash is specified, the format is assumed to be raw.
     /// Unless a ticket is specified, the host must be specified.
-    pub content: Vec<ContentArg>,
+    pub content: ContentArg,
 
     /// Announce that the peer has only partial data.
     #[clap(long)]

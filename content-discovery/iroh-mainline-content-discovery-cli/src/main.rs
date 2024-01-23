@@ -1,8 +1,8 @@
 pub mod args;
 
 use std::{
-    collections::BTreeSet,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    str::FromStr,
 };
 
 use anyhow::Context;
@@ -11,7 +11,7 @@ use clap::Parser;
 use futures::StreamExt;
 use iroh_mainline_content_discovery::{
     create_quinn_client,
-    protocol::{Announce, AnnounceKind, Query, QueryFlags, ALPN},
+    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce, ALPN},
     to_infohash,
 };
 use iroh_net::{
@@ -54,31 +54,16 @@ pub async fn accept_conn(
 
 async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     // todo: uncomment once the connection problems are fixed
-    // for now, a random node id is more reliable.
-    // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
-    let key = iroh_net::key::SecretKey::generate();
-    let content = args.content.iter().map(|x| x.hash_and_format()).collect();
-    let host = if let Some(host) = args.host {
-        host
-    } else {
-        let hosts = args
-            .content
-            .iter()
-            .filter_map(|x| x.host())
-            .collect::<BTreeSet<_>>();
-        if hosts.len() != 1 {
-            anyhow::bail!(
-                "content for all tickets must be from the same host, unless a host is specified"
-            );
-        }
-        *hosts.iter().next().unwrap()
+    let Ok(key) = std::env::var("ANNOUNCE_SECRET") else {
+        eprintln!("ANNOUNCE_SECRET environment variable must be set to a valid secret key");
+        anyhow::bail!("ANNOUNCE_SECRET env var not set");
     };
-    println!("announcing to {}", args.tracker);
-    println!("host {} has", host);
-    for content in &content {
-        println!("    {}", content);
-    }
-    let endpoint = create_endpoint(key, args.magic_port.unwrap_or_default(), false).await?;
+    let Ok(key) = iroh_net::key::SecretKey::from_str(&key) else {
+        anyhow::bail!("ANNOUNCE_SECRET env var is not a valid secret key");
+    };
+    let content = args.content.hash_and_format();
+    println!("announcing to {}: {}", args.tracker, content);
+    let endpoint = create_endpoint(key.clone(), args.magic_port.unwrap_or_default(), false).await?;
     let connection = endpoint.connect_by_node_id(&args.tracker, ALPN).await?;
     println!("connected to {:?}", connection.remote_address());
     let kind = if args.partial {
@@ -86,12 +71,15 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     } else {
         AnnounceKind::Complete
     };
+    let timestamp = AbsoluteTime::now();
     let announce = Announce {
-        host,
+        host: key.public(),
         kind,
         content,
+        timestamp,
     };
-    iroh_mainline_content_discovery::announce(connection, announce).await?;
+    let signed_announce = SignedAnnounce::new(announce, &key)?;
+    iroh_mainline_content_discovery::announce(connection, signed_announce).await?;
     println!("done");
     Ok(())
 }
@@ -114,8 +102,12 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
         "querying tracker {} for content {}",
         args.tracker, args.content
     );
-    for peer in res.hosts {
-        println!("{}", peer);
+    for sa in res.hosts {
+        if sa.verify().is_ok() {
+            println!("{}: {:?}", sa.announce.host, sa.announce.kind);
+        } else {
+            println!("invalid announce");
+        }
     }
     Ok(())
 }
@@ -143,7 +135,13 @@ async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
     );
     while let Some(item) = stream.next().await {
         match item {
-            Ok(provider) => println!("found provider {}", provider),
+            Ok(announce) => {
+                if announce.verify().is_ok() {
+                    println!("found verified provider {}", announce.host);
+                } else {
+                    println!("found unverified provider");
+                }
+            }
             Err(e) => println!("error: {}", e),
         }
     }

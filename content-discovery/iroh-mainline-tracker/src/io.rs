@@ -1,6 +1,6 @@
 //! Anything related to local IO, including logging, file formats, and file locations.
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     env,
     io::Write,
     path::{Path, PathBuf},
@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::Context;
 use iroh_bytes::{get::Stats, HashAndFormat};
-use iroh_mainline_content_discovery::protocol::AnnounceKind;
+use iroh_mainline_content_discovery::protocol::{AnnounceKind, SignedAnnounce};
 use iroh_net::NodeId;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -26,7 +26,9 @@ pub const TRACKER_HOME_ENV_VAR: &str = "IROH_TRACKER_HOME";
 ///
 /// This should be easy to edit manually when serialized as json or toml.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct AnnounceData(pub BTreeMap<HashAndFormat, BTreeMap<AnnounceKind, BTreeSet<NodeId>>>);
+pub struct AnnounceData(
+    pub BTreeMap<HashAndFormat, BTreeMap<AnnounceKind, BTreeMap<NodeId, SignedAnnounce>>>,
+);
 
 pub fn save_to_file(data: impl Serialize, path: &Path) -> anyhow::Result<()> {
     let data_dir = path.parent().context("non absolute data file")?;

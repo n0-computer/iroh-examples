@@ -1,8 +1,13 @@
 //! The protocol for communicating with the tracker.
+use std::{
+    ops::{Deref, Sub},
+    time::{Duration, SystemTime},
+};
+
 use iroh_bytes::HashAndFormat;
 use iroh_net::NodeId;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use serde_big_array::BigArray;
 
 /// The ALPN string for this protocol
 pub const ALPN: &[u8] = b"n0/tracker/1";
@@ -28,20 +33,98 @@ impl AnnounceKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct AbsoluteTime(u64);
+
+impl AbsoluteTime {
+    pub fn now() -> Self {
+        Self::try_from(SystemTime::now()).unwrap()
+    }
+}
+
+impl Sub for AbsoluteTime {
+    type Output = Duration;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Duration::from_micros(self.0 - rhs.0)
+    }
+}
+
+impl TryFrom<SystemTime> for AbsoluteTime {
+    type Error = anyhow::Error;
+
+    fn try_from(value: SystemTime) -> Result<Self, Self::Error> {
+        Ok(Self(
+            value
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_micros()
+                .try_into()
+                .expect("time too large"),
+        ))
+    }
+}
+
+impl From<AbsoluteTime> for SystemTime {
+    fn from(value: AbsoluteTime) -> Self {
+        std::time::UNIX_EPOCH + Duration::from_micros(value.0)
+    }
+}
+
 /// Announce that a peer claims to have some blobs or set of blobs.
 ///
 /// A peer can announce having some data, but it should also be able to announce
 /// that another peer has the data. This is why the peer is included.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Announce {
     /// The peer that supposedly has the data.
-    ///
-    /// Should we get this from the connection?
     pub host: NodeId,
-    /// The blobs or sets that the peer claims to have.
-    pub content: BTreeSet<HashAndFormat>,
+    /// The content that the peer claims to have.
+    pub content: HashAndFormat,
     /// The kind of the announcement.
     pub kind: AnnounceKind,
+    /// The timestamp of the announce.
+    pub timestamp: AbsoluteTime,
+}
+
+/// A signed announce.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct SignedAnnounce {
+    /// Announce.
+    pub announce: Announce,
+    /// Signature of the announce, signed by the host of the announce.
+    ///
+    /// The signature is over the announce, serialized with postcard.
+    #[serde(with = "BigArray")]
+    pub signature: [u8; 64],
+}
+
+impl Deref for SignedAnnounce {
+    type Target = Announce;
+
+    fn deref(&self) -> &Self::Target {
+        &self.announce
+    }
+}
+
+impl SignedAnnounce {
+    /// Create a new signed announce.
+    pub fn new(announce: Announce, secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<Self> {
+        let announce_bytes = postcard::to_allocvec(&announce)?;
+        let signature = secret_key.sign(&announce_bytes).to_bytes();
+        Ok(Self {
+            announce,
+            signature,
+        })
+    }
+
+    /// Verify the announce, and return the announce if it's valid.
+    pub fn verify(&self) -> anyhow::Result<()> {
+        let announce_bytes = postcard::to_allocvec(&self.announce)?;
+        let signature = iroh_net::key::Signature::from_bytes(&self.signature);
+        self.announce.host.verify(&announce_bytes, &signature)?;
+        Ok(())
+    }
 }
 
 ///
@@ -76,20 +159,18 @@ pub struct Query {
 /// A response to a query.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryResponse {
-    /// The content that was queried.
-    pub content: HashAndFormat,
     /// The hosts that supposedly have the content.
     ///
     /// If there are any addrs, they are as seen from the tracker,
     /// so they might or might not be useful.
-    pub hosts: Vec<NodeId>,
+    pub hosts: Vec<SignedAnnounce>,
 }
 
 /// A request to the tracker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
     /// Announce info
-    Announce(Announce),
+    Announce(SignedAnnounce),
     /// Query info
     Query(Query),
 }
