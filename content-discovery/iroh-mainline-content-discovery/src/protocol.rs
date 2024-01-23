@@ -1,4 +1,9 @@
 //! The protocol for communicating with the tracker.
+use std::{
+    ops::Sub,
+    time::{Duration, SystemTime},
+};
+
 use iroh_bytes::HashAndFormat;
 use iroh_net::NodeId;
 use serde::{Deserialize, Serialize};
@@ -27,6 +32,44 @@ impl AnnounceKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct AbsoluteTime(u64);
+
+impl AbsoluteTime {
+    pub fn now() -> Self {
+        Self::try_from(SystemTime::now()).unwrap()
+    }
+}
+
+impl Sub for AbsoluteTime {
+    type Output = Duration;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Duration::from_micros(self.0 - rhs.0)
+    }
+}
+
+impl TryFrom<SystemTime> for AbsoluteTime {
+    type Error = anyhow::Error;
+
+    fn try_from(value: SystemTime) -> Result<Self, Self::Error> {
+        Ok(Self(
+            value
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_micros()
+                .try_into()
+                .expect("time too large"),
+        ))
+    }
+}
+
+impl Into<SystemTime> for AbsoluteTime {
+    fn into(self) -> SystemTime {
+        SystemTime::UNIX_EPOCH + Duration::from_micros(self.0)
+    }
+}
+
 /// Announce that a peer claims to have some blobs or set of blobs.
 ///
 /// A peer can announce having some data, but it should also be able to announce
@@ -40,14 +83,14 @@ pub struct Announce {
     /// The kind of the announcement.
     pub kind: AnnounceKind,
     /// The timestamp of the announce.
-    pub timestamp: u64,
+    pub timestamp: AbsoluteTime,
 }
 
 /// A signed announce.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedAnnounce {
     /// Postcard-encoded announce
-    pub announce: Vec<u8>,
+    pub announce_bytes: Vec<u8>,
     /// Signature of the announce, signed by the host of the announce.
     pub signature: Vec<u8>,
 }
@@ -58,16 +101,20 @@ impl SignedAnnounce {
         let announce = postcard::to_allocvec(&announce)?;
         let signature = secret_key.sign(&announce).to_vec();
         Ok(Self {
-            announce,
+            announce_bytes: announce,
             signature,
         })
     }
 
+    pub fn announce(&self) -> anyhow::Result<Announce> {
+        Ok(postcard::from_bytes(&self.announce_bytes)?)
+    }
+
     /// Verify the announce, and return the announce if it's valid.
     pub fn verify(&self) -> anyhow::Result<Announce> {
-        let announce: Announce = postcard::from_bytes(&self.announce)?;
+        let announce = self.announce()?;
         let signature = iroh_net::key::Signature::from_slice(&self.signature)?;
-        announce.host.verify(&self.announce, &signature)?;
+        announce.host.verify(&self.announce_bytes, &signature)?;
         Ok(announce)
     }
 }

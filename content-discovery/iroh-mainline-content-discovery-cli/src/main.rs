@@ -3,7 +3,6 @@ pub mod args;
 use std::{
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::Context;
@@ -12,7 +11,7 @@ use clap::Parser;
 use futures::StreamExt;
 use iroh_mainline_content_discovery::{
     create_quinn_client,
-    protocol::{Announce, AnnounceKind, Query, QueryFlags, ALPN},
+    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, ALPN},
     to_infohash,
 };
 use iroh_net::{
@@ -72,10 +71,7 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     } else {
         AnnounceKind::Complete
     };
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs();
+    let timestamp = AbsoluteTime::now();
     let announce = Announce {
         host: key.public(),
         kind,

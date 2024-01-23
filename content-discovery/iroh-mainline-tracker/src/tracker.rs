@@ -2,7 +2,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::{Arc, RwLock},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::Instant,
 };
 
 use bao_tree::{ByteNum, ChunkNum};
@@ -16,7 +16,8 @@ use iroh_bytes::{
 use iroh_mainline_content_discovery::{
     announce_dht,
     protocol::{
-        AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce, REQUEST_SIZE_LIMIT,
+        AbsoluteTime, AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce,
+        REQUEST_SIZE_LIMIT,
     },
 };
 use iroh_net::{
@@ -68,7 +69,7 @@ impl State {
                     peers
                         .entry(*kind)
                         .or_default()
-                        .insert(*peer, peer_info.announce.clone());
+                        .insert(*peer, peer_info.signed_announce.clone());
                 }
             }
             data.0.insert(*content, peers);
@@ -103,12 +104,29 @@ impl From<ProbeKind> for AnnounceKind {
 
 #[derive(Debug, Clone)]
 struct PeerInfo {
-    /// The timestamp from the signed announce, as milliseconds since the unix epoch.
-    last_announced: u64,
-    /// last time the peer was randomly probed for the data and answered.
-    last_probed: Option<u64>,
     /// The signed announce from the peer.
-    announce: SignedAnnounce,
+    signed_announce: SignedAnnounce,
+    /// last time the peer was randomly probed for the data and answered.
+    last_probed: Option<AbsoluteTime>,
+}
+
+impl From<SignedAnnounce> for PeerInfo {
+    fn from(signed_announce: SignedAnnounce) -> Self {
+        Self {
+            signed_announce,
+            last_probed: None,
+        }
+    }
+}
+
+impl PeerInfo {
+    fn last_announced(&self) -> AbsoluteTime {
+        self.signed_announce
+            .announce()
+            .ok()
+            .map(|x| x.timestamp)
+            .unwrap_or_default()
+    }
 }
 
 impl Tracker {
@@ -125,16 +143,15 @@ impl Tracker {
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
                 for (peer, signed_announce) in peers {
-                    let announce = signed_announce.verify()?;
+                    let _announce = signed_announce.verify()?;
                     let by_kind_and_peer = state.announce_data.entry(content).or_default();
                     by_kind_and_peer
                         .entry(kind)
                         .or_default()
                         .entry(peer)
                         .or_insert(PeerInfo {
-                            last_announced: announce.timestamp,
+                            signed_announce,
                             last_probed: None,
-                            announce: signed_announce,
                         });
                 }
             }
@@ -149,10 +166,7 @@ impl Tracker {
     pub async fn probe_loop(self, endpoint: MagicEndpoint) -> anyhow::Result<()> {
         loop {
             let content_by_peers = self.get_content_by_peers();
-            let now = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+            let now = AbsoluteTime::now();
             let results = futures::stream::iter(content_by_peers.into_iter())
                 .map(|(peer, by_kind_and_content)| {
                     let endpoint = endpoint.clone();
@@ -397,13 +411,8 @@ impl Tracker {
             .entry(announce.kind)
             .or_default()
             .entry(announce.host)
-            .or_insert(PeerInfo {
-                last_probed: None,
-                announce: signed_announce.clone(),
-                last_announced: announce.timestamp,
-            });
-        peer_info.announce = signed_announce.clone();
-        peer_info.last_announced = announce.timestamp;
+            .or_insert(PeerInfo::from(signed_announce.clone()));
+        peer_info.signed_announce = signed_announce.clone();
         if let Some(path) = &self.0.options.announce_data_path {
             let data = state.get_persisted_announce_data();
             drop(state);
@@ -418,18 +427,15 @@ impl Tracker {
         let options = &self.0.options;
         let kind = AnnounceKind::from_complete(query.flags.complete);
         let mut peers = vec![];
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now = AbsoluteTime::now();
         if let Some(by_kind_and_peer) = entry {
             if let Some(entry) = by_kind_and_peer.get(&kind) {
                 for peer_info in entry.values() {
-                    let recently_announced = Duration::from_millis(now - peer_info.last_announced)
-                        <= options.announce_timeout;
+                    let recently_announced =
+                        now - peer_info.last_announced() <= options.announce_timeout;
                     let recently_probed = peer_info
                         .last_probed
-                        .map(|t| Duration::from_millis(now - t) <= options.probe_timeout)
+                        .map(|t| now - t <= options.probe_timeout)
                         .unwrap_or_default();
                     if !recently_announced {
                         // announce is too old
@@ -441,7 +447,7 @@ impl Tracker {
                         tracing::error!("verification of complete data is too old");
                         continue;
                     }
-                    peers.push(peer_info.announce.clone());
+                    peers.push(peer_info.signed_announce.clone());
                 }
             }
         } else {
@@ -470,7 +476,7 @@ impl Tracker {
     fn apply_result(
         &self,
         results: BTreeMap<NodeId, Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>>,
-        now: u64,
+        now: AbsoluteTime,
     ) {
         let mut state = self.0.state.write().unwrap();
         for (peer, probes) in results {
