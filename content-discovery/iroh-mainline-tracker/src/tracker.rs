@@ -28,7 +28,7 @@ use redb::ReadableTable;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    io::{log_connection_attempt, log_probe_attempt, AnnounceData},
+    io::{log_connection_attempt, log_probe_attempt},
     iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
     },
@@ -114,24 +114,6 @@ impl AnnouncePath {
             hash: *content.hash.as_bytes(),
             format: 255,
             kind: 255,
-            node: [255; 32],
-        }
-    }
-
-    fn content_and_kind_min(content: HashAndFormat, kind: AnnounceKind) -> Self {
-        Self {
-            hash: *content.hash.as_bytes(),
-            format: content.format as u8,
-            kind: kind as u8,
-            node: [0; 32],
-        }
-    }
-
-    fn content_and_kind_max(content: HashAndFormat, kind: AnnounceKind) -> Self {
-        Self {
-            hash: *content.hash.as_bytes(),
-            format: content.format as u8,
-            kind: kind as u8,
             node: [255; 32],
         }
     }
@@ -223,32 +205,10 @@ const ANNONCE_TABLE_V0: redb::TableDefinition<AnnouncePath, PeerInfo> =
 /// The mutable state of the tracker server.
 #[derive(Debug, Clone, Default)]
 struct State {
-    // every announce we ever got, indexed by hash, kind and peer
-    announce_data: BTreeMap<HashAndFormat, BTreeMap<AnnounceKind, BTreeMap<NodeId, PeerInfo>>>,
     // cache for verified sizes of hashes, used during probing
     sizes: BTreeMap<Hash, u64>,
     // cache for collections, used during collection probing
     collections: BTreeMap<Hash, (HashSeq, Arc<[u64]>)>,
-}
-
-impl State {
-    /// Get the part of the announce data that is persisted
-    fn get_persisted_announce_data(&self) -> AnnounceData {
-        let mut data: AnnounceData = Default::default();
-        for (content, by_kind_and_peers) in self.announce_data.iter() {
-            let mut peers = BTreeMap::<AnnounceKind, BTreeMap<NodeId, SignedAnnounce>>::new();
-            for (kind, by_peer) in by_kind_and_peers {
-                for (peer, peer_info) in by_peer {
-                    peers
-                        .entry(*kind)
-                        .or_default()
-                        .insert(*peer, peer_info.signed_announce);
-                }
-            }
-            data.0.insert(*content, peers);
-        }
-        data
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -303,12 +263,7 @@ impl Tracker {
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
     pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
-        let announce_data = if let Some(data_path) = &options.announce_data_path {
-            crate::io::load_from_file::<AnnounceData>(data_path)?
-        } else {
-            Default::default()
-        };
-        let announce_db = redb::Database::create(&options.announce_data_path_2)?;
+        let announce_db = redb::Database::create(&options.announce_data_path)?;
         let tx = announce_db.begin_write()?;
         {
             let _table = tx.open_table(ANNONCE_TABLE_V0)?;
@@ -316,44 +271,20 @@ impl Tracker {
         tx.commit()?;
         let tx = announce_db.begin_read()?;
         let table = tx.open_table(ANNONCE_TABLE_V0)?;
-        let mut distinct_content_2 = Vec::new();
-        let mut distinct_nodes_2 = BTreeSet::new();
+        let mut distinct_content = Vec::new();
+        let mut distinct_nodes = BTreeSet::new();
         for entry in table.iter()? {
             let (path, peer_info) = entry?;
             let path = path.value();
             let peer_info = peer_info.value();
-            distinct_content_2.push(path.content());
-            distinct_nodes_2.insert(peer_info.signed_announce.host);
+            distinct_content.push(path.content());
+            distinct_nodes.insert(peer_info.signed_announce.host);
         }
         drop(table);
         drop(tx);
 
-        let mut state = State::default();
-        for (content, peers_by_kind) in announce_data.0 {
-            for (kind, peers) in peers_by_kind {
-                for (peer, signed_announce) in peers {
-                    if let Err(cause) = signed_announce.verify() {
-                        tracing::error!("invalid signed announce for peer {}: {}", peer, cause);
-                        continue;
-                    }
-                    let by_kind_and_peer = state.announce_data.entry(content).or_default();
-                    by_kind_and_peer
-                        .entry(kind)
-                        .or_default()
-                        .entry(peer)
-                        .or_insert(PeerInfo::from(signed_announce));
-                }
-            }
-        }
+        let state = State::default();
         let dht = Arc::new(mainline::Dht::default().as_async());
-        let distinct_content = state.announce_data.keys().copied().collect::<Vec<_>>();
-        let distinct_nodes = state
-            .announce_data
-            .values()
-            .flat_map(|by_kind_and_peer| by_kind_and_peer.values())
-            .flat_map(|x| x.values())
-            .map(|x| x.signed_announce.host)
-            .collect::<BTreeSet<_>>();
         let tpc = tokio_util::task::LocalPoolHandle::new(1);
         let res = Self(Arc::new(Inner {
             state: RwLock::new(state),
@@ -380,18 +311,19 @@ impl Tracker {
         // announce task only captures this, an Arc, and the content.
         let task = self.0.local_pool.spawn_pinned(move || async move {
             loop {
-                let content_for_node = this.get_content_for_node(node);
-                let now = AbsoluteTime::now();
-                let res = this.probe_one(node, content_for_node).await;
-                match res {
-                    Ok(results) => {
-                        tracing::info!("probed {node}, applying result");
-                        if let Err(cause) = this.apply_result(node, results, now) {
-                            tracing::error!("error applying result: {}", cause);
+                if let Ok(content_for_node) = this.get_content_for_node(node) {
+                    let now = AbsoluteTime::now();
+                    let res = this.probe_one(node, content_for_node).await;
+                    match res {
+                        Ok(results) => {
+                            tracing::info!("probed {node}, applying result");
+                            if let Err(cause) = this.apply_result(node, results, now) {
+                                tracing::error!("error applying result: {}", cause);
+                            }
                         }
-                    }
-                    Err(cause) => {
-                        tracing::warn!("error probing {node}: {cause}");
+                        Err(cause) => {
+                            tracing::warn!("error probing {node}: {cause}");
+                        }
                     }
                 }
                 tokio::time::sleep(this.0.options.probe_interval).await;
@@ -617,20 +549,17 @@ impl Tracker {
         tracing::info!("got announce");
         signed_announce.verify()?;
         tracing::info!("verified announce: {:?}", signed_announce);
-        let mut state = self.0.state.write().unwrap();
         let content = signed_announce.content;
-        let mut new_content = false;
-        let mut new_host = false;
         let tx = self.0.announce_db.begin_write()?;
         let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
         let path = AnnouncePath::new(content, signed_announce.kind, signed_announce.host);
-        let new_content_2 = table
+        let new_content = table
             .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
             .next()
             .transpose()?
             .is_none();
         let prev = table.get(path)?.map(|x| x.value());
-        let new_host_2 = !prev.is_none();
+        let new_host = prev.is_none();
         let curr = PeerInfo {
             signed_announce,
             last_probed: prev.and_then(|x| x.last_probed),
@@ -641,19 +570,6 @@ impl Tracker {
         )?;
         drop(table);
         tx.commit()?;
-        let entry = state.announce_data.entry(content).or_insert_with(|| {
-            new_content = true;
-            Default::default()
-        });
-        let peer_info = entry
-            .entry(signed_announce.kind)
-            .or_default()
-            .entry(signed_announce.host)
-            .or_insert_with(|| {
-                new_host = true;
-                PeerInfo::from(signed_announce)
-            });
-        peer_info.signed_announce = signed_announce;
         if new_content {
             // if this is a new content, start announcing it to the DHT
             self.setup_dht_announce_task(signed_announce.content);
@@ -662,70 +578,76 @@ impl Tracker {
             // if this is a new host for this content, start probing it
             self.setup_probe_task(signed_announce.host);
         }
-        if let Some(path) = &self.0.options.announce_data_path {
-            let data = state.get_persisted_announce_data();
-            drop(state);
-            crate::io::save_to_file(data, path)?;
-        }
         Ok(())
     }
 
     fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
-        let state = self.0.state.read().unwrap();
-        let entry = state.announce_data.get(&query.content);
+        let tx = self.0.announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let iter = table.range(
+            AnnouncePath::content_min(query.content)..=AnnouncePath::content_max(query.content),
+        )?;
         let options = &self.0.options;
-        let kind = AnnounceKind::from_complete(query.flags.complete);
-        let mut peers = vec![];
         let now = AbsoluteTime::now();
-        if let Some(by_kind_and_peer) = entry {
-            if let Some(entry) = by_kind_and_peer.get(&kind) {
-                for peer_info in entry.values() {
-                    let recently_announced =
-                        now - peer_info.last_announced() <= options.announce_timeout;
-                    let recently_probed = peer_info
-                        .last_probed
-                        .map(|t| now - t <= options.probe_timeout)
-                        .unwrap_or_default();
-                    if !recently_announced {
-                        // announce is too old
-                        tracing::error!("announce is too old");
-                        continue;
-                    }
-                    if query.flags.verified && !recently_probed {
-                        // query asks for verificated hosts, but the last successful probe is too old
-                        tracing::error!("verification of complete data is too old");
-                        continue;
-                    }
-                    peers.push(peer_info.signed_announce);
-                }
+        let kind: AnnounceKind = AnnounceKind::from_complete(query.flags.complete);
+        let mut announces = Vec::new();
+        for entry in iter {
+            let (path, peer_info) = entry?;
+            let path = path.value();
+            let peer_info = peer_info.value();
+            if kind == AnnounceKind::Complete && path.announce_kind() == AnnounceKind::Partial {
+                // we only want complete announces
+                continue;
             }
-        } else {
-            tracing::error!("no peers for content");
+            let recently_announced = now - peer_info.last_announced() <= options.announce_timeout;
+            let recently_probed = peer_info
+                .last_probed
+                .map(|t| now - t <= options.probe_timeout)
+                .unwrap_or_default();
+            if !recently_announced {
+                // announce is too old
+                tracing::error!("announce is too old");
+                continue;
+            }
+            if query.flags.verified && !recently_probed {
+                // query asks for verificated hosts, but the last successful probe is too old
+                tracing::error!("verification of complete data is too old");
+                continue;
+            }
+            announces.push(peer_info.signed_announce);
         }
-        Ok(QueryResponse { hosts: peers })
+        Ok(QueryResponse { hosts: announces })
     }
 
     /// Get the content that is supposedly available, grouped by peers
-    fn get_content_for_node(&self, node: NodeId) -> BTreeMap<AnnounceKind, HashAndFormat> {
-        let state = self.0.state.read().unwrap();
+    ///
+    /// Todo: this is a full table scan, could be optimized.
+    fn get_content_for_node(
+        &self,
+        node: NodeId,
+    ) -> anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>> {
         let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
-        for (content, by_kind_and_node) in state.announce_data.iter() {
-            for (kind, by_node) in by_kind_and_node {
-                if let Some(_info) = by_node.get(&node) {
-                    content_for_node.insert(*kind, *content);
-                }
+        let tx = self.0.announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        for entry in table.iter()? {
+            let (path, peer_info) = entry.unwrap();
+            let path = path.value();
+            let peer_info = peer_info.value();
+            if peer_info.signed_announce.host != node {
+                continue;
             }
+            content_for_node.insert(path.announce_kind(), path.content());
         }
-        content_for_node
+        Ok(content_for_node)
     }
 
+    /// Apply the results of a probe to the database.
     fn apply_result(
         &self,
         node: NodeId,
         results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
         now: AbsoluteTime,
     ) -> anyhow::Result<()> {
-        let mut state = self.0.state.write().unwrap();
         let tx = self.0.announce_db.begin_write()?;
         let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
         for (content, announce_kind, result) in &results {
@@ -740,18 +662,6 @@ impl Tracker {
         }
         drop(table);
         tx.commit()?;
-        for (content, announce_kind, result) in results {
-            if result.is_ok() {
-                let state_for_content = state.announce_data.entry(content).or_default();
-                if let Some(peer_info) = state_for_content
-                    .entry(announce_kind)
-                    .or_default()
-                    .get_mut(&node)
-                {
-                    peer_info.last_probed = Some(now);
-                }
-            }
-        }
         Ok(())
     }
 

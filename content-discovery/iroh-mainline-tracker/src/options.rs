@@ -29,13 +29,8 @@ pub struct Options {
     // log file for probe attempts
     pub probe_log: Option<PathBuf>,
 
-    // path to the file where announce data is persisted
-    // this is used to restore the announce data on startup
-    // can use either toml, json or postcard
-    pub announce_data_path: Option<PathBuf>,
-
     // binary database for announce data
-    pub announce_data_path_2: PathBuf,
+    pub announce_data_path: PathBuf,
 
     /// Interval between DHT announces.
     ///
@@ -63,8 +58,7 @@ impl Default for Options {
             max_hash_seq_size: 1024 * 16 * 32,
             dial_log: Some("dial.log".into()),
             probe_log: Some("probe.log".into()),
-            announce_data_path: Some("announce.data.toml".into()),
-            announce_data_path_2: "announce.db".into(),
+            announce_data_path: "announce.redb".into(),
             dht_announce_interval: Duration::from_secs(10),
             quinn_port: 0,
             magic_port: 0,
@@ -81,10 +75,7 @@ impl Options {
         if let Some(path) = &mut self.probe_log {
             *path = base.join(&path);
         }
-        if let Some(path) = &mut self.announce_data_path {
-            *path = base.join(&path);
-        }
-        self.announce_data_path_2 = base.join(&self.announce_data_path_2);
+        self.announce_data_path = base.join(&self.announce_data_path);
     }
 }
 mod serde_duration {
