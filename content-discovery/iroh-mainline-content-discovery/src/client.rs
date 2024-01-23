@@ -8,12 +8,12 @@ use std::{
 
 use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
 use iroh_bytes::HashAndFormat;
-use iroh_net::{key::SecretKey, MagicEndpoint, NodeId};
+use iroh_net::{MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use mainline::common::{GetPeerResponse, StoreQueryMetdata};
 
 use crate::protocol::{
-    Announce, Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
+    Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
 };
 
 /// Announce to a tracker.
@@ -26,12 +26,10 @@ use crate::protocol::{
 /// `kind` is the kind of the announcement. We can claim to have the complete data or only some of it.
 pub async fn announce(
     connection: quinn::Connection,
-    args: Announce,
-    secret_key: &SecretKey,
+    signed_announce: SignedAnnounce,
 ) -> anyhow::Result<()> {
     let (mut send, mut recv) = connection.open_bi().await?;
     tracing::debug!("opened bi stream");
-    let signed_announce = SignedAnnounce::new(args, secret_key)?;
     let request = Request::Announce(signed_announce);
     let request = postcard::to_stdvec(&request)?;
     tracing::debug!("sending announce");

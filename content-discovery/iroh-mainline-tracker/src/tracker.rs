@@ -121,11 +121,7 @@ impl From<SignedAnnounce> for PeerInfo {
 
 impl PeerInfo {
     fn last_announced(&self) -> AbsoluteTime {
-        self.signed_announce
-            .announce()
-            .ok()
-            .map(|x| x.timestamp)
-            .unwrap_or_default()
+        self.signed_announce.timestamp
     }
 }
 
@@ -402,15 +398,15 @@ impl Tracker {
 
     fn handle_announce(&self, signed_announce: SignedAnnounce) -> anyhow::Result<()> {
         tracing::info!("got announce");
-        let announce = signed_announce.verify()?;
-        tracing::info!("verified announce: {:?}", announce);
+        signed_announce.verify()?;
+        tracing::info!("verified announce: {:?}", signed_announce);
         let mut state = self.0.state.write().unwrap();
-        let content = announce.content;
+        let content = signed_announce.content;
         let entry = state.announce_data.entry(content).or_default();
         let peer_info = entry
-            .entry(announce.kind)
+            .entry(signed_announce.kind)
             .or_default()
-            .entry(announce.host)
+            .entry(signed_announce.host)
             .or_insert(PeerInfo::from(signed_announce.clone()));
         peer_info.signed_announce = signed_announce.clone();
         if let Some(path) = &self.0.options.announce_data_path {

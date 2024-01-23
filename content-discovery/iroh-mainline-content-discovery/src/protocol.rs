@@ -1,12 +1,13 @@
 //! The protocol for communicating with the tracker.
 use std::{
-    ops::Sub,
+    ops::{Deref, Sub},
     time::{Duration, SystemTime},
 };
 
 use iroh_bytes::HashAndFormat;
 use iroh_net::NodeId;
 use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 
 /// The ALPN string for this protocol
 pub const ALPN: &[u8] = b"n0/tracker/1";
@@ -74,7 +75,7 @@ impl Into<SystemTime> for AbsoluteTime {
 ///
 /// A peer can announce having some data, but it should also be able to announce
 /// that another peer has the data. This is why the peer is included.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Announce {
     /// The peer that supposedly has the data.
     pub host: NodeId,
@@ -87,35 +88,42 @@ pub struct Announce {
 }
 
 /// A signed announce.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SignedAnnounce {
-    /// Postcard-encoded announce
-    pub announce_bytes: Vec<u8>,
+    /// Announce.
+    pub announce: Announce,
     /// Signature of the announce, signed by the host of the announce.
-    pub signature: Vec<u8>,
+    ///
+    /// The signature is over the announce, serialized with postcard.
+    #[serde(with = "BigArray")]
+    pub signature: [u8; 64],
+}
+
+impl Deref for SignedAnnounce {
+    type Target = Announce;
+
+    fn deref(&self) -> &Self::Target {
+        &self.announce
+    }
 }
 
 impl SignedAnnounce {
     /// Create a new signed announce.
     pub fn new(announce: Announce, secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<Self> {
-        let announce = postcard::to_allocvec(&announce)?;
-        let signature = secret_key.sign(&announce).to_vec();
+        let announce_bytes = postcard::to_allocvec(&announce)?;
+        let signature = secret_key.sign(&announce_bytes).to_bytes();
         Ok(Self {
-            announce_bytes: announce,
+            announce,
             signature,
         })
     }
 
-    pub fn announce(&self) -> anyhow::Result<Announce> {
-        Ok(postcard::from_bytes(&self.announce_bytes)?)
-    }
-
     /// Verify the announce, and return the announce if it's valid.
-    pub fn verify(&self) -> anyhow::Result<Announce> {
-        let announce = self.announce()?;
-        let signature = iroh_net::key::Signature::from_slice(&self.signature)?;
-        announce.host.verify(&self.announce_bytes, &signature)?;
-        Ok(announce)
+    pub fn verify(&self) -> anyhow::Result<()> {
+        let announce_bytes = postcard::to_allocvec(&self.announce)?;
+        let signature = iroh_net::key::Signature::from_bytes(&self.signature);
+        self.announce.host.verify(&announce_bytes, &signature)?;
+        Ok(())
     }
 }
 

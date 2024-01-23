@@ -11,7 +11,7 @@ use clap::Parser;
 use futures::StreamExt;
 use iroh_mainline_content_discovery::{
     create_quinn_client,
-    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, ALPN},
+    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce, ALPN},
     to_infohash,
 };
 use iroh_net::{
@@ -78,7 +78,8 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         content,
         timestamp,
     };
-    iroh_mainline_content_discovery::announce(connection, announce, &key).await?;
+    let signed_announce = SignedAnnounce::new(announce, &key)?;
+    iroh_mainline_content_discovery::announce(connection, signed_announce).await?;
     println!("done");
     Ok(())
 }
@@ -101,9 +102,9 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
         "querying tracker {} for content {}",
         args.tracker, args.content
     );
-    for peer in res.hosts {
-        if let Ok(announce) = peer.verify() {
-            println!("{}: {:?}", announce.host, announce.kind);
+    for sa in res.hosts {
+        if sa.verify().is_ok() {
+            println!("{}: {:?}", sa.announce.host, sa.announce.kind);
         } else {
             println!("invalid announce");
         }
@@ -134,8 +135,8 @@ async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
     );
     while let Some(item) = stream.next().await {
         match item {
-            Ok(signed_announce) => {
-                if let Ok(announce) = signed_announce.verify() {
+            Ok(announce) => {
+                if announce.verify().is_ok() {
                     println!("found verified provider {}", announce.host);
                 } else {
                     println!("found unverified provider");
