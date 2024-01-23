@@ -2,7 +2,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::{Arc, RwLock},
-    time::Instant,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bao_tree::{ByteNum, ChunkNum};
@@ -103,10 +103,10 @@ impl From<ProbeKind> for AnnounceKind {
 
 #[derive(Debug, Clone)]
 struct PeerInfo {
-    /// The last time the peer was announced by itself or another peer.
-    last_announced: Option<Instant>,
+    /// The timestamp from the signed announce, as milliseconds since the unix epoch.
+    last_announced: u64,
     /// last time the peer was randomly probed for the data and answered.
-    last_probed: Option<Instant>,
+    last_probed: Option<u64>,
     /// The signed announce from the peer.
     announce: SignedAnnounce,
 }
@@ -122,23 +122,20 @@ impl Tracker {
             Default::default()
         };
         let mut state = State::default();
-        let now = Instant::now();
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
-                for (peer, announce) in peers {
+                for (peer, signed_announce) in peers {
+                    let announce = signed_announce.verify()?;
                     let by_kind_and_peer = state.announce_data.entry(content).or_default();
-                    let peer_info = by_kind_and_peer
+                    by_kind_and_peer
                         .entry(kind)
                         .or_default()
                         .entry(peer)
                         .or_insert(PeerInfo {
-                            last_announced: None,
+                            last_announced: announce.timestamp,
                             last_probed: None,
-                            announce,
+                            announce: signed_announce,
                         });
-                    // set the last announced time to now on startup, otherwise
-                    // it would be considered too old
-                    peer_info.last_announced = Some(now);
                 }
             }
         }
@@ -152,7 +149,10 @@ impl Tracker {
     pub async fn probe_loop(self, endpoint: MagicEndpoint) -> anyhow::Result<()> {
         loop {
             let content_by_peers = self.get_content_by_peers();
-            let now = Instant::now();
+            let now = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
             let results = futures::stream::iter(content_by_peers.into_iter())
                 .map(|(peer, by_kind_and_content)| {
                     let endpoint = endpoint.clone();
@@ -398,13 +398,12 @@ impl Tracker {
             .or_default()
             .entry(announce.host)
             .or_insert(PeerInfo {
-                last_announced: None,
                 last_probed: None,
                 announce: signed_announce.clone(),
+                last_announced: announce.timestamp,
             });
-        let now = Instant::now();
         peer_info.announce = signed_announce.clone();
-        peer_info.last_announced = Some(now);
+        peer_info.last_announced = announce.timestamp;
         if let Some(path) = &self.0.options.announce_data_path {
             let data = state.get_persisted_announce_data();
             drop(state);
@@ -419,16 +418,18 @@ impl Tracker {
         let options = &self.0.options;
         let kind = AnnounceKind::from_complete(query.flags.complete);
         let mut peers = vec![];
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         if let Some(by_kind_and_peer) = entry {
             if let Some(entry) = by_kind_and_peer.get(&kind) {
                 for peer_info in entry.values() {
-                    let recently_announced = peer_info
-                        .last_announced
-                        .map(|t| t.elapsed() <= options.announce_timeout)
-                        .unwrap_or_default();
+                    let recently_announced = Duration::from_millis(now - peer_info.last_announced)
+                        <= options.announce_timeout;
                     let recently_probed = peer_info
                         .last_probed
-                        .map(|t| t.elapsed() <= options.probe_timeout)
+                        .map(|t| Duration::from_millis(now - t) <= options.probe_timeout)
                         .unwrap_or_default();
                     if !recently_announced {
                         // announce is too old
@@ -469,7 +470,7 @@ impl Tracker {
     fn apply_result(
         &self,
         results: BTreeMap<NodeId, Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>>,
-        now: Instant,
+        now: u64,
     ) {
         let mut state = self.0.state.write().unwrap();
         for (peer, probes) in results {
