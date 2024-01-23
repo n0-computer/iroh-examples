@@ -65,9 +65,9 @@ impl TryFrom<SystemTime> for AbsoluteTime {
     }
 }
 
-impl Into<SystemTime> for AbsoluteTime {
-    fn into(self) -> SystemTime {
-        SystemTime::UNIX_EPOCH + Duration::from_micros(self.0)
+impl From<AbsoluteTime> for SystemTime {
+    fn from(value: AbsoluteTime) -> Self {
+        std::time::UNIX_EPOCH + Duration::from_micros(value.0)
     }
 }
 

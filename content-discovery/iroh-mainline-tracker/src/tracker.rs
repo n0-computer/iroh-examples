@@ -69,7 +69,7 @@ impl State {
                     peers
                         .entry(*kind)
                         .or_default()
-                        .insert(*peer, peer_info.signed_announce.clone());
+                        .insert(*peer, peer_info.signed_announce);
                 }
             }
             data.0.insert(*content, peers);
@@ -139,7 +139,7 @@ impl Tracker {
         for (content, peers_by_kind) in announce_data.0 {
             for (kind, peers) in peers_by_kind {
                 for (peer, signed_announce) in peers {
-                    let _announce = signed_announce.verify()?;
+                    signed_announce.verify()?;
                     let by_kind_and_peer = state.announce_data.entry(content).or_default();
                     by_kind_and_peer
                         .entry(kind)
@@ -407,8 +407,8 @@ impl Tracker {
             .entry(signed_announce.kind)
             .or_default()
             .entry(signed_announce.host)
-            .or_insert(PeerInfo::from(signed_announce.clone()));
-        peer_info.signed_announce = signed_announce.clone();
+            .or_insert(PeerInfo::from(signed_announce));
+        peer_info.signed_announce = signed_announce;
         if let Some(path) = &self.0.options.announce_data_path {
             let data = state.get_persisted_announce_data();
             drop(state);
@@ -443,7 +443,7 @@ impl Tracker {
                         tracing::error!("verification of complete data is too old");
                         continue;
                     }
-                    peers.push(peer_info.signed_announce.clone());
+                    peers.push(peer_info.signed_announce);
                 }
             }
         } else {
