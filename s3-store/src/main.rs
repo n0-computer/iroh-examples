@@ -100,6 +100,10 @@ pub struct ServeS3Args {
     /// Url to the s3 bucket root.
     pub url: Url,
 
+    /// Top level directory name.
+    #[clap(long)]
+    pub name: Option<String>,
+
     #[clap(flatten)]
     pub common: CommonArgs,
 }
@@ -255,11 +259,13 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     let bucket: ListBucketResult = serde_xml_rs::from_str(&xml)?;
     let db = S3Store::default();
     let mut hashes = Vec::new();
+    let safe_bucket_name = || root.to_string().replace("/", "_");
+    let prefix = args.name.unwrap_or_else(safe_bucket_name);
     for path in bucket.contents.iter().map(|c| c.key.clone()) {
         let url = root.join(&path)?;
         let hash = db.import_url(url).await?;
         let hash = iroh_bytes::Hash::from(hash.clone());
-        let name = path;
+        let name = format!("{prefix}/{path}");
         hashes.push((name, hash));
     }
     let collection = hashes
