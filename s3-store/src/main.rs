@@ -251,7 +251,7 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     let root = args.url;
     let xml = HttpAdapter::new(root.clone()).await?.read_to_end().await?;
     let xml = String::from_utf8_lossy(&xml);
-    println!("{}", xml);
+    tracing::debug!("{}", xml);
     let bucket: ListBucketResult = serde_xml_rs::from_str(&xml)?;
     let db = S3Store::default();
     let mut hashes = Vec::new();
@@ -273,10 +273,6 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     }
 
     serve_db(db, args.common.magic_port, |addr| {
-        for (name, hash) in &hashes {
-            let ticket = BlobTicket::new(addr.clone(), *hash, BlobFormat::Raw)?;
-            println!("{} {}", name, ticket);
-        }
         if let Some(hash) = last_hash {
             let ticket = BlobTicket::new(addr.clone(), hash.into(), BlobFormat::HashSeq)?;
             println!("collection: {}", ticket);
