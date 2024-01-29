@@ -45,4 +45,4 @@ serde_json = "1.0.108"
 tempfile = "3.8.1"
 
 [patch.crates-io]
-iroh-io = { path = "../../iroh-io", features = ["http"] }
+iroh-io = { git = "https://github.com/n0-computer/iroh-io", branch = "revive-http" }

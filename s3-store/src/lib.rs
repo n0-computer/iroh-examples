@@ -39,7 +39,7 @@ impl S3Store {
     }
 
     pub async fn import_url(&self, url: Url) -> anyhow::Result<Hash> {
-        let mut http_adapter = HttpAdapter::new(url.clone()).await?;
+        let mut http_adapter = HttpAdapter::new(url.clone());
         let data = http_adapter.read_to_end().await?;
         let size = data.len() as u64;
         let (mut outboard, hash) = bao_tree::io::outboard(data, IROH_BLOCK_SIZE);
@@ -111,7 +111,7 @@ impl MapEntry<S3Store> for Entry {
         async move {
             Ok(match self.data {
                 DataDescriptor::Url(ref url) => {
-                    let http_adapter = HttpAdapter::new(url.as_ref().clone()).await?;
+                    let http_adapter = HttpAdapter::new(url.as_ref().clone());
                     self::File::S3(http_adapter)
                 }
                 DataDescriptor::Inline(ref bytes) => self::File::Inline(bytes.clone()),

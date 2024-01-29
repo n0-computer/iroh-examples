@@ -253,18 +253,18 @@ async fn serve_db(
 
 async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     let root = args.url;
-    let xml = HttpAdapter::new(root.clone()).await?.read_to_end().await?;
+    let xml = HttpAdapter::new(root.clone()).read_to_end().await?;
     let xml = String::from_utf8_lossy(&xml);
     tracing::debug!("{}", xml);
     let bucket: ListBucketResult = serde_xml_rs::from_str(&xml)?;
     let db = S3Store::default();
     let mut hashes = Vec::new();
-    let safe_bucket_name = || root.to_string().replace("/", "_");
+    let safe_bucket_name = || root.to_string().replace('/', "_");
     let prefix = args.name.unwrap_or_else(safe_bucket_name);
     for path in bucket.contents.iter().map(|c| c.key.clone()) {
         let url = root.join(&path)?;
         let hash = db.import_url(url).await?;
-        let hash = iroh_bytes::Hash::from(hash.clone());
+        let hash = iroh_bytes::Hash::from(hash);
         let name = format!("{prefix}/{path}");
         hashes.push((name, hash));
     }
@@ -295,8 +295,8 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
     for url in args.url {
         let hash = db.import_url(url.clone()).await?;
         println!("added {}, {}", url, print_hash(&hash, args.common.format));
-        let hash = iroh_bytes::Hash::from(hash.clone());
-        let name = url.to_string().replace("/", "_");
+        let hash = iroh_bytes::Hash::from(hash);
+        let name = url.to_string().replace('/', "_");
         hashes.push((name, hash));
     }
     let collection = hashes

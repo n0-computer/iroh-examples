@@ -1952,6 +1952,7 @@ dependencies = [
 [[package]]
 name = "iroh-io"
 version = "0.3.0"
+source = "git+https://github.com/n0-computer/iroh-io?branch=revive-http#ad690c9e5d499b736a464c0317c85f8ead254345"
 dependencies = [
  "bytes",
  "futures",
