@@ -1,9 +1,15 @@
-use anyhow::{Context, Result};
+use std::str::FromStr;
+
+use anyhow::{anyhow, Context, Result};
 use clap::{Parser, ValueEnum};
-use iroh_net::{ticket::NodeTicket, MagicEndpoint};
+use iroh_net::{key::SecretKey, MagicEndpoint};
 use moq_transport::{cache::broadcast, setup::Role};
-use tokio::{io::AsyncRead, task::JoinSet};
-use tracing::{debug, warn};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    sync::oneshot,
+    task::JoinSet,
+};
+use tracing::{debug, info, warn};
 
 mod ffmpeg;
 mod relay;
@@ -22,72 +28,161 @@ struct Cli {
 
 #[derive(Debug, Parser)]
 enum Command {
+    /// Publish a video stream
     Pub(PubOpts),
+    /// Subscribe and play a video stream
     Sub(SubOpts),
+    /// Run a relay
     Relay,
+    /// Local pipethrough through direct pipe
+    PipeLoop(LoopOpts),
+    /// Local pipethrough through iroh-net
+    NetworkLoop(LoopOpts),
 }
 
 #[derive(Debug, Parser)]
 struct PubOpts {
-    /// Relays to publish to (must be iroh: cast URLs)
+    /// Relays to publish to (must be cast tickets)
     relays: Vec<CastUrl>,
 
     /// Input
-    #[clap(short, long, default_value_t = PubInput::Camera)]
-    #[arg(value_enum)]
+    #[clap(value_enum, short, long, default_value_t = PubInput::Camera)]
     input: PubInput,
 
-    /// Accept direct connections (default: false)
+    /// Do not accept direct connections and only publish to relays
     #[clap(short, long)]
-    accept: bool,
+    no_accept: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
 enum PubInput {
     /// Camera and default audio
     Camera,
-    /// mp4 via stdin
+    /// Desktop and default audio
+    Desktop,
+    /// Receive a video file from stdin
     Stdin,
+}
+
+impl PubInput {
+    pub fn create(&self) -> Result<Box<dyn AsyncRead + Send + Unpin + 'static>> {
+        Ok(match self {
+            PubInput::Camera => Box::new(ffmpeg::capture_camera()?),
+            PubInput::Desktop => Box::new(ffmpeg::capture_desktop()?),
+            PubInput::Stdin => Box::new(ffmpeg::capture_stdin()?),
+        })
+    }
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+enum SubOutput {
+    /// Render with ffplay
+    Ffplay,
+    /// Render with mpv
+    Mpv,
+    /// Pipe mp4 to stdout
+    Stdout,
+}
+
+impl SubOutput {
+    pub fn create(&self) -> Result<Box<dyn AsyncWrite + Send + Unpin + 'static>> {
+        Ok(match self {
+            SubOutput::Ffplay => Box::new(ffmpeg::out_ffplay()?),
+            SubOutput::Mpv => Box::new(ffmpeg::out_mpv()?),
+            SubOutput::Stdout => Box::new(tokio::io::stdout()),
+        })
+    }
 }
 
 #[derive(Debug, Parser)]
 struct SubOpts {
-    target: CastUrl,
+    /// Iroh URL to video stream
+    url: CastUrl,
+    #[clap(value_enum, short, long, default_value_t = SubOutput::Ffplay)]
+    output: SubOutput,
+}
+
+#[derive(Debug, Parser)]
+struct LoopOpts {
+    /// Input
+    #[clap(value_enum, short, long, default_value_t = PubInput::Camera)]
+    input: PubInput,
+    /// Output
+    #[clap(value_enum, short, long, default_value_t = SubOutput::Ffplay)]
+    output: SubOutput,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
     let cli = Cli::parse();
 
     match cli.command {
         Command::Pub(opts) => {
-            match opts.input {
-                PubInput::Stdin => {
-                    let input = tokio::io::stdin();
-                    publish(input, opts.relays, opts.accept).await?;
-                }
-                PubInput::Camera => {
-                    // ensure_ffmpeg_installed().await?;
-                    // start capturing input
-                    let input = ffmpeg::publish()?;
-                    publish(input, opts.relays, opts.accept).await?;
-                }
-            }
+            let PubOpts {
+                relays,
+                input,
+                no_accept,
+            } = opts;
+            let input = input.create()?;
+            let endpoint = bind_magic_endpoint().await?;
+            publish(endpoint, input, relays, !no_accept, None).await?;
         }
         Command::Sub(opts) => {
-            // ensure_ffmpeg_installed().await?;
-            subscribe(opts.target).await?;
+            let SubOpts { url, output } = opts;
+            let output = output.create()?;
+            let endpoint = bind_magic_endpoint().await?;
+
+            subscribe(endpoint, output, url).await?;
         }
-        Command::Relay => relay::run().await?,
+        Command::Relay => {
+            let endpoint = bind_magic_endpoint().await?;
+            relay::run(endpoint).await?
+        }
+        Command::PipeLoop(opts) => {
+            let LoopOpts { input, output } = opts;
+            let mut input = input.create()?;
+            let mut output = output.create()?;
+            tokio::io::copy(&mut input, &mut output).await?;
+        }
+        Command::NetworkLoop(opts) => {
+            let LoopOpts { input, output } = opts;
+            let input = input.create()?;
+            let output = output.create()?;
+            let (on_url_send, on_url_recv) = oneshot::channel();
+
+            let pub_ep = iroh_net::MagicEndpoint::builder()
+                .alpns(vec![webtransport_quinn::ALPN.to_vec()])
+                .bind(0)
+                .await?;
+            let sub_ep = iroh_net::MagicEndpoint::builder()
+                .alpns(vec![webtransport_quinn::ALPN.to_vec()])
+                .bind(0)
+                .await?;
+
+            let pub_task = tokio::task::spawn(async move {
+                publish(pub_ep, input, vec![], true, Some(on_url_send)).await
+            });
+
+            let url = on_url_recv.await?;
+            info!("starting subscribe task");
+            let sub_task = tokio::task::spawn(async move { subscribe(sub_ep, output, url).await });
+
+            sub_task.await??;
+            pub_task.await??;
+        }
     }
     Ok(())
 }
 
 async fn publish(
+    endpoint: MagicEndpoint,
     input: impl AsyncRead + Unpin + Send + 'static,
     targets: Vec<CastUrl>,
     accept: bool,
+    on_url: Option<oneshot::Sender<CastUrl>>,
 ) -> anyhow::Result<()> {
     let mut tasks = JoinSet::new();
 
@@ -95,9 +190,6 @@ async fn publish(
     let (publisher, subscriber) = broadcast::new("");
     let mut media = moq_pub::media::Media::new(input, publisher).await?;
     tasks.spawn(async move { media.run().await });
-
-    // bind magic endpoint
-    let endpoint = bind_magic_endpoint().await?;
 
     // open session for each publish target
     for target in targets {
@@ -122,8 +214,13 @@ async fn publish(
         let subscriber = subscriber.clone();
         let my_addr = endpoint.my_addr().await?;
         // todo: name is ignored for now
-        let url = CastUrl::new(NodeTicket::new(my_addr)?, "dev".to_string());
+        let url = CastUrl::new(my_addr, "dev".to_string())?;
         println!("Accepting direct subscribe requests on URL:\n{url}");
+        if let Some(on_url) = on_url {
+            on_url
+                .send(url.clone())
+                .map_err(|_| anyhow!("cast url receiver dropped"))?;
+        }
         tasks.spawn(async move {
             while let Some(conn) = endpoint.accept().await {
                 let subscriber = subscriber.clone();
@@ -181,16 +278,18 @@ async fn publish_accept(conn: quinn::Connecting, subscriber: broadcast::Subscrib
     Ok(())
 }
 
-async fn subscribe(target: CastUrl) -> Result<()> {
-    let out = ffmpeg::subscribe()?;
+async fn subscribe<W: AsyncWrite + Unpin + Send + 'static>(
+    endpoint: MagicEndpoint,
+    output: W,
+    url: CastUrl,
+) -> Result<()> {
     let (publisher, subscriber) = broadcast::new("");
-    let mut media = moq_sub::media::Media::new(subscriber, out).await?;
-    let endpoint = bind_magic_endpoint().await?;
+    let mut media = moq_sub::media::Media::new(subscriber, output).await?;
 
     let conn = endpoint
-        .connect(target.node_addr().clone(), webtransport_quinn::ALPN)
+        .connect(url.node_addr().clone(), webtransport_quinn::ALPN)
         .await?;
-    let session = webtransport_quinn::connect_with(conn, &target.to_fake_https_url()).await?;
+    let session = webtransport_quinn::connect_with(conn, &url.to_fake_https_url()).await?;
     debug!("WebTransport session established");
 
     let session = moq_transport::session::Client::subscriber(session, publisher)
@@ -207,8 +306,27 @@ async fn subscribe(target: CastUrl) -> Result<()> {
 }
 
 async fn bind_magic_endpoint() -> Result<MagicEndpoint> {
+    let port: u16 = match std::env::var("IROH_BIND_PORT") {
+        Ok(s) => s
+            .parse()
+            .context("Port number from IROH_BIND_PORT is invalid")?,
+        _ => 0,
+    };
+    let secret_key = match std::env::var("IROH_NODE_SECRET") {
+        Ok(s) => SecretKey::from_str(&s)
+            .context("Secret key from IROH_NODE_SECRET environment variable is invalid")?,
+        Err(_) => {
+            let key = SecretKey::generate();
+            println!(
+                "Generated a new secret key. To reuse the identity, set this environment variable:"
+            );
+            println!("IROH_NODE_SECRET={key}");
+            key
+        }
+    };
     iroh_net::MagicEndpoint::builder()
+        .secret_key(secret_key)
         .alpns(vec![webtransport_quinn::ALPN.to_vec()])
-        .bind(0)
+        .bind(port)
         .await
 }

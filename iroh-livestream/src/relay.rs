@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
-use iroh_net::{ticket::NodeTicket, MagicEndpoint};
+use iroh_net::MagicEndpoint;
 use tokio::task::JoinSet;
 use tokio::time;
 use tracing::info;
@@ -16,14 +16,18 @@ use tracing::info;
 use moq_transport::cache::{broadcast, CacheError};
 use moq_transport::{session::Request, setup::Role, MoqError};
 
-pub async fn run() -> anyhow::Result<()> {
+use crate::ticket::CastUrl;
+
+pub async fn run(endpoint: MagicEndpoint) -> anyhow::Result<()> {
     // Create an iroh-net QUIC server for media.
-    let quic = IrohQuic::new().await.context("failed to create server")?;
-    println!("relay addr: {}", quic.ticket().await?);
-    quic.serve().await.context("failed to run quic server")
+    let relay = Relay::new(endpoint)
+        .await
+        .context("failed to create server")?;
+    println!("Relay URL:\n{}", relay.url().await?);
+    relay.serve().await.context("failed to run quic server")
 }
 
-pub struct IrohQuic {
+pub struct Relay {
     endpoint: MagicEndpoint,
 
     // The active connections.
@@ -33,17 +37,11 @@ pub struct IrohQuic {
     origin: Origin,
 }
 
-impl IrohQuic {
+impl Relay {
     // Create a QUIC endpoint that can be used for both clients and servers.
-    pub async fn new() -> anyhow::Result<Self> {
-        let endpoint = MagicEndpoint::builder()
-            .alpns(vec![webtransport_quinn::ALPN.to_vec()])
-            .bind(0)
-            .await?;
-
+    pub async fn new(endpoint: MagicEndpoint) -> anyhow::Result<Self> {
         let origin = Origin::new();
         let conns = JoinSet::new();
-
         Ok(Self {
             endpoint,
             conns,
@@ -51,10 +49,10 @@ impl IrohQuic {
         })
     }
 
-    pub async fn ticket(&self) -> anyhow::Result<iroh_net::ticket::NodeTicket> {
+    pub async fn url(&self) -> anyhow::Result<CastUrl> {
         let addr = self.endpoint.my_addr().await?;
-        let ticket = NodeTicket::new(addr)?;
-        Ok(ticket)
+        let url = CastUrl::new(addr, "".to_string())?;
+        Ok(url)
     }
 
     pub async fn serve(mut self) -> anyhow::Result<()> {
@@ -147,14 +145,6 @@ pub struct Subscriber {
 impl Drop for Subscriber {
     fn drop(&mut self) {
         self.origin.cache.lock().unwrap().remove(&self.broadcast.id);
-    }
-}
-
-impl Deref for Subscriber {
-    type Target = broadcast::Subscriber;
-
-    fn deref(&self) -> &Self::Target {
-        &self.broadcast
     }
 }
 
@@ -345,7 +335,6 @@ pub enum RelayError {
 
     #[error("webtransport server error: {0}")]
     WebTransportServer(#[from] webtransport_quinn::ServerError),
-
     // #[error("missing node")]
     // MissingNode,
 }
