@@ -1,16 +1,15 @@
 use anyhow::Context;
-use bao_tree::blake3;
 use clap::{Parser, Subcommand};
 use futures::{future, FutureExt};
 use indicatif::{
     HumanBytes, HumanDuration, MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle,
 };
-use iroh_bytes::{
+use iroh::bytes::{
     provider::{self, handle_connection, EventSender},
     BlobFormat,
 };
 use iroh_io::{AsyncSliceReaderExt, HttpAdapter};
-use iroh_net::{key::SecretKey, ticket::BlobTicket, MagicEndpoint, NodeAddr};
+use iroh::net::{key::SecretKey, ticket::BlobTicket, MagicEndpoint, NodeAddr};
 use iroh_s3_bao_store::S3Store;
 use serde::Deserialize;
 use std::{
@@ -63,7 +62,7 @@ impl Display for Format {
     }
 }
 
-fn print_hash(hash: &blake3::Hash, format: Format) -> String {
+fn print_hash(hash: &iroh::bytes::Hash, format: Format) -> String {
     match format {
         Format::Hex => hash.to_hex().to_string(),
         Format::Cid => hash.to_string(),
@@ -175,7 +174,7 @@ impl Drop for ClientStatus {
 }
 
 impl EventSender for ClientStatus {
-    fn send(&self, event: iroh_bytes::provider::Event) -> futures::prelude::future::BoxFuture<()> {
+    fn send(&self, event: iroh::bytes::provider::Event) -> futures::prelude::future::BoxFuture<()> {
         tracing::info!("{:?}", event);
         let msg = match event {
             provider::Event::ClientConnected { connection_id } => {
@@ -224,7 +223,7 @@ async fn serve_db(
     let secret_key = get_or_create_secret(true)?;
     // create a magicsocket endpoint
     let endpoint_fut = MagicEndpoint::builder()
-        .alpns(vec![iroh_bytes::protocol::ALPN.to_vec()])
+        .alpns(vec![iroh::bytes::protocol::ALPN.to_vec()])
         .secret_key(secret_key)
         .bind(magic_port);
     // wait for the endpoint to be ready
@@ -264,14 +263,14 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     for path in bucket.contents.iter().map(|c| c.key.clone()) {
         let url = root.join(&path)?;
         let hash = db.import_url(url).await?;
-        let hash = iroh_bytes::Hash::from(hash);
+        let hash = iroh::bytes::Hash::from(hash);
         let name = format!("{prefix}/{path}");
         hashes.push((name, hash));
     }
     let collection = hashes
         .iter()
         .cloned()
-        .collect::<iroh_bytes::format::collection::Collection>();
+        .collect::<iroh::bytes::format::collection::Collection>();
     let blobs = collection.to_blobs();
     let mut last_hash = None;
     for blob in blobs {
@@ -295,14 +294,14 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
     for url in args.url {
         let hash = db.import_url(url.clone()).await?;
         println!("added {}, {}", url, print_hash(&hash, args.common.format));
-        let hash = iroh_bytes::Hash::from(hash);
+        let hash = iroh::bytes::Hash::from(hash);
         let name = url.to_string().replace('/', "_");
         hashes.push((name, hash));
     }
     let collection = hashes
         .iter()
         .cloned()
-        .collect::<iroh_bytes::format::collection::Collection>();
+        .collect::<iroh::bytes::format::collection::Collection>();
     let blobs = collection.to_blobs();
     let mut last_hash = None;
     for blob in blobs {

@@ -2,15 +2,13 @@ use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use bao_tree::blake3::Hash;
 use bao_tree::io::outboard::PreOrderMemOutboard;
 use bao_tree::{BaoTree, ByteNum, ChunkRanges};
 use bytes::Bytes;
-use futures::future::{self, BoxFuture, LocalBoxFuture};
-use futures::FutureExt;
-use iroh_bytes::store::bao_tree::blake3;
-use iroh_bytes::store::MapEntry;
-use iroh_bytes::IROH_BLOCK_SIZE;
+use iroh::bytes::store::bao_tree::blake3;
+use iroh::bytes::store::MapEntry;
+use iroh::bytes::IROH_BLOCK_SIZE;
+use iroh::bytes::Hash;
 use iroh_io::{AsyncSliceReader, AsyncSliceReaderExt, HttpAdapter};
 use url::Url;
 
@@ -33,9 +31,9 @@ impl S3Store {
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
-            Entry::new(hash, size, DataDescriptor::Inline(data), outboard),
+            Entry::new(hash.into(), size, DataDescriptor::Inline(data), outboard),
         );
-        Ok(hash)
+        Ok(hash.into())
     }
 
     pub async fn import_url(&self, url: Url) -> anyhow::Result<Hash> {
@@ -50,9 +48,9 @@ impl S3Store {
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
-            Entry::new(hash, size, DataDescriptor::Url(Arc::new(url)), outboard),
+            Entry::new(hash.into(), size, DataDescriptor::Url(Arc::new(url)), outboard),
         );
-        Ok(hash)
+        Ok(hash.into())
     }
 }
 
@@ -64,7 +62,7 @@ pub enum DataDescriptor {
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    hash: blake3::Hash,
+    hash: Hash,
     size: u64,
     data: DataDescriptor,
     outboard: PreOrderMemOutboard<Bytes>,
@@ -72,7 +70,7 @@ pub struct Entry {
 
 impl Entry {
     pub fn new(
-        hash: blake3::Hash,
+        hash: Hash,
         size: u64,
         data: DataDescriptor,
         outboard: PreOrderMemOutboard<Bytes>,
@@ -91,7 +89,7 @@ impl MapEntry<S3Store> for Entry {
         self.size
     }
 
-    fn hash(&self) -> blake3::Hash {
+    fn hash(&self) -> Hash {
         self.hash
     }
 
@@ -99,16 +97,15 @@ impl MapEntry<S3Store> for Entry {
         true
     }
 
-    fn available_ranges(&self) -> BoxFuture<'_, io::Result<bao_tree::ChunkRanges>> {
-        future::ok(ChunkRanges::all()).boxed()
+    async fn available_ranges(&self) -> io::Result<bao_tree::ChunkRanges> {
+        Ok(ChunkRanges::all())
     }
 
-    fn outboard(&self) -> BoxFuture<'_, io::Result<self::Outboard>> {
-        async move { Ok(self.outboard.clone()) }.boxed()
+    async fn outboard(&self) -> io::Result<self::Outboard> {
+        Ok(self.outboard.clone())
     }
 
-    fn data_reader(&self) -> BoxFuture<'_, io::Result<self::DataReader>> {
-        async move {
+    async fn data_reader(&self) -> io::Result<self::DataReader> {
             Ok(match self.data {
                 DataDescriptor::Url(ref url) => {
                     let http_adapter = HttpAdapter::new(url.as_ref().clone());
@@ -116,8 +113,6 @@ impl MapEntry<S3Store> for Entry {
                 }
                 DataDescriptor::Inline(ref bytes) => self::File::Inline(bytes.clone()),
             })
-        }
-        .boxed()
     }
 }
 
@@ -132,34 +127,31 @@ type Outboard = PreOrderMemOutboard<Bytes>;
 type DataReader = File;
 
 impl AsyncSliceReader for File {
-    type ReadAtFuture<'a> = LocalBoxFuture<'a, io::Result<bytes::Bytes>>;
 
-    fn read_at(&mut self, offset: u64, len: usize) -> Self::ReadAtFuture<'_> {
+    async fn read_at(&mut self, offset: u64, len: usize) -> io::Result<Bytes> {
         match self {
-            Self::S3(s3) => s3.read_at(offset, len).boxed_local(),
-            Self::Inline(ref mut bytes) => bytes.read_at(offset, len).boxed_local(),
+            Self::S3(s3) => s3.read_at(offset, len).await,
+            Self::Inline(ref mut bytes) => bytes.read_at(offset, len).await,
         }
     }
 
-    type LenFuture<'a> = LocalBoxFuture<'a, io::Result<u64>>;
-
-    fn len(&mut self) -> Self::LenFuture<'_> {
+    async fn len(&mut self) -> io::Result<u64> {
         match self {
-            Self::S3(s3) => s3.len().boxed_local(),
-            Self::Inline(bytes) => bytes.len().boxed_local(),
+            Self::S3(s3) => s3.len().await,
+            Self::Inline(bytes) => bytes.len().await,
         }
     }
 }
 
-impl iroh_bytes::store::Map for S3Store {
+impl iroh::bytes::store::Map for S3Store {
     type Outboard = self::Outboard;
 
     type DataReader = self::File;
 
     type Entry = Entry;
 
-    fn get(&self, hash: &iroh_bytes::Hash) -> Option<Self::Entry> {
+    fn get(&self, hash: &iroh::bytes::Hash) -> io::Result<Option<Self::Entry>> {
         let key: blake3::Hash = (*hash).into();
-        self.0.entries.lock().unwrap().get(&key).cloned()
+        Ok(self.0.entries.lock().unwrap().get(&key).cloned())
     }
 }
