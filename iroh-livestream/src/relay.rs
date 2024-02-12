@@ -303,7 +303,7 @@ impl Session {
         let Some(subscriber) = self.origin.subscribe(path) else {
             request.reject(404);
             tracing::warn!("reject request for {path}: no publisher");
-            return Ok(())
+            return Ok(());
         };
 
         let session = request.publisher(subscriber.broadcast.clone()).await?;

@@ -266,9 +266,12 @@ async fn publish_accept(conn: quinn::Connecting, subscriber: broadcast::Subscrib
     debug!(id, ?role, "received MoQ SETUP");
 
     let Role::Subscriber = role else {
-            debug!(id, "abort: only subscriber role is supported (requested {role:?})");
-            request.reject(300);
-            return Ok(());
+        debug!(
+            id,
+            "abort: only subscriber role is supported (requested {role:?})"
+        );
+        request.reject(300);
+        return Ok(());
     };
     debug!(id, "accepting subscriber request");
     let session = request.publisher(subscriber).await?;

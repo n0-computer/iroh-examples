@@ -56,7 +56,8 @@ impl FromStr for CastUrl {
             bail!("Invalid URL: Expected iroh: scheme")
         };
         let mut parts = url.path().split("/");
-        let (Some(node), Some(broadcast_name), None) = (parts.next(), parts.next(), parts.next()) else {
+        let (Some(node), Some(broadcast_name), None) = (parts.next(), parts.next(), parts.next())
+        else {
             bail!("Invalid URL: Expected two path segments")
         };
         let node = NodeTicket::from_str(node)?;
