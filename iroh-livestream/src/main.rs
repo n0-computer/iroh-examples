@@ -215,7 +215,7 @@ async fn publish(
         let my_addr = endpoint.my_addr().await?;
         // todo: name is ignored for now
         let url = CastUrl::new(my_addr, "dev".to_string())?;
-        println!("Accepting direct subscribe requests on URL:\n{url}");
+        eprintln!("Accepting direct subscribe requests on URL:\n{url}");
         if let Some(on_url) = on_url {
             on_url
                 .send(url.clone())
@@ -235,7 +235,7 @@ async fn publish(
     }
 
     while let Some(res) = tasks.join_next().await {
-        println!("task finished: {res:?}");
+        eprintln!("task finished: {res:?}");
     }
 
     Ok(())
@@ -317,10 +317,10 @@ async fn bind_magic_endpoint() -> Result<MagicEndpoint> {
             .context("Secret key from IROH_NODE_SECRET environment variable is invalid")?,
         Err(_) => {
             let key = SecretKey::generate();
-            println!(
+            eprintln!(
                 "Generated a new secret key. To reuse the identity, set this environment variable:"
             );
-            println!("IROH_NODE_SECRET={key}");
+            eprintln!("IROH_NODE_SECRET={key}");
             key
         }
     };
