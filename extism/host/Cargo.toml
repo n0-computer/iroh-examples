@@ -1,0 +1,10 @@
+[package]
+name = "extism-host"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.79"
+extism = "1.0.0"
+tokio = { version = "1", features = ["full"] }
+iroh-extism-host-functions = { path = "../iroh-extism-host-functions" }
