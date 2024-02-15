@@ -44,34 +44,33 @@ pub async fn create_iroh(path: PathBuf) -> Result<IrohNode> {
 //     Ok(user_data.node_id().to_string())
 // });
 
-host_fn!(iroh_blob_get_ticket(user_data: IrohNode; ticket: &str) -> Vec<u8> {
-    let node = user_data.get()?;
-    let node = node.lock().unwrap();
+struct Context {
+    rt: tokio::runtime::Handle,
+    iroh: IrohNode,
+}
+
+host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
+    let ctx = user_data.get()?;
+    let ctx = ctx.lock().unwrap();
 
     let (node_addr, hash, format) = iroh::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
 
     if format != iroh::rpc_protocol::BlobFormat::Raw {
         return Err(anyhow!("can only get raw bytes for now, not HashSequences (collections)"));
     }
-
-    // TODO(b5): this crashes execution because we don't have a handle to the original _tokio_ runtime :(
-    let handle = tokio::runtime::Handle::current();
-    let buf = handle.block_on(async move {
-        let mut stream = node.client()
-        .blobs
-        .download(iroh::rpc_protocol::BlobDownloadRequest {
+    let client = ctx.iroh.client();
+    let buf = ctx.rt.block_on(async move {
+        let mut stream = client.blobs.download(iroh::rpc_protocol::BlobDownloadRequest {
             hash,
             format,
             peer: node_addr,
             out: DownloadLocation::Internal,
             tag: SetTagOption::Auto,
-        })
-        .await?;
+        }).await?;
         while stream.next().await.is_some() {}
 
-        let buffer = node.client().blobs.read(hash).await?.read_to_bytes().await.map_err(|e| anyhow!("read error: {}", e))?.to_vec();
-
-        anyhow::Ok(buffer)
+        let buffer = client.blobs.read(hash).await?.read_to_bytes().await?;
+        anyhow::Ok(buffer.to_vec())
     })?;
 
     Ok(buf)
@@ -80,15 +79,18 @@ host_fn!(iroh_blob_get_ticket(user_data: IrohNode; ticket: &str) -> Vec<u8> {
 pub fn add_all_host_functions(
     rt: tokio::runtime::Handle,
     b: PluginBuilder,
-    node: IrohNode,
+    iroh: IrohNode,
 ) -> PluginBuilder {
-    let iroh = UserData::new(node);
+    let ctx = UserData::new(Context {
+        rt,
+        iroh,
+    });
 
     b.with_function(
         "iroh_blob_get_ticket",
         [PTR],
         [PTR],
-        iroh.clone(),
+        ctx,
         iroh_blob_get_ticket,
     )
 }
