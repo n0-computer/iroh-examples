@@ -377,6 +377,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 
 [[package]]
+name = "convert_case"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -605,6 +611,19 @@ checksum = "b42b6fa04a440b495c8b04d0e71b707c585f83cb9cb28cf8cd0d976c315e31b4"
 dependencies = [
  "powerfmt",
  "serde",
+]
+
+[[package]]
+name = "derive_more"
+version = "0.99.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
+dependencies = [
+ "convert_case",
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1436,7 +1455,7 @@ dependencies = [
  "bytes",
  "chrono",
  "data-encoding",
- "derive_more",
+ "derive_more 1.0.0-beta.6",
  "flume",
  "futures",
  "genawaiter",
@@ -1510,7 +1529,7 @@ dependencies = [
  "data-encoding",
  "default-net",
  "der",
- "derive_more",
+ "derive_more 1.0.0-beta.6",
  "duct",
  "ed25519-dalek",
  "flume",
@@ -1576,6 +1595,7 @@ name = "iroh-pkarr-naming-system"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "derive_more 0.99.17",
  "iroh-bytes",
  "iroh-net",
  "pkarr",
