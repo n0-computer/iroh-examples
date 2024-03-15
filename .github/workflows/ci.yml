@@ -12,7 +12,7 @@ env:
   RUST_BACKTRACE: 1
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
-  MSRV: "1.72"
+  MSRV: "1.75"
   RS_EXAMPLES_LIST: "content-discovery,iroh-ipfs,dumbpipe-web,iroh-pkarr-node-discovery"
   GO_EXAMPLES_LIST: "dall_e_worker"
 

@@ -10,7 +10,6 @@ use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
 use iroh_bytes::HashAndFormat;
 use iroh_net::{MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
-use mainline::common::{GetPeerResponse, StoreQueryMetdata};
 
 use crate::protocol::{
     Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
@@ -49,7 +48,7 @@ pub fn to_infohash(haf: HashAndFormat) -> mainline::Id {
 }
 
 fn unique_tracker_addrs(
-    mut response: mainline::common::Response<GetPeerResponse>,
+    mut response: mainline::Response<mainline::GetPeerResponse>,
 ) -> impl Stream<Item = SocketAddr> {
     Gen::new(|co| async move {
         let mut found = HashSet::new();
@@ -129,7 +128,7 @@ pub fn query_dht(
 ) -> impl Stream<Item = anyhow::Result<SignedAnnounce>> {
     let dht = dht.as_async();
     let info_hash = to_infohash(args.content);
-    let response: mainline::common::Response<GetPeerResponse> = dht.get_peers(info_hash);
+    let response: mainline::Response<mainline::GetPeerResponse> = dht.get_peers(info_hash);
     let unique_tracker_addrs = unique_tracker_addrs(response);
     unique_tracker_addrs
         .map(move |addr| {
@@ -155,7 +154,7 @@ pub fn announce_dht(
     content: BTreeSet<HashAndFormat>,
     port: u16,
     announce_parallelism: usize,
-) -> impl Stream<Item = (HashAndFormat, mainline::Result<StoreQueryMetdata>)> {
+) -> impl Stream<Item = (HashAndFormat, mainline::Result<mainline::StoreQueryMetdata>)> {
     let dht = dht.as_async();
     futures::stream::iter(content)
         .map(move |content| {
