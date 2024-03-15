@@ -16,6 +16,18 @@ pub struct Options {
     #[serde(with = "serde_duration")]
     pub probe_timeout: Duration,
 
+    // time after which an announce is considered so old that it is no longer worth storing
+    #[serde(with = "serde_duration")]
+    pub announce_expiry: Duration,
+
+    // interval between garbage collection runs
+    #[serde(with = "serde_duration")]
+    pub gc_interval: Duration,
+
+    // time after which an announce is considered so old that it is no longer worth storing
+    #[serde(with = "serde_duration")]
+    pub probe_expiry: Duration,
+
     // interval between probing peers
     #[serde(with = "serde_duration")]
     pub probe_interval: Duration,
@@ -54,6 +66,9 @@ impl Default for Options {
             announce_timeout: Duration::from_secs(60 * 60 * 12),
             probe_timeout: Duration::from_secs(30),
             probe_interval: Duration::from_secs(10),
+            announce_expiry: Duration::from_secs(60),
+            probe_expiry: Duration::from_secs(60 * 5),
+            gc_interval: Duration::from_secs(10),
             // max hash seq size is 16 * 1024 hashes of 32 bytes each
             max_hash_seq_size: 1024 * 16 * 32,
             dial_log: Some("dial.log".into()),

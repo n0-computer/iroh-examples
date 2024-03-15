@@ -135,10 +135,27 @@ async fn server(args: Args) -> anyhow::Result<()> {
         addr.node_id
     );
     let db2 = db.clone();
+    let db3 = db.clone();
     let magic_accept_task = tokio::spawn(db.magic_accept_loop(magic_endpoint));
     let quinn_accept_task = tokio::spawn(db2.quinn_accept_loop(quinn_endpoint));
-    magic_accept_task.await??;
-    quinn_accept_task.await??;
+    let gc_task = tokio::spawn(db3.gc_loop());
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            tracing::info!("shutting down");
+        }
+        res = magic_accept_task => {
+            tracing::error!("magic accept task exited");
+            res??;
+        }
+        res = quinn_accept_task => {
+            tracing::error!("quinn accept task exited");
+            res??;
+        }
+        res = gc_task => {
+            tracing::error!("gc task exited");
+            res??;
+        }
+    }
     Ok(())
 }
 
