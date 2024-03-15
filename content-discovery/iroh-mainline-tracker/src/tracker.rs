@@ -1,7 +1,7 @@
 //! The tracker server
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::Instant,
 };
 
@@ -52,7 +52,7 @@ pub struct Tracker(Arc<Inner>);
 /// The inner state of the tracker server. Options are immutable and don't need to be locked.
 #[derive(Debug)]
 struct Inner {
-    state: RwLock<State>,
+    actor: flume::Sender<ActorMessage>,
     /// The options for the tracker server.
     options: Options,
     /// Tasks that announce to the DHT. There is one task per content item, just to inform the DHT
@@ -66,13 +66,21 @@ struct Inner {
     magic_endpoint: MagicEndpoint,
     /// To spawn non-send futures.
     local_pool: tokio_util::task::LocalPoolHandle,
-    /// The announce database.
-    announce_db: redb::Database,
+    /// The handle to the actor thread.
+    handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for Inner {
+    fn drop(&mut self) {
+        self.actor.send(ActorMessage::Stop).ok();
+        if let Some(handle) = self.handle.take() {
+            handle.join().ok();
+        }
+    }
 }
 
 struct Actor {
     rx: flume::Receiver<ActorMessage>,
-    rt: tokio::runtime::Handle,
     state: State,
     options: Options,
     db: redb::Database,
@@ -81,6 +89,7 @@ struct Actor {
 enum ActorMessage {
     Announce {
         announce: SignedAnnounce,
+        tx: oneshot::Sender<anyhow::Result<AnnounceResponse>>,
     },
     Query {
         query: Query,
@@ -102,26 +111,43 @@ enum ActorMessage {
         hash: Hash,
         sizes: (HashSeq, Arc<[u64]>),
     },
+    GetContentForNode {
+        node: NodeId,
+        tx: oneshot::Sender<anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>>>,
+    },
+    StoreProbeResult {
+        node: NodeId,
+        results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
+        now: AbsoluteTime,
+    },
+    Dump,
+    Stop,
+}
+
+struct AnnounceResponse {
+    new_content: bool,
+    new_host_for_content: bool,
 }
 
 impl Actor {
     fn run(mut self) {
         while let Ok(msg) = self.rx.recv() {
             match msg {
-                ActorMessage::Announce { announce } => {
+                ActorMessage::Announce { announce, tx } => {
                     let res = self.handle_announce(announce);
+                    tx.send(res).ok();
                 }
                 ActorMessage::Query { query, tx } => {
                     let response = self.handle_query(query);
-                    let _ = tx.send(response);
+                    tx.send(response).ok();
                 }
                 ActorMessage::GetSize { hash, tx } => {
                     let size = self.state.sizes.get(&hash).cloned();
-                    let _ = tx.send(Ok(size));
+                    tx.send(Ok(size)).ok();
                 }
                 ActorMessage::GetSizes { hash, tx } => {
                     let sizes = self.state.collections.get(&hash).cloned();
-                    let _ = tx.send(Ok(sizes));
+                    tx.send(Ok(sizes)).ok();
                 }
                 ActorMessage::SetSize { hash, size } => {
                     self.state.sizes.insert(hash, size);
@@ -129,11 +155,50 @@ impl Actor {
                 ActorMessage::SetSizes { hash, sizes } => {
                     self.state.collections.insert(hash, sizes);
                 }
+                ActorMessage::GetContentForNode { node, tx } => {
+                    let content = self.get_content_for_node(node);
+                    tx.send(content).ok();
+                }
+                ActorMessage::StoreProbeResult { node, results, now } => {
+                    if let Err(cause) = self.store_probe_result(node, results, now) {
+                        tracing::error!("error storing probe result: {}", cause);
+                    }
+                }
+                ActorMessage::Dump => {
+                    self.handle_dump().ok();
+                }
+                ActorMessage::Stop => {
+                    break;
+                }
             }
         }
     }
 
-    fn handle_announce(&mut self, signed_announce: SignedAnnounce) -> anyhow::Result<()> {
+    /// Get the content that is supposedly available, grouped by peers
+    ///
+    /// Todo: this is a full table scan, could be optimized.
+    fn get_content_for_node(
+        &mut self,
+        node: NodeId,
+    ) -> anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>> {
+        let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
+        let tx = self.db.begin_read()?;
+        let tables = ReadOnlyTables::new(&tx)?;
+        for entry in tables.announces.iter()? {
+            let (path, ..) = entry.unwrap();
+            let path = path.value();
+            if path.node() != node {
+                continue;
+            }
+            content_for_node.insert(path.announce_kind(), path.content());
+        }
+        Ok(content_for_node)
+    }
+
+    fn handle_announce(
+        &mut self,
+        signed_announce: SignedAnnounce,
+    ) -> anyhow::Result<AnnounceResponse> {
         tracing::info!("got announce");
         signed_announce.verify()?;
         tracing::info!("verified announce: {:?}", signed_announce);
@@ -165,15 +230,10 @@ impl Actor {
         }
         drop(tables);
         tx.commit()?;
-        // if new_content {
-        //     // if this is a new content, start announcing it to the DHT
-        //     self.setup_dht_announce_task(signed_announce.content);
-        // }
-        // if new_host_for_content {
-        //     // if this is a new host for this content, start probing it
-        //     self.setup_probe_task(signed_announce.host);
-        // }
-        Ok(())
+        Ok(AnnounceResponse {
+            new_content,
+            new_host_for_content,
+        })
     }
 
     fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
@@ -215,6 +275,43 @@ impl Actor {
             announces.push(signed_announce);
         }
         Ok(QueryResponse { hosts: announces })
+    }
+
+    fn store_probe_result(
+        &mut self,
+        node: NodeId,
+        results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
+        now: AbsoluteTime,
+    ) -> anyhow::Result<()> {
+        let tx = self.db.begin_write()?;
+        let mut tables = Tables::new(&tx)?;
+        for (content, announce_kind, result) in &results {
+            if result.is_ok() {
+                let path = AnnouncePath::new(*content, *announce_kind, node);
+                tables.probes.insert(path, ProbeValue::from(now))?;
+            }
+        }
+        drop(tables);
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn handle_dump(&self) -> anyhow::Result<()> {
+        let tx = self.db.begin_read()?;
+        let tables = ReadOnlyTables::new(&tx)?;
+        for entry in tables.announces.iter()? {
+            let (path, value) = entry?;
+            let path = path.value();
+            let value = value.value();
+            println!("announce: {:?} -> {:?}", path, value,);
+        }
+        for entry in tables.probes.iter()? {
+            let (path, value) = entry?;
+            let path = path.value();
+            let value = value.value();
+            println!("probe: {:?} -> {:?}", path, value,);
+        }
+        Ok(())
     }
 
     // fn setup_dht_announce_task(&mut self, content: HashAndFormat) {
@@ -273,11 +370,15 @@ fn join_signed_announce(path: AnnouncePath, value: AnnounceValue) -> SignedAnnou
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(derive_more::Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct AnnouncePath {
+    #[debug("{}", self.content().hash)]
     hash: [u8; 32],
+    #[debug("{:?}", self.content().format)]
     format: u8,
+    #[debug("{:?}", self.announce_kind())]
     kind: u8,
+    #[debug("{}", self.node())]
     node: [u8; 32],
 }
 
@@ -528,18 +629,26 @@ impl Tracker {
         drop(tables);
         drop(tx);
 
-        let state = State::default();
         let dht = Arc::new(mainline::Dht::default().as_async());
         let tpc = tokio_util::task::LocalPoolHandle::new(1);
+        let (tx, rx) = flume::unbounded();
+        let actor = Actor {
+            rx,
+            state: State::default(),
+            options: options.clone(),
+            db: announce_db,
+        };
+        let handle = std::thread::spawn(move || actor.run());
+        tx.send(ActorMessage::Dump).ok();
         let res = Self(Arc::new(Inner {
-            state: RwLock::new(state),
+            actor: tx,
             options,
             announce_tasks: Default::default(),
             probe_tasks: Default::default(),
-            announce_db,
             magic_endpoint,
             local_pool: tpc,
             dht,
+            handle: Some(handle),
         }));
         // spawn independent announce tasks for each content item
         for content in distinct_content {
@@ -556,13 +665,13 @@ impl Tracker {
         // announce task only captures this, an Arc, and the content.
         let task = self.0.local_pool.spawn_pinned(move || async move {
             loop {
-                if let Ok(content_for_node) = this.get_content_for_node(node) {
+                if let Ok(content_for_node) = this.get_content_for_node(node).await {
                     let now = AbsoluteTime::now();
                     let res = this.probe_one(node, content_for_node).await;
                     match res {
                         Ok(results) => {
                             tracing::info!("probed {node}, applying result");
-                            if let Err(cause) = this.apply_result(node, results, now) {
+                            if let Err(cause) = this.apply_result(node, results, now).await {
                                 tracing::error!("error applying result: {}", cause);
                             }
                         }
@@ -661,13 +770,13 @@ impl Tracker {
         match request {
             Request::Announce(announce) => {
                 tracing::debug!("got announce: {:?}", announce);
-                self.handle_announce(announce)?;
+                self.handle_announce(announce).await?;
                 send.finish().await?;
             }
 
             Request::Query(query) => {
                 tracing::debug!("handle query: {:?}", query);
-                let response = self.handle_query(query)?;
+                let response = self.handle_query(query).await?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_stdvec(&response)?;
                 send.write_all(&response).await?;
@@ -677,18 +786,57 @@ impl Tracker {
         Ok(())
     }
 
+    async fn get_size(&self, hash: Hash) -> anyhow::Result<Option<u64>> {
+        let (tx, rx) = oneshot::channel();
+        self.0
+            .actor
+            .send_async(ActorMessage::GetSize { hash, tx })
+            .await?;
+        Ok(rx.await??)
+    }
+
+    async fn get_sizes(&self, hash: Hash) -> anyhow::Result<Option<(HashSeq, Arc<[u64]>)>> {
+        let (tx, rx) = oneshot::channel();
+        self.0
+            .actor
+            .send_async(ActorMessage::GetSizes { hash, tx })
+            .await?;
+        Ok(rx.await??)
+    }
+
+    async fn set_size(
+        &self,
+        hash: Hash,
+        size: u64,
+    ) -> std::result::Result<(), flume::SendError<ActorMessage>> {
+        self.0
+            .actor
+            .send_async(ActorMessage::SetSize { hash, size })
+            .await
+    }
+
+    async fn set_sizes(
+        &self,
+        hash: Hash,
+        sizes: (HashSeq, Arc<[u64]>),
+    ) -> std::result::Result<(), flume::SendError<ActorMessage>> {
+        self.0
+            .actor
+            .send_async(ActorMessage::SetSizes { hash, sizes })
+            .await
+    }
+
     async fn get_or_insert_size(
         &self,
         connection: &quinn::Connection,
         hash: &Hash,
     ) -> anyhow::Result<u64> {
-        let state = &self.0.state;
-        let size_opt = state.read().unwrap().sizes.get(hash).copied();
+        let size_opt = self.get_size(*hash).await?;
         let size = match size_opt {
             Some(size) => size,
             None => {
                 let (size, _) = verified_size(connection, hash).await?;
-                state.write().unwrap().sizes.insert(*hash, size);
+                self.set_size(*hash, size).await?;
                 size
             }
         };
@@ -700,14 +848,13 @@ impl Tracker {
         connection: &quinn::Connection,
         hash: &Hash,
     ) -> anyhow::Result<(HashSeq, Arc<[u64]>)> {
-        let state = &self.0.state;
-        let entry = state.read().unwrap().collections.get(hash).cloned();
-        let res = match entry {
+        let sizes = self.get_sizes(*hash).await?;
+        let res = match sizes {
             Some(hs) => hs,
             None => {
                 let hs = get_hash_seq_and_sizes(connection, hash, self.0.options.max_hash_seq_size)
                     .await?;
-                state.write().unwrap().collections.insert(*hash, hs.clone());
+                self.set_sizes(*hash, hs.clone()).await?;
                 hs
             }
         };
@@ -790,129 +937,66 @@ impl Tracker {
         Ok(stats)
     }
 
-    fn handle_announce(&self, signed_announce: SignedAnnounce) -> anyhow::Result<()> {
+    async fn handle_announce(&self, announce: SignedAnnounce) -> anyhow::Result<()> {
         tracing::info!("got announce");
-        signed_announce.verify()?;
-        tracing::info!("verified announce: {:?}", signed_announce);
-        let content = signed_announce.content;
-        let tx = self.0.announce_db.begin_write()?;
-        let mut tables = Tables::new(&tx)?;
-        let (path, value1) = split_signed_announce(signed_announce);
-        // true if this is entirely new content, false if it is just a new host for existing content
-        // if this is true we need to start announcing it to the DHT
-        let new_content = tables
-            .announces
-            .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
-            .next()
-            .transpose()?
-            .is_none();
-        let prev = tables.announces.get(path)?.map(|x| x.value());
-        // new_host_for_content is true if this is a new host for this path (content, kind, node), false if it is just an update
-        // if this is true we need to start probing it
-        //
-        // update is true if the new announce is newer than the previous one
-        // if this is true we need to store the new announce
-        let (new_host_for_content, update) = if let Some(prev) = prev {
-            (false, prev.timestamp < value1.timestamp)
-        } else {
-            (true, true)
-        };
-        if update {
-            tables.announces.insert(path, value1)?;
-        }
-        drop(tables);
-        tx.commit()?;
+        announce.verify()?;
+        tracing::info!("verified announce: {:?}", announce);
+
+        let (tx, rx) = oneshot::channel();
+        self.0
+            .actor
+            .send_async(ActorMessage::Announce { announce, tx })
+            .await?;
+        let AnnounceResponse {
+            new_content,
+            new_host_for_content,
+        } = rx.await??;
         if new_content {
             // if this is a new content, start announcing it to the DHT
-            self.setup_dht_announce_task(signed_announce.content);
+            self.setup_dht_announce_task(announce.content);
         }
         if new_host_for_content {
             // if this is a new host for this content, start probing it
-            self.setup_probe_task(signed_announce.host);
+            self.setup_probe_task(announce.host);
         }
         Ok(())
     }
 
-    fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
-        let tx = self.0.announce_db.begin_read()?;
-        let tables = ReadOnlyTables::new(&tx)?;
-        let iter = tables.announces.range(
-            AnnouncePath::content_min(query.content)..=AnnouncePath::content_max(query.content),
-        )?;
-        let options = &self.0.options;
-        let now = AbsoluteTime::now();
-        let kind: AnnounceKind = AnnounceKind::from_complete(query.flags.complete);
-        let mut announces = Vec::new();
-        for entry in iter {
-            let (path, value) = entry?;
-            let path = path.value();
-            let value = value.value();
-            if kind == AnnounceKind::Complete && path.announce_kind() == AnnounceKind::Partial {
-                // we only want complete announces
-                continue;
-            }
-            let recently_announced = now - value.timestamp <= options.announce_timeout;
-            if !recently_announced {
-                // announce is too old
-                tracing::error!("announce is too old");
-                continue;
-            }
-            if query.flags.verified {
-                let last_probed = tables.probes.get(&path)?.map(|x| x.value().timestamp);
-                let recently_probed = last_probed
-                    .map(|t| now - t <= options.probe_timeout)
-                    .unwrap_or_default();
-                if !recently_probed {
-                    // query asks for verificated hosts, but the last successful probe is too old
-                    tracing::error!("verification of complete data is too old");
-                    continue;
-                }
-            }
-            let signed_announce = join_signed_announce(path, value);
-            announces.push(signed_announce);
-        }
-        Ok(QueryResponse { hosts: announces })
+    async fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
+        let (tx, rx) = oneshot::channel();
+        self.0
+            .actor
+            .send_async(ActorMessage::Query { query, tx })
+            .await?;
+        rx.await?
     }
 
     /// Get the content that is supposedly available, grouped by peers
     ///
     /// Todo: this is a full table scan, could be optimized.
-    fn get_content_for_node(
+    async fn get_content_for_node(
         &self,
         node: NodeId,
     ) -> anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>> {
-        let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
-        let tx = self.0.announce_db.begin_read()?;
-        let tables = ReadOnlyTables::new(&tx)?;
-        for entry in tables.announces.iter()? {
-            let (path, ..) = entry.unwrap();
-            let path = path.value();
-            if path.node() != node {
-                continue;
-            }
-            content_for_node.insert(path.announce_kind(), path.content());
-        }
-        Ok(content_for_node)
+        let (tx, rx) = oneshot::channel();
+        self.0
+            .actor
+            .send_async(ActorMessage::GetContentForNode { node, tx })
+            .await?;
+        rx.await?
     }
 
     /// Apply the results of a probe to the database.
-    fn apply_result(
+    async fn apply_result(
         &self,
         node: NodeId,
         results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
         now: AbsoluteTime,
-    ) -> anyhow::Result<()> {
-        let tx = self.0.announce_db.begin_write()?;
-        let mut tables = Tables::new(&tx)?;
-        for (content, announce_kind, result) in &results {
-            if result.is_ok() {
-                let path = AnnouncePath::new(*content, *announce_kind, node);
-                tables.probes.insert(path, ProbeValue::from(now))?;
-            }
-        }
-        drop(tables);
-        tx.commit()?;
-        Ok(())
+    ) -> std::result::Result<(), flume::SendError<ActorMessage>> {
+        self.0
+            .actor
+            .send_async(ActorMessage::StoreProbeResult { node, results, now })
+            .await
     }
 
     /// Execute probes for a single peer.
