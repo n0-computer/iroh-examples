@@ -102,6 +102,7 @@ fn write_defaults() -> anyhow::Result<()> {
 async fn server(args: Args) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let home = tracker_home()?;
+    tokio::fs::create_dir_all(&home).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
     let mut options = load_from_file::<Options>(&config_path)?;

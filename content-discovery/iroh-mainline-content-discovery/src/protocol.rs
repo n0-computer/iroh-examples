@@ -33,12 +33,20 @@ impl AnnounceKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AbsoluteTime(u64);
 
 impl AbsoluteTime {
     pub fn now() -> Self {
         Self::try_from(SystemTime::now()).unwrap()
+    }
+
+    pub fn from_micros(micros: u64) -> Self {
+        Self(micros)
+    }
+
+    pub fn as_micros(&self) -> u64 {
+        self.0
     }
 }
 

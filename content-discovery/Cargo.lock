@@ -1697,6 +1697,7 @@ dependencies = [
  "redb",
  "rustls",
  "serde",
+ "serde-big-array",
  "serde_json",
  "tempfile",
  "tokio",

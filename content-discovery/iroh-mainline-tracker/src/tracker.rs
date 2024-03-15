@@ -14,8 +14,8 @@ use iroh_bytes::{
 };
 use iroh_mainline_content_discovery::{
     protocol::{
-        AbsoluteTime, AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce,
-        REQUEST_SIZE_LIMIT,
+        AbsoluteTime, Announce, AnnounceKind, Query, QueryResponse, Request, Response,
+        SignedAnnounce, REQUEST_SIZE_LIMIT,
     },
     to_infohash,
 };
@@ -24,8 +24,12 @@ use iroh_net::{
     MagicEndpoint, NodeId,
 };
 use rand::Rng;
-use redb::ReadableTable;
+use redb::{ReadableTable, RedbValue};
 use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
+
+mod tables;
+mod util;
 
 use crate::{
     io::{log_connection_attempt, log_probe_attempt},
@@ -35,6 +39,8 @@ use crate::{
     options::Options,
     task_map::TaskMap,
 };
+
+use self::tables::{ReadOnlyTables, Tables};
 
 /// The tracker server.
 ///
@@ -59,8 +65,29 @@ struct Inner {
     magic_endpoint: MagicEndpoint,
     /// To spawn non-send futures.
     local_pool: tokio_util::task::LocalPoolHandle,
-    ///
+    /// The announce database.
     announce_db: redb::Database,
+}
+
+fn split_signed_announce(announce: SignedAnnounce) -> (AnnouncePath, AnnounceValue) {
+    let path = AnnouncePath::new(announce.content, announce.kind, announce.host);
+    let value = AnnounceValue {
+        timestamp: announce.timestamp,
+        signature: announce.signature,
+    };
+    (path, value)
+}
+
+fn join_signed_announce(path: AnnouncePath, value: AnnounceValue) -> SignedAnnounce {
+    SignedAnnounce {
+        announce: Announce {
+            content: path.content(),
+            kind: path.announce_kind(),
+            host: path.node(),
+            timestamp: value.timestamp,
+        },
+        signature: value.signature,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,6 +125,10 @@ impl AnnouncePath {
         } else {
             AnnounceKind::Complete
         }
+    }
+
+    fn node(&self) -> NodeId {
+        NodeId::from_bytes(&self.node).unwrap()
     }
 
     fn content_min(content: HashAndFormat) -> Self {
@@ -170,20 +201,35 @@ impl redb::RedbKey for AnnouncePath {
     }
 }
 
-impl redb::RedbValue for PeerInfo {
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+struct AnnounceValue {
+    timestamp: AbsoluteTime,
+    #[serde(with = "BigArray")]
+    signature: [u8; 64],
+}
+
+impl RedbValue for AnnounceValue {
     type SelfType<'a> = Self;
 
-    type AsBytes<'a> = Vec<u8>;
+    type AsBytes<'a> = [u8; 72];
 
     fn fixed_width() -> Option<usize> {
-        None
+        Some(8 + 64)
     }
 
     fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
     where
         Self: 'a,
     {
-        postcard::from_bytes(data).unwrap()
+        assert!(data.len() == 72);
+        let mut timestamp = [0; 8];
+        timestamp.copy_from_slice(&data[0..8]);
+        let mut signature = [0; 64];
+        signature.copy_from_slice(&data[8..72]);
+        Self {
+            timestamp: AbsoluteTime::from_micros(u64::from_le_bytes(timestamp)),
+            signature,
+        }
     }
 
     fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
@@ -191,16 +237,52 @@ impl redb::RedbValue for PeerInfo {
         Self: 'a,
         Self: 'b,
     {
-        postcard::to_stdvec(value).unwrap()
+        let mut res = [0; 72];
+        res[0..8].copy_from_slice(&value.timestamp.as_micros().to_le_bytes());
+        res[8..72].copy_from_slice(&value.signature);
+        res
     }
 
     fn type_name() -> redb::TypeName {
-        redb::TypeName::new("PeerInfo")
+        redb::TypeName::new("peer-info")
     }
 }
 
-const ANNONCE_TABLE_V0: redb::TableDefinition<AnnouncePath, PeerInfo> =
-    redb::TableDefinition::new("announces_v0");
+#[derive(Debug, derive_more::From)]
+struct ProbeValue {
+    timestamp: AbsoluteTime,
+}
+
+impl redb::RedbValue for ProbeValue {
+    type SelfType<'a> = Self;
+
+    type AsBytes<'a> = [u8; 8];
+
+    fn fixed_width() -> Option<usize> {
+        Some(8)
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        Self {
+            timestamp: AbsoluteTime::from_micros(u64::from_le_bytes(data.try_into().unwrap())),
+        }
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'a,
+        Self: 'b,
+    {
+        value.timestamp.as_micros().to_le_bytes()
+    }
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("probe-value")
+    }
+}
 
 /// The mutable state of the tracker server.
 #[derive(Debug, Clone, Default)]
@@ -235,52 +317,29 @@ impl From<ProbeKind> for AnnounceKind {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PeerInfo {
-    /// The signed announce from the peer.
-    signed_announce: SignedAnnounce,
-    /// last time the peer was randomly probed for the data and answered.
-    last_probed: Option<AbsoluteTime>,
-}
-
-impl From<SignedAnnounce> for PeerInfo {
-    fn from(signed_announce: SignedAnnounce) -> Self {
-        Self {
-            signed_announce,
-            last_probed: None,
-        }
-    }
-}
-
-impl PeerInfo {
-    fn last_announced(&self) -> AbsoluteTime {
-        self.signed_announce.timestamp
-    }
-}
-
 impl Tracker {
     /// Create a new tracker server.
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
     pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
+        tracing::info!("creating tracker using database at {}", options.announce_data_path.display());
         let announce_db = redb::Database::create(&options.announce_data_path)?;
         let tx = announce_db.begin_write()?;
         {
-            let _table = tx.open_table(ANNONCE_TABLE_V0)?;
+            let _tables = Tables::new(&tx)?;
         }
         tx.commit()?;
         let tx = announce_db.begin_read()?;
-        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let tables = ReadOnlyTables::new(&tx)?;
         let mut distinct_content = Vec::new();
         let mut distinct_nodes = BTreeSet::new();
-        for entry in table.iter()? {
-            let (path, peer_info) = entry?;
+        for entry in tables.announces.iter()? {
+            let (path, _) = entry?;
             let path = path.value();
-            let peer_info = peer_info.value();
             distinct_content.push(path.content());
-            distinct_nodes.insert(peer_info.signed_announce.host);
+            distinct_nodes.insert(path.node());
         }
-        drop(table);
+        drop(tables);
         drop(tx);
 
         let state = State::default();
@@ -551,30 +610,37 @@ impl Tracker {
         tracing::info!("verified announce: {:?}", signed_announce);
         let content = signed_announce.content;
         let tx = self.0.announce_db.begin_write()?;
-        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
-        let path = AnnouncePath::new(content, signed_announce.kind, signed_announce.host);
-        let new_content = table
+        let mut tables = Tables::new(&tx)?;
+        let (path, value1) = split_signed_announce(signed_announce);
+        // true if this is entirely new content, false if it is just a new host for existing content
+        // if this is true we need to start announcing it to the DHT
+        let new_content = tables
+            .announces
             .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
             .next()
             .transpose()?
             .is_none();
-        let prev = table.get(path)?.map(|x| x.value());
-        let new_host = prev.is_none();
-        let curr = PeerInfo {
-            signed_announce,
-            last_probed: prev.and_then(|x| x.last_probed),
+        let prev = tables.announces.get(path)?.map(|x| x.value());
+        // new_host_for_content is true if this is a new host for this path (content, kind, node), false if it is just an update
+        // if this is true we need to start probing it
+        //
+        // update is true if the new announce is newer than the previous one
+        // if this is true we need to store the new announce
+        let (new_host_for_content, update) = if let Some(prev) = prev {
+            (false, prev.timestamp < value1.timestamp)
+        } else {
+            (true, true)
         };
-        table.insert(
-            AnnouncePath::new(content, signed_announce.kind, signed_announce.host),
-            curr,
-        )?;
-        drop(table);
+        if update {
+            tables.announces.insert(path, value1)?;
+        }
+        drop(tables);
         tx.commit()?;
         if new_content {
             // if this is a new content, start announcing it to the DHT
             self.setup_dht_announce_task(signed_announce.content);
         }
-        if new_host {
+        if new_host_for_content {
             // if this is a new host for this content, start probing it
             self.setup_probe_task(signed_announce.host);
         }
@@ -583,8 +649,8 @@ impl Tracker {
 
     fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
         let tx = self.0.announce_db.begin_read()?;
-        let table = tx.open_table(ANNONCE_TABLE_V0)?;
-        let iter = table.range(
+        let tables = ReadOnlyTables::new(&tx)?;
+        let iter = tables.announces.range(
             AnnouncePath::content_min(query.content)..=AnnouncePath::content_max(query.content),
         )?;
         let options = &self.0.options;
@@ -592,29 +658,32 @@ impl Tracker {
         let kind: AnnounceKind = AnnounceKind::from_complete(query.flags.complete);
         let mut announces = Vec::new();
         for entry in iter {
-            let (path, peer_info) = entry?;
+            let (path, value) = entry?;
             let path = path.value();
-            let peer_info = peer_info.value();
+            let value = value.value();
             if kind == AnnounceKind::Complete && path.announce_kind() == AnnounceKind::Partial {
                 // we only want complete announces
                 continue;
             }
-            let recently_announced = now - peer_info.last_announced() <= options.announce_timeout;
-            let recently_probed = peer_info
-                .last_probed
-                .map(|t| now - t <= options.probe_timeout)
-                .unwrap_or_default();
+            let recently_announced = now - value.timestamp <= options.announce_timeout;
             if !recently_announced {
                 // announce is too old
                 tracing::error!("announce is too old");
                 continue;
             }
-            if query.flags.verified && !recently_probed {
-                // query asks for verificated hosts, but the last successful probe is too old
-                tracing::error!("verification of complete data is too old");
-                continue;
+            if query.flags.verified {
+                let last_probed = tables.probes.get(&path)?.map(|x| x.value().timestamp);
+                let recently_probed = last_probed
+                    .map(|t| now - t <= options.probe_timeout)
+                    .unwrap_or_default();
+                if !recently_probed {
+                    // query asks for verificated hosts, but the last successful probe is too old
+                    tracing::error!("verification of complete data is too old");
+                    continue;
+                }
             }
-            announces.push(peer_info.signed_announce);
+            let signed_announce = join_signed_announce(path, value);
+            announces.push(signed_announce);
         }
         Ok(QueryResponse { hosts: announces })
     }
@@ -628,12 +697,11 @@ impl Tracker {
     ) -> anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>> {
         let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
         let tx = self.0.announce_db.begin_read()?;
-        let table = tx.open_table(ANNONCE_TABLE_V0)?;
-        for entry in table.iter()? {
-            let (path, peer_info) = entry.unwrap();
+        let tables = ReadOnlyTables::new(&tx)?;
+        for entry in tables.announces.iter()? {
+            let (path, ..) = entry.unwrap();
             let path = path.value();
-            let peer_info = peer_info.value();
-            if peer_info.signed_announce.host != node {
+            if path.node() != node {
                 continue;
             }
             content_for_node.insert(path.announce_kind(), path.content());
@@ -649,18 +717,14 @@ impl Tracker {
         now: AbsoluteTime,
     ) -> anyhow::Result<()> {
         let tx = self.0.announce_db.begin_write()?;
-        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let mut tables = Tables::new(&tx)?;
         for (content, announce_kind, result) in &results {
             if result.is_ok() {
                 let path = AnnouncePath::new(*content, *announce_kind, node);
-                let peer_info_opt = table.get(&path)?.map(|x| x.value());
-                if let Some(mut peer_info) = peer_info_opt {
-                    peer_info.last_probed = Some(now);
-                    table.insert(path, peer_info)?;
-                }
+                tables.probes.insert(path, ProbeValue::from(now))?;
             }
         }
-        drop(table);
+        drop(tables);
         tx.commit()?;
         Ok(())
     }

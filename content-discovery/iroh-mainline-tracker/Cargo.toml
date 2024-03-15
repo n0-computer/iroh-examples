@@ -43,6 +43,7 @@ genawaiter = { version = "0.99.1", features = ["futures03"] }
 iroh-mainline-content-discovery = { path = "../iroh-mainline-content-discovery", features = ["client"] }
 
 clap = { version = "4", features = ["derive"], optional = true }
+serde-big-array = "0.5.1"
 
 [features]
 cli = ["clap"]
