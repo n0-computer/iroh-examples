@@ -1634,8 +1634,10 @@ name = "iroh-mainline-content-discovery"
 version = "0.4.0"
 dependencies = [
  "anyhow",
+ "derive_more",
  "futures",
  "genawaiter",
+ "hex",
  "iroh-bytes",
  "iroh-net",
  "iroh-pkarr-node-discovery 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",

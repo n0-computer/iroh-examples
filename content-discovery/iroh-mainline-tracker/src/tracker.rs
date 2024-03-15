@@ -92,18 +92,22 @@ struct Actor {
 enum ActorMessage {
     Announce {
         announce: SignedAnnounce,
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<AnnounceResponse>>,
     },
     Query {
         query: Query,
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<QueryResponse>>,
     },
     GetSize {
         hash: Hash,
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<Option<u64>>>,
     },
     GetSizes {
         hash: Hash,
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<Option<(HashSeq, Arc<[u64]>)>>>,
     },
     SetSize {
@@ -116,6 +120,7 @@ enum ActorMessage {
     },
     GetContentForNode {
         node: NodeId,
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>>>,
     },
     StoreProbeResult {
@@ -124,9 +129,11 @@ enum ActorMessage {
         now: AbsoluteTime,
     },
     GetDistinctContent {
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<GetDistinctContentResponse>>,
     },
     Gc {
+        #[debug(skip)]
         tx: oneshot::Sender<anyhow::Result<()>>,
     },
     Dump,
@@ -178,21 +185,21 @@ impl Actor {
             }
             match msg.category() {
                 MessageCategory::ReadWrite => {
-                    tracing::debug!("starting write transaction");
+                    tracing::debug!("write transaction");
                     let txn = db.begin_write()?;
                     let mut tables = Tables::new(&txn)?;
-                    for msg in msgs.batch_iter(1000, Duration::from_secs(10)) {
+                    for msg in msgs.batch_iter(1000, Duration::from_secs(1)) {
                         if let Err(msg) = self.handle_readwrite(msg, &mut tables)? {
                             msgs.push_back(msg).expect("just recv'd");
                             break;
                         }
                     }
                     drop(tables);
-                    tracing::debug!("committing write transaction");
+                    tracing::debug!("write transaction end");
                     txn.commit()?;
                 }
                 MessageCategory::ReadOnly => {
-                    tracing::debug!("starting read transaction");
+                    tracing::debug!("read transaction");
                     let txn = db.begin_read()?;
                     let tables = ReadOnlyTables::new(&txn)?;
                     for msg in msgs.batch_iter(1000, Duration::from_secs(10)) {
@@ -201,7 +208,7 @@ impl Actor {
                             break;
                         }
                     }
-                    tracing::debug!("closing read transaction");
+                    tracing::debug!("read transaction end");
                 }
             }
         }
@@ -435,17 +442,29 @@ impl Actor {
             let (path, value) = item?;
             let path = path.value();
             let value = value.value();
-            if now - value.timestamp <= options.announce_expiry {
+            let announce_age = now - value.timestamp;
+            if announce_age <= options.announce_expiry {
+                tracing::debug!(
+                    "keeping announce {} because it was announced {}s ago",
+                    path.format_short(),
+                    announce_age.as_secs_f64()
+                );
                 // announce is recent, keep it
                 continue;
             }
             if let Some(last_probe) = tables.probes.get(&path)?.map(|x| x.value().timestamp) {
                 // announce is expired, but we have probed it recently, keep it
-                if now - last_probe <= options.probe_expiry {
-                    tracing::info!("keeping expired announce : {:?}", path);
+                let age = now - last_probe;
+                if age <= options.probe_expiry {
+                    tracing::trace!(
+                        "keeping expired announce {} because it was probed {}s ago",
+                        path.format_short(),
+                        age.as_secs_f64()
+                    );
                     continue;
                 }
             }
+            tracing::trace!("removing announce {}", path.format_short(),);
             to_remove.push(path);
         }
         for path in to_remove {
@@ -779,13 +798,13 @@ impl Tracker {
                     let res = this.probe_one(node, content_for_node).await;
                     match res {
                         Ok(results) => {
-                            tracing::info!("probed {node}, applying result");
+                            tracing::debug!("probed {node}, applying result");
                             if let Err(cause) = this.apply_result(node, results, now).await {
                                 tracing::error!("error applying result: {}", cause);
                             }
                         }
                         Err(cause) => {
-                            tracing::warn!("error probing {node}: {cause}");
+                            tracing::debug!("error probing {node}: {cause}");
                         }
                     }
                 }
@@ -807,14 +826,14 @@ impl Tracker {
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
-                        tracing::info!(
+                        tracing::debug!(
                             "announced {} as {} on {} nodes",
                             content,
                             sqm.target(),
                             stored_at.len()
                         );
                         for item in stored_at {
-                            tracing::debug!("stored at {} {}", item.id, item.address);
+                            tracing::trace!("stored at {} {}", item.id, item.address);
                         }
                     }
                     Err(cause) => {
@@ -830,9 +849,9 @@ impl Tracker {
     pub async fn gc_loop(self) -> anyhow::Result<()> {
         loop {
             tokio::time::sleep(self.0.options.gc_interval).await;
-            tracing::info!("gc run starts");
+            tracing::debug!("gc start");
             self.gc().await?;
-            tracing::info!("gc run ends");
+            tracing::debug!("gc end");
             let distinct = self.get_distinct_content().await?;
             // make sure tasks for expired nodes or content items are removed
             self.0
@@ -1167,7 +1186,7 @@ impl Tracker {
                 &res,
             )?;
             if let Err(cause) = &res {
-                tracing::error!("error probing host {}: {}", host, cause);
+                tracing::debug!("error probing host {}: {}", host, cause);
             }
             results.push((content, announce_kind, res));
         }

@@ -14,8 +14,8 @@ use clap::Parser;
 use iroh_mainline_content_discovery::protocol::ALPN;
 use iroh_mainline_tracker::{
     io::{
-        self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE,
-        CONFIG_FILE, SERVER_KEY_FILE,
+        self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEBUG_FILE,
+        CONFIG_DEFAULTS_FILE, CONFIG_FILE, SERVER_KEY_FILE,
     },
     options::Options,
     tracker::Tracker,
@@ -93,6 +93,13 @@ pub async fn accept_conn(
 }
 
 /// Write default options to a sample config file.
+fn write_debug() -> anyhow::Result<()> {
+    let default_path = tracker_path(CONFIG_DEBUG_FILE)?;
+    io::save_to_file(Options::debug(), &default_path)?;
+    Ok(())
+}
+
+/// Write default options to a sample config file.
 fn write_defaults() -> anyhow::Result<()> {
     let default_path = tracker_path(CONFIG_DEFAULTS_FILE)?;
     io::save_to_file(Options::default(), &default_path)?;
@@ -105,8 +112,10 @@ async fn server(args: Args) -> anyhow::Result<()> {
     tokio::fs::create_dir_all(&home).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
+    write_debug()?;
     let mut options = load_from_file::<Options>(&config_path)?;
     options.make_paths_relative(&home);
+    tracing::info!("using options: {:#?}", options);
     // override options with args
     if let Some(quinn_port) = args.quinn_port {
         options.quinn_port = quinn_port;

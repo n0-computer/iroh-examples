@@ -96,7 +96,7 @@ pub struct Announce {
 }
 
 /// A signed announce.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(derive_more::Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SignedAnnounce {
     /// Announce.
     pub announce: Announce,
@@ -104,6 +104,7 @@ pub struct SignedAnnounce {
     ///
     /// The signature is over the announce, serialized with postcard.
     #[serde(with = "BigArray")]
+    #[debug("{}", hex::encode(&self.signature))]
     pub signature: [u8; 64],
 }
 
