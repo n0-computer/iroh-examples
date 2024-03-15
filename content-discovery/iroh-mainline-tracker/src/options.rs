@@ -11,28 +11,41 @@ pub struct Options {
     // time after which an announce is considered stale
     #[serde(with = "serde_duration")]
     pub announce_timeout: Duration,
+
     // time after which a probe is considered stale
     #[serde(with = "serde_duration")]
     pub probe_timeout: Duration,
+
     // interval between probing peers
     #[serde(with = "serde_duration")]
     pub probe_interval: Duration,
+
     // max hash seq size in bytes
     pub max_hash_seq_size: u64,
+
     // log file for dial attempts
     pub dial_log: Option<PathBuf>,
+
     // log file for probe attempts
     pub probe_log: Option<PathBuf>,
-    // path to the file where announce data is persisted
-    // this is used to restore the announce data on startup
-    // can use either toml, json or postcard
-    pub announce_data_path: Option<PathBuf>,
-    // number of peers to probe in parallel
-    pub probe_parallelism: usize,
 
-    pub dht_announce_parallelism: usize,
+    // binary database for announce data
+    pub announce_data_path: PathBuf,
 
+    /// Interval between DHT announces.
+    ///
+    /// The tracker will announce itself to the DHT for each hash it knows about
+    /// every `dht_announce_interval` seconds. Setting this to a very low value
+    /// risks getting throttled by the DHT.
+    #[serde(with = "serde_duration")]
     pub dht_announce_interval: Duration,
+
+    /// The quinn port to listen on. This is also the port that will be announced
+    /// to the DHT. Set to 0 to listen on a random port.
+    pub quinn_port: u16,
+
+    /// The magic port to listen on. Set to 0 to listen on a random port.
+    pub magic_port: u16,
 }
 
 impl Default for Options {
@@ -45,10 +58,10 @@ impl Default for Options {
             max_hash_seq_size: 1024 * 16 * 32,
             dial_log: Some("dial.log".into()),
             probe_log: Some("probe.log".into()),
-            announce_data_path: Some("announce.data.toml".into()),
-            probe_parallelism: 4,
-            dht_announce_parallelism: 4,
+            announce_data_path: "announce.redb".into(),
             dht_announce_interval: Duration::from_secs(10),
+            quinn_port: 0,
+            magic_port: 0,
         }
     }
 }
@@ -62,9 +75,7 @@ impl Options {
         if let Some(path) = &mut self.probe_log {
             *path = base.join(&path);
         }
-        if let Some(path) = &mut self.announce_data_path {
-            *path = base.join(&path);
-        }
+        self.announce_data_path = base.join(&self.announce_data_path);
     }
 }
 mod serde_duration {

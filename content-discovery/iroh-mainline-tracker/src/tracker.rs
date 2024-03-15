@@ -6,7 +6,6 @@ use std::{
 };
 
 use bao_tree::{ByteNum, ChunkNum};
-use futures::StreamExt;
 use iroh_bytes::{
     get::{fsm::EndBlobNext, Stats},
     hashseq::HashSeq,
@@ -14,68 +13,202 @@ use iroh_bytes::{
     BlobFormat, Hash, HashAndFormat,
 };
 use iroh_mainline_content_discovery::{
-    announce_dht,
     protocol::{
         AbsoluteTime, AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce,
         REQUEST_SIZE_LIMIT,
     },
+    to_infohash,
 };
 use iroh_net::{
     magic_endpoint::{get_alpn, get_remote_node_id},
     MagicEndpoint, NodeId,
 };
 use rand::Rng;
+use redb::ReadableTable;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    io::{log_connection_attempt, log_probe_attempt, AnnounceData},
+    io::{log_connection_attempt, log_probe_attempt},
     iroh_bytes_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
     },
     options::Options,
+    task_map::TaskMap,
 };
 
 /// The tracker server.
 ///
 /// This is a cheaply cloneable handle to the state and the options.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Tracker(Arc<Inner>);
 
 /// The inner state of the tracker server. Options are immutable and don't need to be locked.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Inner {
     state: RwLock<State>,
+    /// The options for the tracker server.
     options: Options,
+    /// Tasks that announce to the DHT. There is one task per content item, just to inform the DHT
+    /// that we know about the content.
+    announce_tasks: TaskMap<HashAndFormat>,
+    /// Tasks that probe nodes. There is one task per node, and it probes all content items for that peer.
+    probe_tasks: TaskMap<NodeId>,
+    /// A handle to the DHT client, which is used to announce to the DHT.
+    dht: Arc<mainline::async_dht::AsyncDht>,
+    /// The magic endpoint, which is used to accept incoming connections and to probe peers.
+    magic_endpoint: MagicEndpoint,
+    /// To spawn non-send futures.
+    local_pool: tokio_util::task::LocalPoolHandle,
+    ///
+    announce_db: redb::Database,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct AnnouncePath {
+    hash: [u8; 32],
+    format: u8,
+    kind: u8,
+    node: [u8; 32],
+}
+
+impl AnnouncePath {
+    fn new(content: HashAndFormat, kind: AnnounceKind, node: NodeId) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: content.format as u8,
+            kind: kind as u8,
+            node: *node.as_bytes(),
+        }
+    }
+
+    fn content(&self) -> HashAndFormat {
+        HashAndFormat {
+            hash: Hash::from_bytes(self.hash),
+            format: if self.format == 0 {
+                BlobFormat::Raw
+            } else {
+                BlobFormat::HashSeq
+            },
+        }
+    }
+
+    fn announce_kind(&self) -> AnnounceKind {
+        if self.kind == 0 {
+            AnnounceKind::Partial
+        } else {
+            AnnounceKind::Complete
+        }
+    }
+
+    fn content_min(content: HashAndFormat) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: 0,
+            kind: 0,
+            node: [0; 32],
+        }
+    }
+
+    fn content_max(content: HashAndFormat) -> Self {
+        Self {
+            hash: *content.hash.as_bytes(),
+            format: 255,
+            kind: 255,
+            node: [255; 32],
+        }
+    }
+}
+
+impl redb::RedbValue for AnnouncePath {
+    type SelfType<'a> = Self;
+
+    type AsBytes<'a> = [u8; 66];
+
+    fn fixed_width() -> Option<usize> {
+        Some(66)
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        let mut hash = [0; 32];
+        hash.copy_from_slice(&data[0..32]);
+        let format = data[32];
+        let kind = data[33];
+        let mut node = [0; 32];
+        node.copy_from_slice(&data[34..66]);
+        Self {
+            hash,
+            format,
+            kind,
+            node,
+        }
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'a,
+        Self: 'b,
+    {
+        let mut res = [0; 66];
+        res[0..32].copy_from_slice(&value.hash);
+        res[32] = value.format;
+        res[33] = value.kind;
+        res[34..66].copy_from_slice(&value.node);
+        res
+    }
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("AnnouncePath")
+    }
+}
+
+impl redb::RedbKey for AnnouncePath {
+    fn compare(data1: &[u8], data2: &[u8]) -> std::cmp::Ordering {
+        data1.cmp(data2)
+    }
+}
+
+impl redb::RedbValue for PeerInfo {
+    type SelfType<'a> = Self;
+
+    type AsBytes<'a> = Vec<u8>;
+
+    fn fixed_width() -> Option<usize> {
+        None
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        postcard::from_bytes(data).unwrap()
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'a,
+        Self: 'b,
+    {
+        postcard::to_stdvec(value).unwrap()
+    }
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("PeerInfo")
+    }
+}
+
+const ANNONCE_TABLE_V0: redb::TableDefinition<AnnouncePath, PeerInfo> =
+    redb::TableDefinition::new("announces_v0");
 
 /// The mutable state of the tracker server.
 #[derive(Debug, Clone, Default)]
 struct State {
-    // every announce we ever got, indexed by hash, kind and peer
-    announce_data: BTreeMap<HashAndFormat, BTreeMap<AnnounceKind, BTreeMap<NodeId, PeerInfo>>>,
     // cache for verified sizes of hashes, used during probing
     sizes: BTreeMap<Hash, u64>,
     // cache for collections, used during collection probing
     collections: BTreeMap<Hash, (HashSeq, Arc<[u64]>)>,
-}
-
-impl State {
-    /// Get the part of the announce data that is persisted
-    fn get_persisted_announce_data(&self) -> AnnounceData {
-        let mut data: AnnounceData = Default::default();
-        for (content, by_kind_and_peers) in self.announce_data.iter() {
-            let mut peers = BTreeMap::<AnnounceKind, BTreeMap<NodeId, SignedAnnounce>>::new();
-            for (kind, by_peer) in by_kind_and_peers {
-                for (peer, peer_info) in by_peer {
-                    peers
-                        .entry(*kind)
-                        .or_default()
-                        .insert(*peer, peer_info.signed_announce);
-                }
-            }
-            data.0.insert(*content, peers);
-        }
-        data
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,7 +235,7 @@ impl From<ProbeKind> for AnnounceKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct PeerInfo {
     /// The signed announce from the peer.
     signed_announce: SignedAnnounce,
@@ -129,72 +262,87 @@ impl Tracker {
     /// Create a new tracker server.
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
-    pub fn new(options: Options) -> anyhow::Result<Self> {
-        let announce_data = if let Some(data_path) = &options.announce_data_path {
-            crate::io::load_from_file::<AnnounceData>(data_path)?
-        } else {
-            Default::default()
-        };
-        let mut state = State::default();
-        for (content, peers_by_kind) in announce_data.0 {
-            for (kind, peers) in peers_by_kind {
-                for (peer, signed_announce) in peers {
-                    signed_announce.verify()?;
-                    let by_kind_and_peer = state.announce_data.entry(content).or_default();
-                    by_kind_and_peer
-                        .entry(kind)
-                        .or_default()
-                        .entry(peer)
-                        .or_insert(PeerInfo {
-                            signed_announce,
-                            last_probed: None,
-                        });
-                }
-            }
+    pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
+        let announce_db = redb::Database::create(&options.announce_data_path)?;
+        let tx = announce_db.begin_write()?;
+        {
+            let _table = tx.open_table(ANNONCE_TABLE_V0)?;
         }
-        Ok(Self(Arc::new(Inner {
+        tx.commit()?;
+        let tx = announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let mut distinct_content = Vec::new();
+        let mut distinct_nodes = BTreeSet::new();
+        for entry in table.iter()? {
+            let (path, peer_info) = entry?;
+            let path = path.value();
+            let peer_info = peer_info.value();
+            distinct_content.push(path.content());
+            distinct_nodes.insert(peer_info.signed_announce.host);
+        }
+        drop(table);
+        drop(tx);
+
+        let state = State::default();
+        let dht = Arc::new(mainline::Dht::default().as_async());
+        let tpc = tokio_util::task::LocalPoolHandle::new(1);
+        let res = Self(Arc::new(Inner {
             state: RwLock::new(state),
             options,
-        })))
-    }
-
-    /// The main loop that probes peers.
-    pub async fn probe_loop(self, endpoint: MagicEndpoint) -> anyhow::Result<()> {
-        loop {
-            let content_by_peers = self.get_content_by_peers();
-            let now = AbsoluteTime::now();
-            let results = futures::stream::iter(content_by_peers.into_iter())
-                .map(|(peer, by_kind_and_content)| {
-                    let endpoint = endpoint.clone();
-                    let this = self.clone();
-                    this.probe_one(endpoint, peer, by_kind_and_content)
-                })
-                .buffer_unordered(self.0.options.probe_parallelism)
-                .collect::<Vec<_>>()
-                .await;
-            let results = results
-                .into_iter()
-                .filter_map(|x| x.ok())
-                .collect::<BTreeMap<_, _>>();
-            self.apply_result(results, now);
-            tokio::time::sleep(self.0.options.probe_interval).await;
+            announce_tasks: Default::default(),
+            probe_tasks: Default::default(),
+            announce_db,
+            magic_endpoint,
+            local_pool: tpc,
+            dht,
+        }));
+        // spawn independent announce tasks for each content item
+        for content in distinct_content {
+            res.setup_dht_announce_task(content);
         }
+        for node in distinct_nodes {
+            res.setup_probe_task(node);
+        }
+        Ok(res)
     }
 
-    pub async fn dht_announce_loop(self, port: u16) -> anyhow::Result<()> {
-        let dht = mainline::Dht::default();
-        loop {
-            let content: BTreeSet<HashAndFormat> = {
-                let state = self.0.state.read().unwrap();
-                state.announce_data.keys().copied().collect()
-            };
-            let mut announce = announce_dht(
-                dht.clone(),
-                content,
-                port,
-                self.0.options.dht_announce_parallelism,
-            );
-            while let Some((content, res)) = announce.next().await {
+    fn setup_probe_task(&self, node: NodeId) {
+        let this = self.clone();
+        // announce task only captures this, an Arc, and the content.
+        let task = self.0.local_pool.spawn_pinned(move || async move {
+            loop {
+                if let Ok(content_for_node) = this.get_content_for_node(node) {
+                    let now = AbsoluteTime::now();
+                    let res = this.probe_one(node, content_for_node).await;
+                    match res {
+                        Ok(results) => {
+                            tracing::info!("probed {node}, applying result");
+                            if let Err(cause) = this.apply_result(node, results, now) {
+                                tracing::error!("error applying result: {}", cause);
+                            }
+                        }
+                        Err(cause) => {
+                            tracing::warn!("error probing {node}: {cause}");
+                        }
+                    }
+                }
+                tokio::time::sleep(this.0.options.probe_interval).await;
+            }
+        });
+        self.0.probe_tasks.publish(node, task);
+    }
+
+    fn setup_dht_announce_task(&self, content: HashAndFormat) {
+        let this = self.clone();
+        // announce task only captures this, an Arc, and the content.
+        let task = tokio::spawn(async move {
+            let info_hash = to_infohash(content);
+            loop {
+                let res = this
+                    .0
+                    .dht
+                    .announce_peer(info_hash, Some(this.0.options.quinn_port))
+                    .await;
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
@@ -212,9 +360,10 @@ impl Tracker {
                         tracing::warn!("error announcing: {}", cause);
                     }
                 }
+                tokio::time::sleep(this.0.options.dht_announce_interval).await;
             }
-            tokio::time::sleep(self.0.options.dht_announce_interval).await;
-        }
+        });
+        self.0.announce_tasks.publish(content, task);
     }
 
     pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
@@ -400,95 +549,120 @@ impl Tracker {
         tracing::info!("got announce");
         signed_announce.verify()?;
         tracing::info!("verified announce: {:?}", signed_announce);
-        let mut state = self.0.state.write().unwrap();
         let content = signed_announce.content;
-        let entry = state.announce_data.entry(content).or_default();
-        let peer_info = entry
-            .entry(signed_announce.kind)
-            .or_default()
-            .entry(signed_announce.host)
-            .or_insert(PeerInfo::from(signed_announce));
-        peer_info.signed_announce = signed_announce;
-        if let Some(path) = &self.0.options.announce_data_path {
-            let data = state.get_persisted_announce_data();
-            drop(state);
-            crate::io::save_to_file(data, path)?;
+        let tx = self.0.announce_db.begin_write()?;
+        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let path = AnnouncePath::new(content, signed_announce.kind, signed_announce.host);
+        let new_content = table
+            .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
+            .next()
+            .transpose()?
+            .is_none();
+        let prev = table.get(path)?.map(|x| x.value());
+        let new_host = prev.is_none();
+        let curr = PeerInfo {
+            signed_announce,
+            last_probed: prev.and_then(|x| x.last_probed),
+        };
+        table.insert(
+            AnnouncePath::new(content, signed_announce.kind, signed_announce.host),
+            curr,
+        )?;
+        drop(table);
+        tx.commit()?;
+        if new_content {
+            // if this is a new content, start announcing it to the DHT
+            self.setup_dht_announce_task(signed_announce.content);
+        }
+        if new_host {
+            // if this is a new host for this content, start probing it
+            self.setup_probe_task(signed_announce.host);
         }
         Ok(())
     }
 
     fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
-        let state = self.0.state.read().unwrap();
-        let entry = state.announce_data.get(&query.content);
+        let tx = self.0.announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        let iter = table.range(
+            AnnouncePath::content_min(query.content)..=AnnouncePath::content_max(query.content),
+        )?;
         let options = &self.0.options;
-        let kind = AnnounceKind::from_complete(query.flags.complete);
-        let mut peers = vec![];
         let now = AbsoluteTime::now();
-        if let Some(by_kind_and_peer) = entry {
-            if let Some(entry) = by_kind_and_peer.get(&kind) {
-                for peer_info in entry.values() {
-                    let recently_announced =
-                        now - peer_info.last_announced() <= options.announce_timeout;
-                    let recently_probed = peer_info
-                        .last_probed
-                        .map(|t| now - t <= options.probe_timeout)
-                        .unwrap_or_default();
-                    if !recently_announced {
-                        // announce is too old
-                        tracing::error!("announce is too old");
-                        continue;
-                    }
-                    if query.flags.verified && !recently_probed {
-                        // query asks for verificated hosts, but the last successful probe is too old
-                        tracing::error!("verification of complete data is too old");
-                        continue;
-                    }
-                    peers.push(peer_info.signed_announce);
-                }
+        let kind: AnnounceKind = AnnounceKind::from_complete(query.flags.complete);
+        let mut announces = Vec::new();
+        for entry in iter {
+            let (path, peer_info) = entry?;
+            let path = path.value();
+            let peer_info = peer_info.value();
+            if kind == AnnounceKind::Complete && path.announce_kind() == AnnounceKind::Partial {
+                // we only want complete announces
+                continue;
             }
-        } else {
-            tracing::error!("no peers for content");
+            let recently_announced = now - peer_info.last_announced() <= options.announce_timeout;
+            let recently_probed = peer_info
+                .last_probed
+                .map(|t| now - t <= options.probe_timeout)
+                .unwrap_or_default();
+            if !recently_announced {
+                // announce is too old
+                tracing::error!("announce is too old");
+                continue;
+            }
+            if query.flags.verified && !recently_probed {
+                // query asks for verificated hosts, but the last successful probe is too old
+                tracing::error!("verification of complete data is too old");
+                continue;
+            }
+            announces.push(peer_info.signed_announce);
         }
-        Ok(QueryResponse { hosts: peers })
+        Ok(QueryResponse { hosts: announces })
     }
 
     /// Get the content that is supposedly available, grouped by peers
-    fn get_content_by_peers(&self) -> BTreeMap<NodeId, BTreeMap<AnnounceKind, HashAndFormat>> {
-        let state = self.0.state.read().unwrap();
-        let mut content_by_peers = BTreeMap::<NodeId, BTreeMap<AnnounceKind, HashAndFormat>>::new();
-        for (content, by_kind_and_peer) in state.announce_data.iter() {
-            for (kind, by_peer) in by_kind_and_peer {
-                for peer in by_peer.keys() {
-                    content_by_peers
-                        .entry(*peer)
-                        .or_default()
-                        .insert(*kind, *content);
-                }
+    ///
+    /// Todo: this is a full table scan, could be optimized.
+    fn get_content_for_node(
+        &self,
+        node: NodeId,
+    ) -> anyhow::Result<BTreeMap<AnnounceKind, HashAndFormat>> {
+        let mut content_for_node = BTreeMap::<AnnounceKind, HashAndFormat>::new();
+        let tx = self.0.announce_db.begin_read()?;
+        let table = tx.open_table(ANNONCE_TABLE_V0)?;
+        for entry in table.iter()? {
+            let (path, peer_info) = entry.unwrap();
+            let path = path.value();
+            let peer_info = peer_info.value();
+            if peer_info.signed_announce.host != node {
+                continue;
             }
+            content_for_node.insert(path.announce_kind(), path.content());
         }
-        content_by_peers
+        Ok(content_for_node)
     }
 
+    /// Apply the results of a probe to the database.
     fn apply_result(
         &self,
-        results: BTreeMap<NodeId, Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>>,
+        node: NodeId,
+        results: Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
         now: AbsoluteTime,
-    ) {
-        let mut state = self.0.state.write().unwrap();
-        for (peer, probes) in results {
-            for (content, announce_kind, result) in probes {
-                if result.is_ok() {
-                    let state_for_content = state.announce_data.entry(content).or_default();
-                    if let Some(peer_info) = state_for_content
-                        .entry(announce_kind)
-                        .or_default()
-                        .get_mut(&peer)
-                    {
-                        peer_info.last_probed = Some(now);
-                    }
+    ) -> anyhow::Result<()> {
+        let tx = self.0.announce_db.begin_write()?;
+        let mut table = tx.open_table(ANNONCE_TABLE_V0)?;
+        for (content, announce_kind, result) in &results {
+            if result.is_ok() {
+                let path = AnnouncePath::new(*content, *announce_kind, node);
+                let peer_info_opt = table.get(&path)?.map(|x| x.value());
+                if let Some(mut peer_info) = peer_info_opt {
+                    peer_info.last_probed = Some(now);
+                    table.insert(path, peer_info)?;
                 }
             }
         }
+        drop(table);
+        tx.commit()?;
+        Ok(())
     }
 
     /// Execute probes for a single peer.
@@ -496,16 +670,14 @@ impl Tracker {
     /// This will fail if the connection fails, or if local logging fails.
     /// Individual probes can fail, but the probe will continue.
     async fn probe_one(
-        self,
-        endpoint: MagicEndpoint,
+        &self,
         host: NodeId,
         by_kind_and_content: BTreeMap<AnnounceKind, HashAndFormat>,
-    ) -> anyhow::Result<(
-        NodeId,
-        Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>,
-    )> {
+    ) -> anyhow::Result<Vec<(HashAndFormat, AnnounceKind, anyhow::Result<Stats>)>> {
         let t0 = Instant::now();
-        let res = endpoint
+        let res = self
+            .0
+            .magic_endpoint
             .connect_by_node_id(&host, iroh_bytes::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
@@ -534,7 +706,7 @@ impl Tracker {
             }
             results.push((content, announce_kind, res));
         }
-        anyhow::Ok((host, results))
+        anyhow::Ok(results)
     }
 }
 
