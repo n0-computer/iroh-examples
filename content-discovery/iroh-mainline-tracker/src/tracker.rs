@@ -27,6 +27,7 @@ use rand::Rng;
 use redb::{ReadableTable, RedbValue};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
+use tokio::sync::oneshot;
 
 mod tables;
 mod util;
@@ -67,6 +68,188 @@ struct Inner {
     local_pool: tokio_util::task::LocalPoolHandle,
     /// The announce database.
     announce_db: redb::Database,
+}
+
+struct Actor {
+    rx: flume::Receiver<ActorMessage>,
+    rt: tokio::runtime::Handle,
+    state: State,
+    options: Options,
+    db: redb::Database,
+}
+
+enum ActorMessage {
+    Announce {
+        announce: SignedAnnounce,
+    },
+    Query {
+        query: Query,
+        tx: oneshot::Sender<anyhow::Result<QueryResponse>>,
+    },
+    GetSize {
+        hash: Hash,
+        tx: oneshot::Sender<anyhow::Result<Option<u64>>>,
+    },
+    GetSizes {
+        hash: Hash,
+        tx: oneshot::Sender<anyhow::Result<Option<(HashSeq, Arc<[u64]>)>>>,
+    },
+    SetSize {
+        hash: Hash,
+        size: u64,
+    },
+    SetSizes {
+        hash: Hash,
+        sizes: (HashSeq, Arc<[u64]>),
+    },
+}
+
+impl Actor {
+    fn run(mut self) {
+        while let Ok(msg) = self.rx.recv() {
+            match msg {
+                ActorMessage::Announce { announce } => {
+                    let res = self.handle_announce(announce);
+                }
+                ActorMessage::Query { query, tx } => {
+                    let response = self.handle_query(query);
+                    let _ = tx.send(response);
+                }
+                ActorMessage::GetSize { hash, tx } => {
+                    let size = self.state.sizes.get(&hash).cloned();
+                    let _ = tx.send(Ok(size));
+                }
+                ActorMessage::GetSizes { hash, tx } => {
+                    let sizes = self.state.collections.get(&hash).cloned();
+                    let _ = tx.send(Ok(sizes));
+                }
+                ActorMessage::SetSize { hash, size } => {
+                    self.state.sizes.insert(hash, size);
+                }
+                ActorMessage::SetSizes { hash, sizes } => {
+                    self.state.collections.insert(hash, sizes);
+                }
+            }
+        }
+    }
+
+    fn handle_announce(&mut self, signed_announce: SignedAnnounce) -> anyhow::Result<()> {
+        tracing::info!("got announce");
+        signed_announce.verify()?;
+        tracing::info!("verified announce: {:?}", signed_announce);
+        let content = signed_announce.content;
+        let tx = self.db.begin_write()?;
+        let mut tables = Tables::new(&tx)?;
+        let (path, value1) = split_signed_announce(signed_announce);
+        // true if this is entirely new content, false if it is just a new host for existing content
+        // if this is true we need to start announcing it to the DHT
+        let new_content = tables
+            .announces
+            .range(AnnouncePath::content_min(content)..=AnnouncePath::content_max(content))?
+            .next()
+            .transpose()?
+            .is_none();
+        let prev = tables.announces.get(path)?.map(|x| x.value());
+        // new_host_for_content is true if this is a new host for this path (content, kind, node), false if it is just an update
+        // if this is true we need to start probing it
+        //
+        // update is true if the new announce is newer than the previous one
+        // if this is true we need to store the new announce
+        let (new_host_for_content, update) = if let Some(prev) = prev {
+            (false, prev.timestamp < value1.timestamp)
+        } else {
+            (true, true)
+        };
+        if update {
+            tables.announces.insert(path, value1)?;
+        }
+        drop(tables);
+        tx.commit()?;
+        // if new_content {
+        //     // if this is a new content, start announcing it to the DHT
+        //     self.setup_dht_announce_task(signed_announce.content);
+        // }
+        // if new_host_for_content {
+        //     // if this is a new host for this content, start probing it
+        //     self.setup_probe_task(signed_announce.host);
+        // }
+        Ok(())
+    }
+
+    fn handle_query(&self, query: Query) -> anyhow::Result<QueryResponse> {
+        let tx = self.db.begin_read()?;
+        let tables = ReadOnlyTables::new(&tx)?;
+        let iter = tables.announces.range(
+            AnnouncePath::content_min(query.content)..=AnnouncePath::content_max(query.content),
+        )?;
+        let options = &self.options;
+        let now = AbsoluteTime::now();
+        let kind: AnnounceKind = AnnounceKind::from_complete(query.flags.complete);
+        let mut announces = Vec::new();
+        for entry in iter {
+            let (path, value) = entry?;
+            let path = path.value();
+            let value = value.value();
+            if kind == AnnounceKind::Complete && path.announce_kind() == AnnounceKind::Partial {
+                // we only want complete announces
+                continue;
+            }
+            let recently_announced = now - value.timestamp <= options.announce_timeout;
+            if !recently_announced {
+                // announce is too old
+                tracing::error!("announce is too old");
+                continue;
+            }
+            if query.flags.verified {
+                let last_probed = tables.probes.get(&path)?.map(|x| x.value().timestamp);
+                let recently_probed = last_probed
+                    .map(|t| now - t <= options.probe_timeout)
+                    .unwrap_or_default();
+                if !recently_probed {
+                    // query asks for verificated hosts, but the last successful probe is too old
+                    tracing::error!("verification of complete data is too old");
+                    continue;
+                }
+            }
+            let signed_announce = join_signed_announce(path, value);
+            announces.push(signed_announce);
+        }
+        Ok(QueryResponse { hosts: announces })
+    }
+
+    // fn setup_dht_announce_task(&mut self, content: HashAndFormat) {
+    //     let this = self.clone();
+    //     // announce task only captures this, an Arc, and the content.
+    //     let task = tokio::spawn(async move {
+    //         let info_hash = to_infohash(content);
+    //         loop {
+    //             let res = this
+    //                 .0
+    //                 .dht
+    //                 .announce_peer(info_hash, Some(this.0.options.quinn_port))
+    //                 .await;
+    //             match res {
+    //                 Ok(sqm) => {
+    //                     let stored_at = sqm.stored_at();
+    //                     tracing::info!(
+    //                         "announced {} as {} on {} nodes",
+    //                         content,
+    //                         sqm.target(),
+    //                         stored_at.len()
+    //                     );
+    //                     for item in stored_at {
+    //                         tracing::debug!("stored at {} {}", item.id, item.address);
+    //                     }
+    //                 }
+    //                 Err(cause) => {
+    //                     tracing::warn!("error announcing: {}", cause);
+    //                 }
+    //             }
+    //             tokio::time::sleep(this.0.options.dht_announce_interval).await;
+    //         }
+    //     });
+    //     self.0.announce_tasks.publish(content, task);
+    //}
 }
 
 fn split_signed_announce(announce: SignedAnnounce) -> (AnnouncePath, AnnounceValue) {
@@ -322,7 +505,10 @@ impl Tracker {
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
     pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
-        tracing::info!("creating tracker using database at {}", options.announce_data_path.display());
+        tracing::info!(
+            "creating tracker using database at {}",
+            options.announce_data_path.display()
+        );
         let announce_db = redb::Database::create(&options.announce_data_path)?;
         let tx = announce_db.begin_write()?;
         {
