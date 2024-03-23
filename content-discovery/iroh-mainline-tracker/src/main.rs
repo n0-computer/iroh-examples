@@ -123,12 +123,18 @@ async fn server(args: Args) -> anyhow::Result<()> {
     if let Some(magic_port) = args.magic_port {
         options.magic_port = magic_port;
     }
+    if let Some(udp_port) = args.udp_port {
+        options.udp_port = udp_port;
+    }
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
     let key = load_secret_key(key_path).await?;
     let server_config = configure_server(&key)?;
-    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
-    let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
+    let udp_bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.udp_port));
+    let udp_socket = tokio::net::UdpSocket::bind(udp_bind_addr).await?;
+    let quinn_bind_addr =
+        SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
+    let quinn_endpoint = quinn::Endpoint::server(server_config, quinn_bind_addr)?;
     // set the quinn port to the actual port we bound to so the DHT will announce it correctly
     options.quinn_port = quinn_endpoint.local_addr()?.port();
     let magic_endpoint = create_endpoint(key.clone(), options.magic_port, true).await?;
@@ -145,8 +151,10 @@ async fn server(args: Args) -> anyhow::Result<()> {
     );
     let db2 = db.clone();
     let db3 = db.clone();
+    let db4 = db.clone();
     let magic_accept_task = tokio::spawn(db.magic_accept_loop(magic_endpoint));
     let quinn_accept_task = tokio::spawn(db2.quinn_accept_loop(quinn_endpoint));
+    let udp_accept_task = tokio::spawn(db4.udp_accept_loop(udp_socket));
     let gc_task = tokio::spawn(db3.gc_loop());
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -158,6 +166,10 @@ async fn server(args: Args) -> anyhow::Result<()> {
         }
         res = quinn_accept_task => {
             tracing::error!("quinn accept task exited");
+            res??;
+        }
+        res = udp_accept_task => {
+            tracing::error!("udp accept task exited");
             res??;
         }
         res = gc_task => {

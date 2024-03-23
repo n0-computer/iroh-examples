@@ -60,6 +60,9 @@ pub struct Options {
 
     /// The magic port to listen on. Set to 0 to listen on a random port.
     pub magic_port: u16,
+
+    /// The UDP port to listen on. Set to 0 to listen on a random port.
+    pub udp_port: u16,
 }
 
 impl Default for Options {
@@ -79,6 +82,7 @@ impl Default for Options {
             announce_data_path: "announce.redb".into(),
             quinn_port: 0,
             magic_port: 0,
+            udp_port: 0,
         }
     }
 }
@@ -102,6 +106,7 @@ impl Options {
             announce_data_path: "announce.redb".into(),
             quinn_port: 0,
             magic_port: 0,
+            udp_port: 0,
         }
     }
 

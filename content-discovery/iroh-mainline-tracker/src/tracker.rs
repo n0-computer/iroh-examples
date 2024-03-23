@@ -910,6 +910,44 @@ impl Tracker {
         Ok(())
     }
 
+    pub async fn udp_accept_loop(self, socket: tokio::net::UdpSocket) -> std::io::Result<()> {
+        println!("udp listening on {}", socket.local_addr()?);
+        let mut buf = [0; 1200];
+        loop {
+            let (len, addr) = socket.recv_from(&mut buf).await?;
+            let data = &buf[..len];
+            let res = self.handle_udp_packet(data, &socket, addr).await;
+            if let Err(cause) = res {
+                tracing::error!("error handling UDP packet: {}", cause);
+            }
+        }
+    }
+
+    pub async fn handle_udp_packet(
+        &self,
+        data: &[u8],
+        socket: &tokio::net::UdpSocket,
+        addr: std::net::SocketAddr,
+    ) -> anyhow::Result<()> {
+        let mut buf = [0u8; 1200];
+        let request = postcard::from_bytes::<Request>(data)?;
+        match request {
+            Request::Announce(announce) => {
+                tracing::debug!("got announce: {:?}", announce);
+                self.handle_announce(announce).await?;
+            }
+
+            Request::Query(query) => {
+                tracing::debug!("handle query: {:?}", query);
+                let response = self.handle_query(query).await?;
+                let response = Response::QueryResponse(response);
+                let response = postcard::to_slice(&response, &mut buf)?;
+                socket.send_to(&response, addr).await?;
+            }
+        }
+        Ok(())
+    }
+
     /// Handle a single incoming connection on the tracker ALPN.
     pub async fn handle_connection(&self, connection: quinn::Connection) -> anyhow::Result<()> {
         tracing::debug!("calling accept_bi");

@@ -104,7 +104,7 @@ pub struct SignedAnnounce {
     ///
     /// The signature is over the announce, serialized with postcard.
     #[serde(with = "BigArray")]
-    #[debug("{}", hex::encode(&self.signature))]
+    #[debug("{}", hex::encode(self.signature))]
     pub signature: [u8; 64],
 }
 
@@ -137,7 +137,7 @@ impl SignedAnnounce {
 }
 
 ///
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct QueryFlags {
     /// Only return peers that supposedly have the complete data.
     ///
@@ -155,7 +155,7 @@ pub struct QueryFlags {
 }
 
 /// Query a peer for a blob or set of blobs.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Query {
     /// The content we want to find.
     ///
@@ -190,3 +190,6 @@ pub enum Response {
     /// Response to a query
     QueryResponse(QueryResponse),
 }
+
+#[cfg(test)]
+mod tests {}

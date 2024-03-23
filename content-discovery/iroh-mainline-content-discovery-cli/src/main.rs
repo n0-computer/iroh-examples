@@ -10,47 +10,13 @@ use args::QueryDhtArgs;
 use clap::Parser;
 use futures::StreamExt;
 use iroh_mainline_content_discovery::{
-    create_quinn_client,
-    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce, ALPN},
-    to_infohash,
+    protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce},
+    to_infohash, UdpDiscovery,
 };
-use iroh_net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    MagicEndpoint, NodeId,
-};
-use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use tokio::io::AsyncWriteExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::args::{AnnounceArgs, Args, Commands, QueryArgs};
-
-async fn create_endpoint(
-    key: iroh_net::key::SecretKey,
-    port: u16,
-    publish: bool,
-) -> anyhow::Result<MagicEndpoint> {
-    let mainline_discovery = if publish {
-        PkarrNodeDiscovery::builder().secret_key(&key).build()
-    } else {
-        PkarrNodeDiscovery::default()
-    };
-    iroh_net::MagicEndpoint::builder()
-        .secret_key(key)
-        .discovery(Box::new(mainline_discovery))
-        .alpns(vec![ALPN.to_vec()])
-        .bind(port)
-        .await
-}
-
-/// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
-pub async fn accept_conn(
-    mut conn: quinn::Connecting,
-) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
-    let alpn = get_alpn(&mut conn).await?;
-    let conn = conn.await?;
-    let peer_id = get_remote_node_id(&conn)?;
-    Ok((peer_id, alpn, conn))
-}
 
 async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
     // todo: uncomment once the connection problems are fixed
@@ -62,10 +28,11 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         anyhow::bail!("ANNOUNCE_SECRET env var is not a valid secret key");
     };
     let content = args.content.hash_and_format();
-    println!("announcing to {}: {}", args.tracker, content);
-    let endpoint = create_endpoint(key.clone(), args.magic_port.unwrap_or_default(), false).await?;
-    let connection = endpoint.connect_by_node_id(&args.tracker, ALPN).await?;
-    println!("connected to {:?}", connection.remote_address());
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::UNSPECIFIED,
+        args.udp_port.unwrap_or_default(),
+    ));
+    let discovery = UdpDiscovery::new(bind_addr).await?;
     let kind = if args.partial {
         AnnounceKind::Partial
     } else {
@@ -78,18 +45,25 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         content,
         timestamp,
     };
+    println!("announcing to {:?}: {}", args.tracker, content);
     let signed_announce = SignedAnnounce::new(announce, &key)?;
-    iroh_mainline_content_discovery::announce(connection, signed_announce).await?;
+    for tracker in args.tracker {
+        discovery.add_tracker(tracker).await?;
+    }
+    discovery.announce_once(signed_announce).await?;
     println!("done");
     Ok(())
 }
 
 async fn query(args: QueryArgs) -> anyhow::Result<()> {
-    let connection = iroh_mainline_content_discovery::connect(
-        &args.tracker,
-        args.magic_port.unwrap_or_default(),
-    )
-    .await?;
+    let bind_addr = SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::UNSPECIFIED,
+        args.udp_port.unwrap_or_default(),
+    ));
+    let discovery = iroh_mainline_content_discovery::UdpDiscovery::new(bind_addr).await?;
+    for tracker in args.tracker {
+        discovery.add_tracker(tracker).await?;
+    }
     let q = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {
@@ -97,12 +71,8 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
             verified: args.verified,
         },
     };
-    let res = iroh_mainline_content_discovery::query(connection, q).await?;
-    println!(
-        "querying tracker {} for content {}",
-        args.tracker, args.content
-    );
-    for sa in res.hosts {
+    let res = discovery.query(q).await?;
+    for sa in res {
         if sa.verify().is_ok() {
             println!("{}: {:?}", sa.announce.host, sa.announce.kind);
         } else {
@@ -115,9 +85,9 @@ async fn query(args: QueryArgs) -> anyhow::Result<()> {
 async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(
         Ipv4Addr::UNSPECIFIED,
-        args.quinn_port.unwrap_or_default(),
+        args.udp_port.unwrap_or_default(),
     ));
-    let endpoint = create_quinn_client(bind_addr, vec![ALPN.to_vec()], false)?;
+    let discovery = UdpDiscovery::new(bind_addr).await?;
     let dht = mainline::Dht::default();
     let q = Query {
         content: args.content.hash_and_format(),
@@ -127,22 +97,13 @@ async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
         },
     };
     println!("content corresponds to infohash {}", to_infohash(q.content));
-    let mut stream = iroh_mainline_content_discovery::query_dht(
-        endpoint,
-        dht,
-        q,
-        args.query_parallelism.unwrap_or(4),
-    );
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(announce) => {
-                if announce.verify().is_ok() {
-                    println!("found verified provider {}", announce.host);
-                } else {
-                    println!("found unverified provider");
-                }
-            }
-            Err(e) => println!("error: {}", e),
+
+    let mut stream = discovery.query_dht(dht, q).await?;
+    while let Some(announce) = stream.next().await {
+        if announce.verify().is_ok() {
+            println!("found verified provider {}", announce.host);
+        } else {
+            println!("got wrong signed announce!");
         }
     }
     Ok(())
