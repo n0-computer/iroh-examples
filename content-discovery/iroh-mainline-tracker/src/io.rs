@@ -17,6 +17,7 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 use crate::tracker::ProbeKind;
 
 pub const CONFIG_DEFAULTS_FILE: &str = "config.defaults.toml";
+pub const CONFIG_DEBUG_FILE: &str = "config.debug.toml";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const SERVER_KEY_FILE: &str = "server.key";
 pub const CLIENT_KEY_FILE: &str = "client.key";

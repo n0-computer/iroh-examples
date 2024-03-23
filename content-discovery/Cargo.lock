@@ -1634,8 +1634,11 @@ name = "iroh-mainline-content-discovery"
 version = "0.4.0"
 dependencies = [
  "anyhow",
+ "derive_more",
+ "flume",
  "futures",
  "genawaiter",
+ "hex",
  "iroh-bytes",
  "iroh-net",
  "iroh-pkarr-node-discovery 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1646,6 +1649,7 @@ dependencies = [
  "rustls",
  "serde",
  "serde-big-array",
+ "tokio",
  "tracing",
 ]
 
@@ -1660,9 +1664,7 @@ dependencies = [
  "iroh-bytes",
  "iroh-mainline-content-discovery",
  "iroh-net",
- "iroh-pkarr-node-discovery 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mainline",
- "quinn",
  "tempfile",
  "tokio",
  "tracing-subscriber",
@@ -1697,6 +1699,7 @@ dependencies = [
  "redb",
  "rustls",
  "serde",
+ "serde-big-array",
  "serde_json",
  "tempfile",
  "tokio",

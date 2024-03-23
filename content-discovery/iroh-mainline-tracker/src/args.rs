@@ -14,6 +14,10 @@ pub struct Args {
     #[clap(long)]
     pub quinn_port: Option<u16>,
 
+    /// The raw udp port to listen on.
+    #[clap(long)]
+    pub udp_port: Option<u16>,
+
     #[clap(long)]
     pub quiet: bool,
 }
