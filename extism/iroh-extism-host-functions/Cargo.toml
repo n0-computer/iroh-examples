@@ -1,0 +1,13 @@
+[package]
+name = "iroh-extism-host-functions"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.79"
+dirs-next = "2.0.0"
+extism = "1.0.0"
+futures = "0.3.29"
+iroh = "0.13.0"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec", "io-util", "io", "time"] }

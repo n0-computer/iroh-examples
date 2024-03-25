@@ -30,3 +30,4 @@ tokio-rustls-acme = { version = "0.2.0", features = ["axum"] }
 hyper-util = "0.1.2"
 rustls-pemfile = "1.0.2"
 tower-service = "0.3.2"
+mime_guess = "2.0.4"

@@ -31,7 +31,7 @@ impl Peer {
         println!(
             "Running \nNode Id: {}\n{}",
             addr.node_id,
-            addr.info.derp_url.unwrap()
+            addr.info.relay_url.unwrap()
         );
 
         Ok(Self {
@@ -96,7 +96,7 @@ struct Cli {
     #[clap(long)]
     remote_id: Option<inet::NodeId>,
     #[clap(long)]
-    remote_derper: Option<url::Url>,
+    remote_relay: Option<url::Url>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,8 +118,8 @@ async fn main() -> Result<()> {
     peer1.save();
 
     if let Some(remote_id) = opts.remote_id {
-        let remote_derper = opts.remote_derper.expect("missing derp");
-        let node_addr = inet::NodeAddr::new(remote_id).with_derp_url(remote_derper);
+        let remote_relay = opts.remote_relay.expect("missing derp");
+        let node_addr = inet::NodeAddr::new(remote_id).with_relay_url(remote_relay.into());
         let conn = peer1.ep.connect(node_addr, ALPN).await?;
         let (mut send, mut recv) = conn.open_bi().await?;
 
