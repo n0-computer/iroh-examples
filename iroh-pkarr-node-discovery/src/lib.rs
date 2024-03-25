@@ -14,9 +14,10 @@ use std::{
 };
 
 use anyhow::Context;
-use futures::{future::BoxFuture, FutureExt};
+use futures::{FutureExt, stream::BoxStream};
 use iroh_net::{
-    key::SecretKey, magicsock::Discovery, util::AbortingJoinHandle, AddrInfo, NodeAddr, NodeId,
+    relay::RelayUrl,
+    key::SecretKey, discovery::{Discovery, DiscoveryItem}, util::AbortingJoinHandle, AddrInfo, MagicEndpoint, NodeAddr, NodeId,
 };
 use pkarr::{
     dns::rdata::{RData, TXT},
@@ -26,7 +27,7 @@ use pkarr::{
 };
 
 /// The key for the DERP URL TXT record.
-const DERP_URL_KEY: &str = "_derp_url.iroh.";
+const RELAY_URL_KEY: &str = "_relay_url.iroh.";
 /// Republish delay for the DHT. This is only for when the info does not change.
 /// If the info changes, it will be published immediately.
 const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
@@ -156,8 +157,9 @@ impl Discovery for PkarrNodeDiscovery {
 
     fn resolve<'a>(
         &'a self,
-        node_id: &'a NodeId,
-    ) -> BoxFuture<'a, anyhow::Result<iroh_net::AddrInfo>> {
+        _endpoint: MagicEndpoint,
+        node_id: NodeId,
+    ) -> Option<BoxStream<'_, anyhow::Result<DiscoveryItem>>> {
         let this = self.clone();
         async move {
             let Ok(pkarr_public_key) = pkarr::PublicKey::try_from(*node_id.as_bytes()) else {
@@ -174,7 +176,7 @@ impl Discovery for PkarrNodeDiscovery {
                 .resolve(pkarr_public_key)
                 .await
                 .context("not found")?;
-            let addr = packet_to_node_addr(node_id, &packet).context("invalid packet")?;
+            let addr = packet_to_node_addr(&node_id, &packet).context("invalid packet")?;
             tracing::info!("resolved: {} to {:?}", node_id, addr);
             Ok(addr.info)
         }
@@ -202,9 +204,9 @@ fn packet_to_node_addr(node_id: &NodeId, packet: &SignedPacket) -> anyhow::Resul
         .map(|addr| anyhow::Ok(addr.parse()?))
         .collect::<anyhow::Result<BTreeSet<SocketAddr>>>()?;
 
-    // first DERP URL, if any
-    let derp_url = packet
-        .resource_records(DERP_URL_KEY)
+    // first relay URL, if any
+    let relay_url = packet
+        .resource_records(RELAY_URL_KEY)
         .filter_map(filter_txt)
         .map(|url| anyhow::Ok(Url::parse(&url)?))
         .next()
@@ -212,7 +214,7 @@ fn packet_to_node_addr(node_id: &NodeId, packet: &SignedPacket) -> anyhow::Resul
     Ok(NodeAddr {
         node_id: *node_id,
         info: AddrInfo {
-            derp_url,
+            relay_url,
             direct_addresses,
         },
     })
@@ -234,9 +236,9 @@ fn node_addr_to_packet(
             RData::TXT(TXT::try_from(addr.as_str())?.into_owned()),
         ));
     }
-    if let Some(url) = &info.derp_url {
+    if let Some(url) = &info.relay_url {
         packet.answers.push(ResourceRecord::new(
-            Name::new(DERP_URL_KEY).unwrap(),
+            Name::new(RELAY_URL_KEY).unwrap(),
             CLASS::IN,
             ttl,
             RData::TXT(TXT::try_from(url.as_str())?.into_owned()),
@@ -260,7 +262,7 @@ mod tests {
         prop::collection::btree_set(any::<SocketAddr>(), 0..10).prop_map(|direct_addresses| {
             iroh_net::AddrInfo {
                 direct_addresses,
-                derp_url: None,
+                relay_url: None,
             }
         })
     }
