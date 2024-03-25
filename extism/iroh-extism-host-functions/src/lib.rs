@@ -4,12 +4,10 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::net::key::SecretKey;
 use iroh::node::Node;
-use iroh::rpc_protocol::{DownloadLocation, SetTagOption};
-use iroh::util::path::IrohPaths;
+use iroh::rpc_protocol::SetTagOption;
 
-type IrohNode = Node<iroh::bytes::store::flat::Store>;
+type IrohNode = Node<iroh::bytes::store::fs::Store>;
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
 
@@ -25,24 +23,9 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 }
 
 pub async fn create_iroh(path: PathBuf) -> Result<IrohNode> {
-    tokio::fs::create_dir_all(&path).await?;
-
-    let blob_dir = path.join(IrohPaths::BaoFlatStoreDir);
-    tokio::fs::create_dir_all(&blob_dir).await?;
-
-    let db = iroh::bytes::store::flat::Store::load(blob_dir).await?;
-    let doc_store = iroh::sync::store::fs::Store::new(path.join(IrohPaths::DocsDatabase))?;
-    let node = iroh::node::Node::builder(db, doc_store)
-        .secret_key(SecretKey::generate())
-        .spawn()
-        .await?;
-
+    let node = iroh::node::Node::persistent(path).await?.spawn().await?;
     Ok(node)
 }
-
-// host_fn!(iroh_blob_get_node_id(user_data: Node<iroh::bytes::store::flat::Store>) -> String {
-//     Ok(user_data.node_id().to_string())
-// });
 
 struct Context {
     rt: tokio::runtime::Handle,
@@ -64,7 +47,6 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
             hash,
             format,
             peer: node_addr,
-            out: DownloadLocation::Internal,
             tag: SetTagOption::Auto,
         }).await?;
         while stream.next().await.is_some() {}
@@ -81,10 +63,7 @@ pub fn add_all_host_functions(
     b: PluginBuilder,
     iroh: IrohNode,
 ) -> PluginBuilder {
-    let ctx = UserData::new(Context {
-        rt,
-        iroh,
-    });
+    let ctx = UserData::new(Context { rt, iroh });
 
     b.with_function(
         "iroh_blob_get_ticket",
