@@ -1,9 +1,8 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
+use iroh_base::ticket::BlobTicket;
 use iroh_bytes::{Hash, HashAndFormat};
-use iroh_mainline_content_discovery::TrackerId;
-use iroh_net::{ticket::BlobTicket, NodeId};
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, net::SocketAddr, str::FromStr};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -70,7 +69,7 @@ impl FromStr for ContentArg {
 pub struct AnnounceArgs {
     /// the tracker to announce to
     #[clap(long)]
-    pub tracker: NodeId,
+    pub tracker: Vec<SocketAddr>,
 
     /// The content to announce.
     ///
@@ -85,14 +84,14 @@ pub struct AnnounceArgs {
 
     /// the port to use for announcing
     #[clap(long)]
-    pub magic_port: Option<u16>,
+    pub udp_port: Option<u16>,
 }
 
 #[derive(Parser, Debug)]
 pub struct QueryArgs {
     /// the tracker to query
     #[clap(long)]
-    pub tracker: TrackerId,
+    pub tracker: Vec<SocketAddr>,
 
     /// The content to find hosts for.
     pub content: ContentArg,
@@ -107,7 +106,7 @@ pub struct QueryArgs {
 
     /// the port to use for querying
     #[clap(long)]
-    pub magic_port: Option<u16>,
+    pub udp_port: Option<u16>,
 }
 
 #[derive(Parser, Debug)]
@@ -129,5 +128,5 @@ pub struct QueryDhtArgs {
 
     /// the port to use for querying
     #[clap(long)]
-    pub quinn_port: Option<u16>,
+    pub udp_port: Option<u16>,
 }

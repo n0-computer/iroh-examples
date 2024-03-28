@@ -14,8 +14,8 @@ use clap::Parser;
 use iroh_mainline_content_discovery::protocol::ALPN;
 use iroh_mainline_tracker::{
     io::{
-        self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEFAULTS_FILE,
-        CONFIG_FILE, SERVER_KEY_FILE,
+        self, load_from_file, setup_logging, tracker_home, tracker_path, CONFIG_DEBUG_FILE,
+        CONFIG_DEFAULTS_FILE, CONFIG_FILE, SERVER_KEY_FILE,
     },
     options::Options,
     tracker::Tracker,
@@ -53,7 +53,7 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
     let t0 = Instant::now();
     loop {
         let addr = endpoint.my_addr().await?;
-        if addr.derp_url().is_some() {
+        if addr.relay_url().is_some() {
             break;
         }
         if t0.elapsed() > Duration::from_secs(10) {
@@ -93,6 +93,13 @@ pub async fn accept_conn(
 }
 
 /// Write default options to a sample config file.
+fn write_debug() -> anyhow::Result<()> {
+    let default_path = tracker_path(CONFIG_DEBUG_FILE)?;
+    io::save_to_file(Options::debug(), &default_path)?;
+    Ok(())
+}
+
+/// Write default options to a sample config file.
 fn write_defaults() -> anyhow::Result<()> {
     let default_path = tracker_path(CONFIG_DEFAULTS_FILE)?;
     io::save_to_file(Options::default(), &default_path)?;
@@ -102,10 +109,13 @@ fn write_defaults() -> anyhow::Result<()> {
 async fn server(args: Args) -> anyhow::Result<()> {
     set_verbose(!args.quiet);
     let home = tracker_home()?;
+    tokio::fs::create_dir_all(&home).await?;
     let config_path = tracker_path(CONFIG_FILE)?;
     write_defaults()?;
+    write_debug()?;
     let mut options = load_from_file::<Options>(&config_path)?;
     options.make_paths_relative(&home);
+    tracing::info!("using options: {:#?}", options);
     // override options with args
     if let Some(quinn_port) = args.quinn_port {
         options.quinn_port = quinn_port;
@@ -113,12 +123,18 @@ async fn server(args: Args) -> anyhow::Result<()> {
     if let Some(magic_port) = args.magic_port {
         options.magic_port = magic_port;
     }
+    if let Some(udp_port) = args.udp_port {
+        options.udp_port = udp_port;
+    }
     log!("tracker starting using {}", home.display());
     let key_path = tracker_path(SERVER_KEY_FILE)?;
     let key = load_secret_key(key_path).await?;
     let server_config = configure_server(&key)?;
-    let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
-    let quinn_endpoint = quinn::Endpoint::server(server_config, bind_addr)?;
+    let udp_bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.udp_port));
+    let udp_socket = tokio::net::UdpSocket::bind(udp_bind_addr).await?;
+    let quinn_bind_addr =
+        SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
+    let quinn_endpoint = quinn::Endpoint::server(server_config, quinn_bind_addr)?;
     // set the quinn port to the actual port we bound to so the DHT will announce it correctly
     options.quinn_port = quinn_endpoint.local_addr()?.port();
     let magic_endpoint = create_endpoint(key.clone(), options.magic_port, true).await?;
@@ -134,10 +150,33 @@ async fn server(args: Args) -> anyhow::Result<()> {
         addr.node_id
     );
     let db2 = db.clone();
+    let db3 = db.clone();
+    let db4 = db.clone();
     let magic_accept_task = tokio::spawn(db.magic_accept_loop(magic_endpoint));
     let quinn_accept_task = tokio::spawn(db2.quinn_accept_loop(quinn_endpoint));
-    magic_accept_task.await??;
-    quinn_accept_task.await??;
+    let udp_accept_task = tokio::spawn(db4.udp_accept_loop(udp_socket));
+    let gc_task = tokio::spawn(db3.gc_loop());
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            tracing::info!("shutting down");
+        }
+        res = magic_accept_task => {
+            tracing::error!("magic accept task exited");
+            res??;
+        }
+        res = quinn_accept_task => {
+            tracing::error!("quinn accept task exited");
+            res??;
+        }
+        res = udp_accept_task => {
+            tracing::error!("udp accept task exited");
+            res??;
+        }
+        res = gc_task => {
+            tracing::error!("gc task exited");
+            res??;
+        }
+    }
     Ok(())
 }
 

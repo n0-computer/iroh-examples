@@ -8,11 +8,10 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-iroh-net = "0.12.0"
-iroh-bytes = "0.12.0"
+iroh-net = "0.13.0"
+iroh-bytes = "0.13.0"
+iroh-base = "0.13.0"
 iroh-mainline-content-discovery = { path = "../iroh-mainline-content-discovery" }
-quinn = { version = "0.10" }
-iroh-pkarr-node-discovery = { version = "0.1.2" }
 mainline = { version = "1.0.0" }
 anyhow = { version = "1", features = ["backtrace"] }
 futures = { version = "0.3.25" }

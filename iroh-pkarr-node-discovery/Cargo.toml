@@ -1,6 +1,6 @@
 [package]
 name = "iroh-pkarr-node-discovery"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 authors = ["Rüdiger Klaehn <rklaehn@protonmail.com>", "n0 team"]
 keywords = ["network", "p2p"]
@@ -14,7 +14,7 @@ description = "A discovery mechanism for iroh-net that uses the bittorrent mainl
 [dependencies]
 anyhow = "1.0.79"
 futures = "0.3.30"
-iroh-net = "0.12.0"
+iroh-net = "0.13.0"
 pkarr = { version = "1.0.1", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"

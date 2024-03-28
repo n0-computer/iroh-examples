@@ -1,18 +1,25 @@
 use genawaiter::sync::Gen;
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    pin::Pin,
     sync::Arc,
+    task::{Context, Poll},
     time::Duration,
 };
 
-use futures::{future::BoxFuture, FutureExt, Stream, StreamExt};
+use futures::{
+    channel::oneshot,
+    future::{self, BoxFuture},
+    stream::FusedStream,
+    FutureExt, Stream, StreamExt,
+};
 use iroh_bytes::HashAndFormat;
 use iroh_net::{MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 
 use crate::protocol::{
-    Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
+    AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
 };
 
 /// Announce to a tracker.
@@ -282,4 +289,293 @@ async fn connect_socket(tracker: SocketAddr, local_port: u16) -> anyhow::Result<
     tracing::info!("trying to connect to tracker at {:?}", tracker);
     let connection = endpoint.connect(tracker, "localhost")?.await?;
     Ok(connection)
+}
+
+const MAX_MSG_SIZE: usize = 1200;
+
+pub struct MergeUntilFirstEnds<S1, S2> {
+    stream1: S1,
+    stream2: S2,
+}
+
+impl<S1, S2> MergeUntilFirstEnds<S1, S2>
+where
+    S1: Stream + Unpin,
+    S2: Stream<Item = S1::Item> + Unpin,
+{
+    pub fn new(stream1: S1, stream2: S2) -> Self {
+        Self { stream1, stream2 }
+    }
+}
+
+impl<S1, S2> Stream for MergeUntilFirstEnds<S1, S2>
+where
+    S1: Stream + Unpin,
+    S2: Stream<Item = S1::Item> + Unpin,
+{
+    type Item = S1::Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let poll1 = Pin::new(&mut self.stream1).poll_next(cx);
+        let poll2 = Pin::new(&mut self.stream2).poll_next(cx);
+
+        match (poll1, poll2) {
+            (Poll::Ready(None), _) | (_, Poll::Ready(None)) => Poll::Ready(None),
+            (Poll::Ready(Some(item)), _) | (_, Poll::Ready(Some(item))) => Poll::Ready(Some(item)),
+            (Poll::Pending, Poll::Pending) => Poll::Pending,
+        }
+    }
+}
+
+impl<S1, S2> FusedStream for MergeUntilFirstEnds<S1, S2>
+where
+    S1: Stream + FusedStream + Unpin,
+    S2: Stream<Item = S1::Item> + FusedStream + Unpin,
+{
+    fn is_terminated(&self) -> bool {
+        self.stream1.is_terminated() && self.stream2.is_terminated()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UdpDiscovery {
+    tx: flume::Sender<UdpActorMessage>,
+}
+
+impl UdpDiscovery {
+    /// Create a new UDP discovery service.
+    pub async fn new(socket: SocketAddr) -> anyhow::Result<Self> {
+        let (tx, rx) = flume::unbounded();
+        let socket = tokio::net::UdpSocket::bind(socket).await?;
+        let _task = tokio::spawn(
+            UdpActor {
+                socket,
+                rx,
+                trackers: BTreeSet::new(),
+                listeners: BTreeMap::new(),
+                announces: BTreeMap::new(),
+            }
+            .run(),
+        );
+        Ok(Self { tx })
+    }
+
+    /// Query the mainline DHT for trackers for the given content, then query each tracker for peers.
+    pub async fn query_dht(
+        &self,
+        dht: mainline::dht::Dht,
+        args: Query,
+    ) -> anyhow::Result<impl Stream<Item = SignedAnnounce>> {
+        let results = self.query(args).await?.into_stream().boxed();
+        let dht = dht.as_async();
+        let this = self.clone();
+        let find_new_trackers = async move {
+            // delay before querying the DHT
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            let info_hash = to_infohash(args.content);
+            let mut addrs = dht.get_peers(info_hash);
+            while let Some(addr) = addrs.next_async().await {
+                this.add_tracker(addr.peer).await.ok();
+            }
+            future::pending::<SignedAnnounce>().await
+        }
+        .into_stream()
+        .boxed();
+        Ok(MergeUntilFirstEnds::new(results, find_new_trackers))
+    }
+
+    /// Manually add a tracker to the list of trackers to query.
+    pub async fn add_tracker(&self, tracker: SocketAddr) -> anyhow::Result<()> {
+        Ok(self
+            .tx
+            .send_async(UdpActorMessage::AddTracker { tracker })
+            .await?)
+    }
+
+    /// Manually remove a tracker from the list of trackers to query.
+    pub async fn remove_tracker(&self, tracker: SocketAddr) -> anyhow::Result<()> {
+        Ok(self
+            .tx
+            .send_async(UdpActorMessage::RemoveTracker { tracker })
+            .await?)
+    }
+
+    pub async fn query(&self, query: Query) -> anyhow::Result<flume::Receiver<SignedAnnounce>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send_async(UdpActorMessage::Query { query, tx })
+            .await?;
+        Ok(rx.await?)
+    }
+
+    pub async fn announce_once(&self, announce: SignedAnnounce) -> anyhow::Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send_async(UdpActorMessage::AnnounceOnce { announce, tx })
+            .await?;
+        rx.await?;
+        Ok(())
+    }
+
+    pub async fn announce(&self, announce: SignedAnnounce) -> anyhow::Result<()> {
+        let this = self.clone();
+        let task = tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                this.announce_once(announce).await.ok();
+                tokio::time::sleep(Duration::from_secs(110)).await;
+            }
+        })
+        .into();
+        self.tx
+            .send_async(UdpActorMessage::StoreAnnounceTask { announce, task })
+            .await?;
+        Ok(())
+    }
+}
+
+struct UdpActor {
+    socket: tokio::net::UdpSocket,
+    rx: flume::Receiver<UdpActorMessage>,
+    trackers: BTreeSet<SocketAddr>,
+    listeners: BTreeMap<Query, Vec<flume::Sender<SignedAnnounce>>>,
+    announces: BTreeMap<(HashAndFormat, AnnounceKind), AbortingJoinHandle<()>>,
+}
+
+struct AbortingJoinHandle<T> {
+    handle: tokio::task::JoinHandle<T>,
+}
+
+impl<T> From<tokio::task::JoinHandle<T>> for AbortingJoinHandle<T> {
+    fn from(handle: tokio::task::JoinHandle<T>) -> Self {
+        Self { handle }
+    }
+}
+
+impl<T> Drop for AbortingJoinHandle<T> {
+    fn drop(&mut self) {
+        self.handle.abort();
+    }
+}
+
+#[derive(derive_more::Debug)]
+enum UdpActorMessage {
+    Query {
+        query: Query,
+        tx: oneshot::Sender<flume::Receiver<SignedAnnounce>>,
+    },
+    AddTracker {
+        tracker: SocketAddr,
+    },
+    RemoveTracker {
+        tracker: SocketAddr,
+    },
+    StoreAnnounceTask {
+        announce: SignedAnnounce,
+        #[debug(skip)]
+        task: AbortingJoinHandle<()>,
+    },
+    AnnounceOnce {
+        announce: SignedAnnounce,
+        tx: oneshot::Sender<()>,
+    },
+}
+
+impl UdpActor {
+    async fn run(mut self) {
+        let mut buf = [0u8; MAX_MSG_SIZE];
+        loop {
+            tokio::select! {
+                msg = self.rx.recv_async() => {
+                    tracing::info!("got msg {:?}", msg);
+                    match msg {
+                        Ok(UdpActorMessage::Query { query, tx  }) => {
+                            let (announce_tx, announce_rx) = flume::bounded(1024);
+                            self.listeners.entry(query).or_default().push(announce_tx);
+                            let msg = Request::Query(query);
+                            let msg = postcard::to_slice(&msg, &mut buf).unwrap();
+                            for tracker in &self.trackers {
+                                tracing::info!("sending query to {}", tracker);
+                                self.socket.send_to(msg, tracker).await.ok();
+                            }
+                            tx.send(announce_rx).ok();
+                        }
+                        Ok(UdpActorMessage::AddTracker { tracker }) => {
+                            self.trackers.insert(tracker);
+                            for query in self.listeners.keys() {
+                                let msg = Request::Query(*query);
+                                let msg = postcard::to_slice(&msg, &mut buf).unwrap();
+                                self.socket.send_to(msg, tracker).await.ok();
+                            }
+                        }
+                        Ok(UdpActorMessage::RemoveTracker { tracker }) => {
+                            self.trackers.remove(&tracker);
+                        }
+                        Ok(UdpActorMessage::StoreAnnounceTask { announce, task }) => {
+                            let key = (announce.announce.content, announce.announce.kind);
+                            self.announces.insert(key, task);
+                        }
+                        Ok(UdpActorMessage::AnnounceOnce { announce, tx }) => {
+                            let msg = postcard::to_slice(&Request::Announce(announce), &mut buf).unwrap();
+                            for tracker in &self.trackers {
+                                self.socket.send_to(msg, tracker).await.ok();
+                            }
+                            tx.send(()).ok();
+                        }
+                        Err(flume::RecvError::Disconnected) => break,
+                    }
+                },
+                res = self.socket.recv_from(&mut buf) => {
+                    let (size, addr) = match res {
+                        Ok((size, addr)) => (size, addr),
+                        Err(cause) => {
+                            tracing::warn!("error receiving from socket: {:?}", cause);
+                            continue;
+                        },
+                    };
+                    if !self.trackers.contains(&addr) {
+                        tracing::debug!("unexpected announce from {:?}", addr);
+                        continue;
+                    }
+                    let msg = postcard::from_bytes::<Response>(&buf[..size]);
+                    #[allow(clippy::single_match)]
+                    match msg {
+                        Ok(Response::QueryResponse(response)) => {
+                            for sa in response.hosts {
+                                if let Err(cause) = sa.verify() {
+                                    tracing::warn!("invalid announce from {:?}: {}", addr, cause);
+                                    continue;
+                                }
+                                let mut queries_to_remove = Vec::new();
+                                for (query, senders) in self.listeners.iter_mut() {
+                                    if sa.announce.content == query.content {
+                                        if sa.announce.kind == AnnounceKind::Partial && query.flags.complete {
+                                            // We only want complete announces, so we skip partial ones.
+                                            continue;
+                                        }
+                                        let mut to_remove = Vec::new();
+                                        for (i, sender) in senders.iter().enumerate() {
+                                            if sender.send_async(sa).await.is_err() {
+                                                to_remove.push(i);
+                                            }
+                                        }
+                                        for i in to_remove.into_iter().rev() {
+                                            senders.remove(i);
+                                        }
+                                    }
+                                    if senders.is_empty() {
+                                        queries_to_remove.push(*query);
+                                    }
+                                }
+                                for query in queries_to_remove {
+                                    self.listeners.remove(&query);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
 }

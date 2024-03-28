@@ -17,6 +17,11 @@ impl<T: Ord + Debug> TaskMap<T> {
         let mut tasks = self.0.tasks.lock().unwrap();
         tasks.insert(key, task.into());
     }
+
+    pub fn retain(&self, f: impl Fn(&T) -> bool) {
+        let mut tasks = self.0.tasks.lock().unwrap();
+        tasks.retain(|k, _| f(k));
+    }
 }
 
 impl<T: Ord + Debug> Default for TaskMap<T> {
