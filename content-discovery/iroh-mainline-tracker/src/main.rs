@@ -53,7 +53,7 @@ async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
     let t0 = Instant::now();
     loop {
         let addr = endpoint.my_addr().await?;
-        if addr.derp_url().is_some() {
+        if addr.relay_url().is_some() {
             break;
         }
         if t0.elapsed() > Duration::from_secs(10) {
