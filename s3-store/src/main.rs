@@ -4,12 +4,13 @@ use futures::{future, FutureExt};
 use indicatif::{
     HumanBytes, HumanDuration, MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle,
 };
+use iroh::base::ticket::BlobTicket;
 use iroh::bytes::{
     provider::{self, handle_connection, EventSender},
     BlobFormat,
 };
+use iroh::net::{key::SecretKey, MagicEndpoint, NodeAddr};
 use iroh_io::{AsyncSliceReaderExt, HttpAdapter};
-use iroh::net::{key::SecretKey, ticket::BlobTicket, MagicEndpoint, NodeAddr};
 use iroh_s3_bao_store::S3Store;
 use serde::Deserialize;
 use std::{
@@ -229,7 +230,7 @@ async fn serve_db(
     // wait for the endpoint to be ready
     let endpoint = endpoint_fut.await?;
     // wait for the endpoint to figure out its address before making a ticket
-    while endpoint.my_derp().is_none() {
+    while endpoint.my_relay().is_none() {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     // make a ticket
