@@ -108,6 +108,7 @@ enum ActorMessage {
     GetSizes {
         hash: Hash,
         #[debug(skip)]
+        #[allow(clippy::type_complexity)]
         tx: oneshot::Sender<anyhow::Result<Option<(HashSeq, Arc<[u64]>)>>>,
     },
     SetSize {
@@ -867,7 +868,7 @@ impl Tracker {
             .actor
             .send_async(ActorMessage::GetDistinctContent { tx })
             .await?;
-        Ok(rx.await??)
+        rx.await?
     }
 
     pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
@@ -942,7 +943,7 @@ impl Tracker {
                 let response = self.handle_query(query).await?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_slice(&response, &mut buf)?;
-                socket.send_to(&response, addr).await?;
+                socket.send_to(response, addr).await?;
             }
         }
         Ok(())
@@ -980,7 +981,7 @@ impl Tracker {
             .actor
             .send_async(ActorMessage::GetSize { hash, tx })
             .await?;
-        Ok(rx.await??)
+        rx.await?
     }
 
     async fn get_sizes(&self, hash: Hash) -> anyhow::Result<Option<(HashSeq, Arc<[u64]>)>> {
@@ -989,7 +990,7 @@ impl Tracker {
             .actor
             .send_async(ActorMessage::GetSizes { hash, tx })
             .await?;
-        Ok(rx.await??)
+        rx.await?
     }
 
     async fn set_size(

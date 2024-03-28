@@ -422,7 +422,7 @@ impl UdpDiscovery {
         let task = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(10)).await;
-                this.announce_once(announce.clone()).await.ok();
+                this.announce_once(announce).await.ok();
                 tokio::time::sleep(Duration::from_secs(110)).await;
             }
         })
@@ -491,7 +491,7 @@ impl UdpActor {
                     match msg {
                         Ok(UdpActorMessage::Query { query, tx  }) => {
                             let (announce_tx, announce_rx) = flume::bounded(1024);
-                            self.listeners.entry(query.clone()).or_default().push(announce_tx);
+                            self.listeners.entry(query).or_default().push(announce_tx);
                             let msg = Request::Query(query);
                             let msg = postcard::to_slice(&msg, &mut buf).unwrap();
                             for tracker in &self.trackers {
@@ -503,7 +503,7 @@ impl UdpActor {
                         Ok(UdpActorMessage::AddTracker { tracker }) => {
                             self.trackers.insert(tracker);
                             for query in self.listeners.keys() {
-                                let msg = Request::Query(query.clone());
+                                let msg = Request::Query(*query);
                                 let msg = postcard::to_slice(&msg, &mut buf).unwrap();
                                 self.socket.send_to(msg, tracker).await.ok();
                             }
@@ -518,7 +518,7 @@ impl UdpActor {
                         Ok(UdpActorMessage::AnnounceOnce { announce, tx }) => {
                             let msg = postcard::to_slice(&Request::Announce(announce), &mut buf).unwrap();
                             for tracker in &self.trackers {
-                                self.socket.send_to(&msg, tracker).await.ok();
+                                self.socket.send_to(msg, tracker).await.ok();
                             }
                             tx.send(()).ok();
                         }
@@ -538,11 +538,12 @@ impl UdpActor {
                         continue;
                     }
                     let msg = postcard::from_bytes::<Response>(&buf[..size]);
+                    #[allow(clippy::single_match)]
                     match msg {
                         Ok(Response::QueryResponse(response)) => {
                             for sa in response.hosts {
-                                if let Err(_) = sa.verify() {
-                                    tracing::warn!("invalid announce from {:?}", addr);
+                                if let Err(cause) = sa.verify() {
+                                    tracing::warn!("invalid announce from {:?}: {}", addr, cause);
                                     continue;
                                 }
                                 let mut queries_to_remove = Vec::new();
@@ -554,7 +555,7 @@ impl UdpActor {
                                         }
                                         let mut to_remove = Vec::new();
                                         for (i, sender) in senders.iter().enumerate() {
-                                            if sender.send_async(sa.clone()).await.is_err() {
+                                            if sender.send_async(sa).await.is_err() {
                                                 to_remove.push(i);
                                             }
                                         }
@@ -563,7 +564,7 @@ impl UdpActor {
                                         }
                                     }
                                     if senders.is_empty() {
-                                        queries_to_remove.push(query.clone());
+                                        queries_to_remove.push(*query);
                                     }
                                 }
                                 for query in queries_to_remove {
