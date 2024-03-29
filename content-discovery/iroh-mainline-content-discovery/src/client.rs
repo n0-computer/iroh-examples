@@ -231,15 +231,17 @@ async fn create_endpoint(
 /// A tracker id for queries - either a node id or an address.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TrackerId {
-    NodeId(NodeId),
-    Addr(std::net::SocketAddr),
+    Iroh(NodeId),
+    Quinn(std::net::SocketAddr),
+    Udp(std::net::SocketAddr),
 }
 
 impl std::fmt::Display for TrackerId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TrackerId::NodeId(node_id) => write!(f, "{}", node_id),
-            TrackerId::Addr(addr) => write!(f, "{}", addr),
+            TrackerId::Iroh(node_id) => write!(f, "{}", node_id),
+            TrackerId::Quinn(addr) => write!(f, "quic:{}", addr),
+            TrackerId::Udp(addr) => write!(f, "udp:{}", addr),
         }
     }
 }
@@ -249,10 +251,10 @@ impl std::str::FromStr for TrackerId {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(node_id) = s.parse() {
-            return Ok(TrackerId::NodeId(node_id));
+            return Ok(TrackerId::Iroh(node_id));
         }
         if let Ok(addr) = s.parse() {
-            return Ok(TrackerId::Addr(addr));
+            return Ok(TrackerId::Quinn(addr));
         }
         anyhow::bail!("invalid tracker id")
     }
@@ -265,8 +267,9 @@ impl std::str::FromStr for TrackerId {
 /// It is provided as a convenience function for short lived utilities.
 pub async fn connect(tracker: &TrackerId, local_port: u16) -> anyhow::Result<quinn::Connection> {
     match tracker {
-        TrackerId::Addr(tracker) => connect_socket(*tracker, local_port).await,
-        TrackerId::NodeId(tracker) => connect_magic(tracker, local_port).await,
+        TrackerId::Quinn(tracker) => connect_socket(*tracker, local_port).await,
+        TrackerId::Iroh(tracker) => connect_magic(tracker, local_port).await,
+        TrackerId::Udp(_) => anyhow::bail!("can not connect to udp tracker"),
     }
 }
 
@@ -495,7 +498,7 @@ impl UdpActor {
                             let msg = Request::Query(query);
                             let msg = postcard::to_slice(&msg, &mut buf).unwrap();
                             for tracker in &self.trackers {
-                                tracing::info!("sending query to {}", tracker);
+                                tracing::info!("sending query to {}, {} bytes", tracker, msg.len());
                                 self.socket.send_to(msg, tracker).await.ok();
                             }
                             tx.send(announce_rx).ok();

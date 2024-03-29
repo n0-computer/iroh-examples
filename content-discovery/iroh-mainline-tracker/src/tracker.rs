@@ -930,16 +930,24 @@ impl Tracker {
         socket: &tokio::net::UdpSocket,
         addr: std::net::SocketAddr,
     ) -> anyhow::Result<()> {
-        let mut buf = [0u8; 1200];
-        let request = postcard::from_bytes::<Request>(data)?;
+        tracing::info!("got UDP packet from {}, {} bytes", addr, data.len());
+        let request = match postcard::from_bytes::<Request>(data) {
+            Ok(request) => request,
+            Err(cause) => {
+                tracing::error!("error parsing request: {}", cause);
+                return Err(cause.into());
+            }
+        };
+        tracing::info!("got request: {:?}", request);
         match request {
             Request::Announce(announce) => {
-                tracing::debug!("got announce: {:?}", announce);
+                tracing::info!("got announce: {:?}", announce);
                 self.handle_announce(announce).await?;
             }
 
             Request::Query(query) => {
-                tracing::debug!("handle query: {:?}", query);
+                let mut buf = [0u8; 1200];
+                tracing::info!("handle query: {:?}", query);
                 let response = self.handle_query(query).await?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_slice(&response, &mut buf)?;
