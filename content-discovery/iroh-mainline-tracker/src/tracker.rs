@@ -874,7 +874,7 @@ impl Tracker {
     pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
-            let db = self.clone();
+            let tracker = self.clone();
             tokio::spawn(async move {
                 let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
@@ -882,7 +882,7 @@ impl Tracker {
                 };
                 // if we were supporting multiple protocols, we'd need to check the ALPN here.
                 tracing::info!("got connection from {} {}", remote_node_id, alpn);
-                if let Err(cause) = db.handle_connection(conn).await {
+                if let Err(cause) = tracker.handle_connection(conn).await {
                     tracing::error!("error handling connection: {}", cause);
                 }
             });
@@ -895,7 +895,7 @@ impl Tracker {
         println!("quinn listening on {}", local_addr);
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
-            let db = self.clone();
+            let tracker = self.clone();
             tokio::spawn(async move {
                 let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
@@ -903,7 +903,7 @@ impl Tracker {
                 };
                 // if we were supporting multiple protocols, we'd need to check the ALPN here.
                 tracing::info!("got connection from {} {}", remote_node_id, alpn);
-                if let Err(cause) = db.handle_connection(conn).await {
+                if let Err(cause) = tracker.handle_connection(conn).await {
                     tracing::error!("error handling connection: {}", cause);
                 }
             });

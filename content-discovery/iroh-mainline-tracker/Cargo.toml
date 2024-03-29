@@ -1,6 +1,6 @@
 [package]
 name = "iroh-mainline-tracker"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Content tracker for iroh, using the bittorrent mainline DHT"
 license = "MIT OR Apache-2.0"
