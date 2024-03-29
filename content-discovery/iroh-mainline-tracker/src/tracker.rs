@@ -818,12 +818,12 @@ impl Tracker {
     fn setup_dht_announce_task(&self, content: HashAndFormat) {
         let dht = self.0.dht.clone();
         let dht_announce_interval = self.0.options.dht_announce_interval;
-        let quinn_port = self.0.options.quinn_port;
+        let udp_port = self.0.options.udp_port;
         // announce task only captures this, an Arc, and the content.
         let task = tokio::spawn(async move {
             let info_hash = to_infohash(content);
             loop {
-                let res = dht.announce_peer(info_hash, Some(quinn_port)).await;
+                let res = dht.announce_peer(info_hash, Some(udp_port)).await;
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
@@ -874,7 +874,7 @@ impl Tracker {
     pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
-            let db = self.clone();
+            let tracker = self.clone();
             tokio::spawn(async move {
                 let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
@@ -882,7 +882,7 @@ impl Tracker {
                 };
                 // if we were supporting multiple protocols, we'd need to check the ALPN here.
                 tracing::info!("got connection from {} {}", remote_node_id, alpn);
-                if let Err(cause) = db.handle_connection(conn).await {
+                if let Err(cause) = tracker.handle_connection(conn).await {
                     tracing::error!("error handling connection: {}", cause);
                 }
             });
@@ -895,7 +895,7 @@ impl Tracker {
         println!("quinn listening on {}", local_addr);
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
-            let db = self.clone();
+            let tracker = self.clone();
             tokio::spawn(async move {
                 let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
@@ -903,7 +903,7 @@ impl Tracker {
                 };
                 // if we were supporting multiple protocols, we'd need to check the ALPN here.
                 tracing::info!("got connection from {} {}", remote_node_id, alpn);
-                if let Err(cause) = db.handle_connection(conn).await {
+                if let Err(cause) = tracker.handle_connection(conn).await {
                     tracing::error!("error handling connection: {}", cause);
                 }
             });
@@ -930,7 +930,7 @@ impl Tracker {
         socket: &tokio::net::UdpSocket,
         addr: std::net::SocketAddr,
     ) -> anyhow::Result<()> {
-        let mut buf = [0u8; 1200];
+        tracing::trace!("got UDP packet from {}, {} bytes", addr, data.len());
         let request = postcard::from_bytes::<Request>(data)?;
         match request {
             Request::Announce(announce) => {
@@ -939,6 +939,7 @@ impl Tracker {
             }
 
             Request::Query(query) => {
+                let mut buf = [0u8; 1200];
                 tracing::debug!("handle query: {:?}", query);
                 let response = self.handle_query(query).await?;
                 let response = Response::QueryResponse(response);

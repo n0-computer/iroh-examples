@@ -2,6 +2,7 @@
 use clap::{Parser, Subcommand};
 use iroh_base::ticket::BlobTicket;
 use iroh_bytes::{Hash, HashAndFormat};
+use iroh_net::NodeId;
 use std::{fmt::Display, net::SocketAddr, str::FromStr};
 
 #[derive(Parser, Debug)]
@@ -67,9 +68,17 @@ impl FromStr for ContentArg {
 
 #[derive(Parser, Debug)]
 pub struct AnnounceArgs {
-    /// the tracker to announce to
+    /// trackers to announce to via udp
     #[clap(long)]
-    pub tracker: Vec<SocketAddr>,
+    pub udp_tracker: Vec<SocketAddr>,
+
+    /// trackers to announce to via quic
+    #[clap(long)]
+    pub quic_tracker: Vec<SocketAddr>,
+
+    /// trackers to announce to via magicsock
+    #[clap(long)]
+    pub magicsock_tracker: Vec<NodeId>,
 
     /// The content to announce.
     ///
@@ -82,9 +91,17 @@ pub struct AnnounceArgs {
     #[clap(long)]
     pub partial: bool,
 
-    /// the port to use for announcing
+    /// the port to use for announcing via udp
     #[clap(long)]
     pub udp_port: Option<u16>,
+
+    /// the port to use for announcing via magicsock
+    #[clap(long)]
+    pub magic_port: Option<u16>,
+
+    /// the port to use for announcing via quic
+    #[clap(long)]
+    pub quic_port: Option<u16>,
 }
 
 #[derive(Parser, Debug)]
