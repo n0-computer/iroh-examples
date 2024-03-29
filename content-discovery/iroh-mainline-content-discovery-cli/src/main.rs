@@ -10,9 +10,11 @@ use args::QueryDhtArgs;
 use clap::Parser;
 use futures::StreamExt;
 use iroh_mainline_content_discovery::{
+    create_quinn_client,
     protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce},
     to_infohash, UdpDiscovery,
 };
+use iroh_net::magic_endpoint;
 use tokio::io::AsyncWriteExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -32,7 +34,6 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         Ipv4Addr::UNSPECIFIED,
         args.udp_port.unwrap_or_default(),
     ));
-    let discovery = UdpDiscovery::new(bind_addr).await?;
     let kind = if args.partial {
         AnnounceKind::Partial
     } else {
@@ -45,12 +46,44 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         content,
         timestamp,
     };
-    println!("announcing to {:?}: {}", args.tracker, content);
     let signed_announce = SignedAnnounce::new(announce, &key)?;
-    for tracker in args.tracker {
-        discovery.add_tracker(tracker).await?;
+    if !args.udp_tracker.is_empty() {
+        let discovery = UdpDiscovery::new(bind_addr).await?;
+        for tracker in args.udp_tracker {
+            println!("announcing via udp to {:?}: {}", tracker, content);
+            discovery.add_tracker(tracker).await?;
+        }
+        discovery.announce_once(signed_announce).await?;
     }
-    discovery.announce_once(signed_announce).await?;
+    if !args.magicsock_tracker.is_empty() {
+        let magic_endpoint = magic_endpoint::MagicEndpoint::builder()
+            .bind(args.magic_port.unwrap_or_default())
+            .await?;
+        for tracker in args.magicsock_tracker {
+            println!("announcing via magicsock to {:?}: {}", tracker, content);
+            let connection = magic_endpoint
+                .connect_by_node_id(&tracker, iroh_mainline_content_discovery::protocol::ALPN)
+                .await?;
+            iroh_mainline_content_discovery::announce(connection, signed_announce).await?;
+        }
+    }
+    if !args.quic_tracker.is_empty() {
+        let bind_addr = SocketAddr::V4(SocketAddrV4::new(
+            Ipv4Addr::UNSPECIFIED,
+            args.quic_port.unwrap_or_default(),
+        ));
+        let quinn_endpoint = create_quinn_client(
+            bind_addr,
+            vec![iroh_mainline_content_discovery::protocol::ALPN.to_vec()],
+            false,
+        )?;
+        for tracker in args.quic_tracker {
+            println!("announcing via quic to {:?}: {}", tracker, content);
+            let connection = quinn_endpoint.connect(tracker, "localhost")?.await?;
+            iroh_mainline_content_discovery::announce(connection, signed_announce).await?;
+        }
+    }
+
     println!("done");
     Ok(())
 }
