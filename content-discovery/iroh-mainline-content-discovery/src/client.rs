@@ -490,7 +490,7 @@ impl UdpActor {
         loop {
             tokio::select! {
                 msg = self.rx.recv_async() => {
-                    tracing::info!("got msg {:?}", msg);
+                    tracing::trace!("got msg {:?}", msg);
                     match msg {
                         Ok(UdpActorMessage::Query { query, tx  }) => {
                             let (announce_tx, announce_rx) = flume::bounded(1024);
@@ -504,11 +504,12 @@ impl UdpActor {
                             tx.send(announce_rx).ok();
                         }
                         Ok(UdpActorMessage::AddTracker { tracker }) => {
-                            self.trackers.insert(tracker);
-                            for query in self.listeners.keys() {
-                                let msg = Request::Query(*query);
-                                let msg = postcard::to_slice(&msg, &mut buf).unwrap();
-                                self.socket.send_to(msg, tracker).await.ok();
+                            if self.trackers.insert(tracker) {
+                                for query in self.listeners.keys() {
+                                    let msg = Request::Query(*query);
+                                    let msg = postcard::to_slice(&msg, &mut buf).unwrap();
+                                    self.socket.send_to(msg, tracker).await.ok();
+                                }
                             }
                         }
                         Ok(UdpActorMessage::RemoveTracker { tracker }) => {

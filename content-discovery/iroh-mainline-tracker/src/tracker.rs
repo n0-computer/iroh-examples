@@ -818,12 +818,12 @@ impl Tracker {
     fn setup_dht_announce_task(&self, content: HashAndFormat) {
         let dht = self.0.dht.clone();
         let dht_announce_interval = self.0.options.dht_announce_interval;
-        let quinn_port = self.0.options.quinn_port;
+        let udp_port = self.0.options.udp_port;
         // announce task only captures this, an Arc, and the content.
         let task = tokio::spawn(async move {
             let info_hash = to_infohash(content);
             loop {
-                let res = dht.announce_peer(info_hash, Some(quinn_port)).await;
+                let res = dht.announce_peer(info_hash, Some(udp_port)).await;
                 match res {
                     Ok(sqm) => {
                         let stored_at = sqm.stored_at();
@@ -930,24 +930,17 @@ impl Tracker {
         socket: &tokio::net::UdpSocket,
         addr: std::net::SocketAddr,
     ) -> anyhow::Result<()> {
-        tracing::info!("got UDP packet from {}, {} bytes", addr, data.len());
-        let request = match postcard::from_bytes::<Request>(data) {
-            Ok(request) => request,
-            Err(cause) => {
-                tracing::error!("error parsing request: {}", cause);
-                return Err(cause.into());
-            }
-        };
-        tracing::info!("got request: {:?}", request);
+        tracing::trace!("got UDP packet from {}, {} bytes", addr, data.len());
+        let request = postcard::from_bytes::<Request>(data)?;
         match request {
             Request::Announce(announce) => {
-                tracing::info!("got announce: {:?}", announce);
+                tracing::debug!("got announce: {:?}", announce);
                 self.handle_announce(announce).await?;
             }
 
             Request::Query(query) => {
                 let mut buf = [0u8; 1200];
-                tracing::info!("handle query: {:?}", query);
+                tracing::debug!("handle query: {:?}", query);
                 let response = self.handle_query(query).await?;
                 let response = Response::QueryResponse(response);
                 let response = postcard::to_slice(&response, &mut buf)?;
