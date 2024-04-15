@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bao_tree::{ByteNum, ChunkNum};
+use bao_tree::ChunkNum;
 use iroh_bytes::{
     get::{fsm::EndBlobNext, Stats},
     hashseq::HashSeq,
@@ -1075,7 +1075,7 @@ impl Tracker {
             match format {
                 BlobFormat::Raw => {
                     let size = self.get_or_insert_size(connection, hash).await?;
-                    let random_chunk = rng.gen_range(0..ByteNum(size).chunks().0);
+                    let random_chunk = rng.gen_range(0..ChunkNum::chunks(size).0);
                     tracing::debug!("Chunk probing {}, chunk {}", cap, random_chunk);
                     let stats = chunk_probe(connection, hash, ChunkNum(random_chunk)).await?;
                     tracing::debug!(

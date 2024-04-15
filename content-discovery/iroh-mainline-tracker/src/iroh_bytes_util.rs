@@ -1,7 +1,7 @@
 //! Utilities for advanced use of iroh::bytes.
 use std::sync::Arc;
 
-use bao_tree::{ByteNum, ChunkNum, ChunkRanges};
+use bao_tree::{ChunkNum, ChunkRanges};
 use bytes::Bytes;
 use iroh_bytes::{
     get::{
@@ -175,14 +175,14 @@ pub async fn chunk_probe(
 pub fn random_hash_seq_ranges(sizes: &[u64], mut rng: impl Rng) -> RangeSpecSeq {
     let total_chunks = sizes
         .iter()
-        .map(|size| ByteNum(*size).full_chunks().0)
+        .map(|size| ChunkNum::full_chunks(*size).0)
         .sum::<u64>();
     let random_chunk = rng.gen_range(0..total_chunks);
     let mut remaining = random_chunk;
     let mut ranges = vec![];
     ranges.push(ChunkRanges::empty());
     for size in sizes.iter() {
-        let chunks = ByteNum(*size).full_chunks().0;
+        let chunks = ChunkNum::full_chunks(*size).0;
         if remaining < chunks {
             ranges.push(ChunkRanges::from(
                 ChunkNum(remaining)..ChunkNum(remaining + 1),
