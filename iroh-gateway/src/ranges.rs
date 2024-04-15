@@ -5,7 +5,7 @@ use axum::body::Body;
 use bytes::Bytes;
 use headers::{HeaderMapExt, Range};
 use hyper::Request;
-use iroh::bytes::store::bao_tree::{ByteNum, ChunkNum};
+use iroh::bytes::store::bao_tree::ChunkNum;
 use range_collections::{range_set::RangeSetRange, RangeSet2};
 
 /// Given a range specified as arbitrary range bounds, normalize it into a range
@@ -40,12 +40,12 @@ pub fn to_byte_range(start: Option<u64>, end: Option<u64>) -> RangeSet2<u64> {
 ///
 /// Ranges are rounded up so that the given byte range is completely covered by the chunk range.
 pub fn to_chunk_range(start: Option<u64>, end: Option<u64>) -> RangeSet2<ChunkNum> {
-    let start = start.map(ByteNum);
-    let end = end.map(ByteNum);
     match (start, end) {
-        (Some(start), Some(end)) => RangeSet2::from(start.full_chunks()..end.chunks()),
-        (Some(start), None) => RangeSet2::from(start.full_chunks()..),
-        (None, Some(end)) => RangeSet2::from(..end.chunks()),
+        (Some(start), Some(end)) => {
+            RangeSet2::from(ChunkNum::full_chunks(start)..ChunkNum::chunks(end))
+        }
+        (Some(start), None) => RangeSet2::from(ChunkNum::full_chunks(start)..),
+        (None, Some(end)) => RangeSet2::from(..ChunkNum::chunks(end)),
         (None, None) => RangeSet2::all(),
     }
 }
