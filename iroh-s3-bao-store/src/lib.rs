@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use bao_tree::io::fsm::Outboard;
 use bao_tree::io::outboard::PreOrderMemOutboard;
-use bao_tree::{BaoTree, ByteNum};
+use bao_tree::{BaoTree, ChunkNum};
 use bytes::Bytes;
 use iroh::bytes::store::bao_tree::blake3;
 use iroh::bytes::store::{BaoBlobSize, MapEntry};
@@ -26,9 +26,13 @@ impl S3Store {
         let size = data.as_ref().len() as u64;
         let (mut outboard, hash) = bao_tree::io::outboard(&data, IROH_BLOCK_SIZE);
         outboard.splice(0..8, []);
-        let tree = BaoTree::new(ByteNum(size), IROH_BLOCK_SIZE);
-        let outboard = PreOrderMemOutboard::new(hash, tree, outboard.into())
-            .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
+        let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
+        let outboard = PreOrderMemOutboard {
+            root: hash,
+            tree,
+            data: outboard.into(),
+        }
+        .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
@@ -43,9 +47,13 @@ impl S3Store {
         let size = data.len() as u64;
         let (mut outboard, hash) = bao_tree::io::outboard(data, IROH_BLOCK_SIZE);
         outboard.splice(0..8, []);
-        let tree = BaoTree::new(ByteNum(size), IROH_BLOCK_SIZE);
-        let outboard = PreOrderMemOutboard::new(hash, tree, outboard.into())
-            .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
+        let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
+        let outboard = PreOrderMemOutboard {
+            root: hash,
+            tree,
+            data: outboard.into(),
+        }
+        .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
