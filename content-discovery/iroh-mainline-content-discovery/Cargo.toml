@@ -21,7 +21,7 @@ hex = "0.4.3"
 # Optional features for the client functionality
 tracing = { version = "0.1", optional = true }
 quinn = { version = "0.10", optional = true }
-iroh-pkarr-node-discovery = { version = "0.2.0", optional = true }
+iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", optional = true }
 mainline = { version = "1.0.0", optional = true }
 anyhow = { version = "1", features = ["backtrace"], optional = true }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"], optional = true }

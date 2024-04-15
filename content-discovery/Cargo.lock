@@ -1718,7 +1718,7 @@ dependencies = [
  "hex",
  "iroh-bytes",
  "iroh-net",
- "iroh-pkarr-node-discovery 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iroh-pkarr-node-discovery",
  "mainline",
  "postcard",
  "quinn",
@@ -1767,7 +1767,7 @@ dependencies = [
  "iroh-bytes",
  "iroh-mainline-content-discovery",
  "iroh-net",
- "iroh-pkarr-node-discovery 0.2.0",
+ "iroh-pkarr-node-discovery",
  "mainline",
  "pkarr",
  "postcard",
@@ -1884,20 +1884,6 @@ dependencies = [
 [[package]]
 name = "iroh-pkarr-node-discovery"
 version = "0.2.0"
-dependencies = [
- "anyhow",
- "futures",
- "iroh-net",
- "pkarr",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "iroh-pkarr-node-discovery"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cf6194d071308b74d89e54091385476d7289f3981cf02f88b378c8fd8a78b44"
 dependencies = [
  "anyhow",
  "futures",
