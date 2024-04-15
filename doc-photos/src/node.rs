@@ -138,7 +138,7 @@ async fn provide<B: BaoStore, D: DocStore>(
         "DERP Region: {}",
         region.map_or("None".to_string(), |r| r.to_string())
     );
-    println!("PeerID: {}", provider.peer_id());
+    println!("PeerID: {}", provider.node_id());
     println!();
     Ok(provider)
 }
