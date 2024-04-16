@@ -4,8 +4,9 @@ use anyhow::Result;
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt};
 use iroh::{
+    client::Entry,
     rpc_protocol::{DocTicket, ShareMode},
-    sync::{store::Query, Entry, NamespaceId},
+    sync::{store::Query, NamespaceId},
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{debug, error};
@@ -39,7 +40,6 @@ pub struct DocEntry {
     pub key: String,
     pub hash: String,
     pub content_length: u64,
-    pub timestamp: u64,
 }
 
 impl From<Entry> for DocEntry {
@@ -59,7 +59,6 @@ impl From<Entry> for DocEntry {
             key,
             hash: Blake3Cid(hash).to_string(), // TODO: verify this is correct
             content_length: entry.content_len(),
-            timestamp: entry.timestamp(),
         }
     }
 }
@@ -288,29 +287,11 @@ pub async fn get_doc_item_bytes(
             ))
         })?;
     let _ticket = doc.share(ShareMode::Write).await?;
-    let query = Query::all().key_exact(key.into_bytes());
-    let mut doc_entries_stream = doc.get_many(query).await?;
-    let mut latest_entry: Option<Entry> = None;
-    while let Some(entry) = doc_entries_stream.try_next().await? {
-        let e_id = entry.id();
-        let key = e_id.key();
-        let key = String::from_utf8(key.to_vec());
-        let ts = entry.timestamp();
-
-        match key {
-            Ok(_) => {
-                if ts > latest_entry.as_ref().map(|a| a.timestamp()).unwrap_or(0) {
-                    latest_entry = Some(entry);
-                }
-            }
-            Err(e) => {
-                error!("error: {}", e);
-            }
-        }
-    }
+    let query = Query::single_latest_per_key().key_exact(key.into_bytes());
+    let latest_entry = doc.get_one(query).await?;
 
     if let Some(entry) = latest_entry {
-        match doc.read_to_bytes(&entry).await {
+        match entry.content_bytes(&doc).await {
             Ok(content) => {
                 return Ok(content);
             }

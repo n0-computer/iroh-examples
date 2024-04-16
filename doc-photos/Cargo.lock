@@ -674,6 +674,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "concurrent-queue"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d16048cd947b08fa32c24458a22f5dc5e835264f689f4f5653210c69fd107363"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "config"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1429,6 +1438,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "event-listener"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67b215c49b2b248c855fb73579eb1f4f26c38ffdc12973e20e07b91d78d5646e"
+dependencies = [
+ "concurrent-queue",
+ "parking",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2179,7 +2199,7 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 [[package]]
 name = "iroh"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2237,7 +2257,7 @@ dependencies = [
 [[package]]
 name = "iroh-base"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2266,7 +2286,7 @@ dependencies = [
 [[package]]
 name = "iroh-bytes"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2301,7 +2321,7 @@ dependencies = [
 [[package]]
 name = "iroh-gossip"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2342,7 +2362,7 @@ dependencies = [
 [[package]]
 name = "iroh-metrics"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -2362,7 +2382,7 @@ dependencies = [
 [[package]]
 name = "iroh-net"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "aead",
  "anyhow",
@@ -2425,6 +2445,7 @@ dependencies = [
  "trust-dns-resolver",
  "ttl_cache",
  "url",
+ "watchable",
  "webpki-roots",
  "windows 0.51.1",
  "wmi",
@@ -2435,7 +2456,7 @@ dependencies = [
 [[package]]
 name = "iroh-sync"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
+source = "git+https://github.com/n0-computer/iroh?rev=690e2aa85d5f83ede8f6ebb2ba49d614b43b2883#690e2aa85d5f83ede8f6ebb2ba49d614b43b2883"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3221,6 +3242,12 @@ dependencies = [
  "unsigned-varint 0.7.2",
  "url",
 ]
+
+[[package]]
+name = "parking"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb813b8af86854136c6922af0598d719255ecb2179515e6e7730d468f05c9cae"
 
 [[package]]
 name = "parking_lot"
@@ -5849,6 +5876,18 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "watchable"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45b42a2f611916b5965120a9cde2b60f2db4454826dd9ad5e6f47c24a5b3b259"
+dependencies = [
+ "event-listener",
+ "futures-util",
+ "parking_lot",
+ "thiserror",
 ]
 
 [[package]]
