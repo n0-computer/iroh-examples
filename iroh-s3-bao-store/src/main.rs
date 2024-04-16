@@ -264,7 +264,6 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     for path in bucket.contents.iter().map(|c| c.key.clone()) {
         let url = root.join(&path)?;
         let hash = db.import_url(url).await?;
-        let hash = iroh::bytes::Hash::from(hash);
         let name = format!("{prefix}/{path}");
         hashes.push((name, hash));
     }
@@ -280,7 +279,7 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
 
     serve_db(db, args.common.magic_port, |addr| {
         if let Some(hash) = last_hash {
-            let ticket = BlobTicket::new(addr.clone(), hash.into(), BlobFormat::HashSeq)?;
+            let ticket = BlobTicket::new(addr.clone(), hash, BlobFormat::HashSeq)?;
             println!("collection: {}", ticket);
         }
         Ok(())
@@ -295,7 +294,6 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
     for url in args.url {
         let hash = db.import_url(url.clone()).await?;
         println!("added {}, {}", url, print_hash(&hash, args.common.format));
-        let hash = iroh::bytes::Hash::from(hash);
         let name = url.to_string().replace('/', "_");
         hashes.push((name, hash));
     }
@@ -315,7 +313,7 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
             println!("{} {}", name, ticket);
         }
         if let Some(hash) = last_hash {
-            let ticket = BlobTicket::new(addr.clone(), hash.into(), BlobFormat::HashSeq)?;
+            let ticket = BlobTicket::new(addr.clone(), hash, BlobFormat::HashSeq)?;
             println!("collection: {}", ticket);
         }
         Ok(())
