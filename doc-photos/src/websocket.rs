@@ -8,6 +8,7 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use iroh::bytes::Hash;
 use iroh::client::LiveEvent;
+use iroh::net::derp::DerpUrl;
 use iroh::net::key::PublicKey;
 use iroh::sync::{ContentStatus, NamespaceId};
 use sentry::{Hub, SentryFutureExt};
@@ -17,7 +18,6 @@ use time::OffsetDateTime as DateTime;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, warn, Instrument};
-use url::Url;
 
 use crate::iroh::DocEntry;
 use crate::AppState;
@@ -121,8 +121,8 @@ struct DocIdMessage {
 #[derive(Serialize)]
 enum ConnectionTypeMsg {
     Direct { addr: SocketAddrMsg },
-    Relay { url: Url },
-    Mixed { addr: SocketAddrMsg, url: Url },
+    Relay { url: DerpUrl },
+    Mixed { addr: SocketAddrMsg, url: DerpUrl },
     None,
 }
 
@@ -151,7 +151,7 @@ struct ConnectionInfoMsg {
     id: u64,
     #[serde_as(as = "DisplayFromStr")]
     peer: PublicKey,
-    derp_url: Option<Url>,
+    derp_url: Option<DerpUrl>,
     addrs: Vec<SocketAddrMsg>,
     conn_type: ConnectionTypeMsg,
     /// Latency in seconds.
