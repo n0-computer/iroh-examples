@@ -8,6 +8,6 @@ extern "ExtismHost" {
 #[plugin_fn]
 pub fn print_hai_and_get_ticket(ticket: String) -> FnResult<Vec<u8>> {
     println!("Hai from a wasm plugin!");
-    let v = unsafe { iroh_blob_get_ticket(ticket.into()) }?;
+    let v = unsafe { iroh_blob_get_ticket(ticket) }?;
     Ok(v)
 }
