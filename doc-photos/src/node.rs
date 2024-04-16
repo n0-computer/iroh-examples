@@ -8,7 +8,6 @@ use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
 use iroh::{
     bytes::{
-        protocol::RequestToken,
         store::{flat, Store as BaoStore},
         util::runtime,
         Hash,
@@ -18,7 +17,7 @@ use iroh::{
         derp::{DerpMap, DerpMode},
         key::{PublicKey, SecretKey},
     },
-    node::{Node, StaticTokenAuthHandler},
+    node::Node,
     rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService},
     sync::{store::Store as DocStore, AuthorId},
     util::path::IrohPaths,
@@ -48,7 +47,6 @@ pub async fn start_node(
         port,
         rpc_port,
         keylog: false,
-        request_token: None,
         derp_map: Some(derp_map),
     };
 
@@ -108,9 +106,7 @@ async fn provide<B: BaoStore, D: DocStore>(
 ) -> Result<Node<B>> {
     let secret_key = get_secret_key(key).await?;
 
-    // TODO(arqu): custom auth handler
     let mut builder = Node::builder(bao_store, doc_store)
-        .custom_auth_handler(Arc::new(StaticTokenAuthHandler::new(opts.request_token)))
         .peers_data_path(peers_data_path)
         .keylog(opts.keylog);
     if let Some(dm) = opts.derp_map {
@@ -212,7 +208,6 @@ pub struct ProvideOptions {
     pub port: u16,
     pub rpc_port: ProviderRpcPort,
     pub keylog: bool,
-    pub request_token: Option<RequestToken>,
     pub derp_map: Option<DerpMap>,
 }
 
