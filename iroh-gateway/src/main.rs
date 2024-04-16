@@ -85,6 +85,8 @@ impl Deref for Gateway {
     }
 }
 
+type MimeCache = LruCache<(Hash, Option<String>), (u64, Mime)>;
+
 #[derive(derive_more::Debug)]
 struct Inner {
     /// Endpoint to connect to nodes
@@ -95,7 +97,7 @@ struct Inner {
     #[debug("MimeClassifier")]
     mime_classifier: MimeClassifier,
     /// Cache of hashes to mime types
-    mime_cache: Mutex<LruCache<(Hash, Option<String>), (u64, Mime)>>,
+    mime_cache: Mutex<MimeCache>,
     /// Cache of hashes to collections
     collection_cache: Mutex<LruCache<Hash, Collection>>,
 }
@@ -183,7 +185,7 @@ async fn get_collection(
             tracing::debug!("hash {hash:?} for name {name:?} not found in headers");
             continue;
         };
-        let mime = get_mime_from_ext_and_data(ext.as_deref(), &data, &gateway.mime_classifier);
+        let mime = get_mime_from_ext_and_data(ext.as_deref(), data, &gateway.mime_classifier);
         let key = (*hash, ext);
         cache.put(key, (*size, mime));
     }
@@ -256,7 +258,7 @@ async fn get_mime_type(
     name: Option<&str>,
     connection: &quinn::Connection,
 ) -> anyhow::Result<(u64, Mime)> {
-    let ext = name.map(|n| get_extension(n)).flatten();
+    let ext = name.and_then(get_extension);
     let key = (*hash, ext.clone());
     if let Some(sm) = gateway.mime_cache.lock().unwrap().get(&key) {
         return Ok(sm.clone());

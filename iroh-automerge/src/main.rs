@@ -46,6 +46,7 @@ impl Peer {
         self.storage = self.auto_commit.save();
     }
 
+    #[allow(unused)]
     async fn load(data: &[u8]) -> Result<Self> {
         let ep = inet::MagicEndpoint::builder()
             .alpns(vec![ALPN.to_vec()])

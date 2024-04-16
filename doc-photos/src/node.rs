@@ -191,7 +191,7 @@ fn make_rpc_endpoint(
     )?;
     server_config.concurrent_connections(MAX_RPC_CONNECTIONS);
 
-    let rpc_quinn_endpoint = quinn::Endpoint::server(server_config.clone(), rpc_addr.into())?;
+    let rpc_quinn_endpoint = quinn::Endpoint::server(server_config.clone(), rpc_addr)?;
     let rpc_endpoint =
         QuinnServerEndpoint::<ProviderRequest, ProviderResponse>::new(rpc_quinn_endpoint)?;
     Ok(rpc_endpoint)
