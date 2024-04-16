@@ -26,7 +26,7 @@ git-version = "0.3.5"
 hex = "0.4.3"
 hyper = { version = "0.14.26", features = ["server", "client", "http1", "tcp"] }
 ipfs-api-prelude = "0.3.0"
-iroh = "0.12"
+iroh = { git = "https://github.com/n0-computer/iroh", rev = "13a3fe6ebc9ccfad6eceb908802362a81a221212" } #PR 1987
 libipld = "0.16.0"
 multibase = "0.9.1"
 multihash = "0.18"
