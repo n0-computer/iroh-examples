@@ -17,6 +17,7 @@ use time::OffsetDateTime as DateTime;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, warn, Instrument};
+use url::Url;
 
 use crate::iroh::DocEntry;
 use crate::AppState;
@@ -120,8 +121,8 @@ struct DocIdMessage {
 #[derive(Serialize)]
 enum ConnectionTypeMsg {
     Direct { addr: SocketAddrMsg },
-    Relay { port: u16 },
-    Mixed { addr: SocketAddrMsg, region: u16 },
+    Relay { url: Url },
+    Mixed { addr: SocketAddrMsg, url: Url },
     None,
 }
 
@@ -131,12 +132,10 @@ impl From<iroh::net::magicsock::ConnectionType> for ConnectionTypeMsg {
             iroh::net::magicsock::ConnectionType::Direct(addr) => {
                 ConnectionTypeMsg::Direct { addr: addr.into() }
             }
-            iroh::net::magicsock::ConnectionType::Relay(region) => {
-                ConnectionTypeMsg::Relay { port: region }
-            }
-            iroh::net::magicsock::ConnectionType::Mixed(addr, region) => ConnectionTypeMsg::Mixed {
+            iroh::net::magicsock::ConnectionType::Relay(url) => ConnectionTypeMsg::Relay { url },
+            iroh::net::magicsock::ConnectionType::Mixed(addr, url) => ConnectionTypeMsg::Mixed {
                 addr: addr.into(),
-                region,
+                url,
             },
             iroh::net::magicsock::ConnectionType::None => ConnectionTypeMsg::None,
         }
@@ -152,7 +151,7 @@ struct ConnectionInfoMsg {
     id: u64,
     #[serde_as(as = "DisplayFromStr")]
     peer: PublicKey,
-    derp_region: Option<u16>,
+    derp_url: Option<Url>,
     addrs: Vec<SocketAddrMsg>,
     conn_type: ConnectionTypeMsg,
     /// Latency in seconds.
@@ -164,7 +163,7 @@ impl From<iroh::net::magic_endpoint::ConnectionInfo> for ConnectionInfoMsg {
         ConnectionInfoMsg {
             id: value.id as _,
             peer: value.public_key,
-            derp_region: value.derp_region,
+            derp_url: value.derp_url,
             addrs: value.addrs.iter().map(|dai| dai.addr.into()).collect(),
             conn_type: value.conn_type.into(),
             latency: value.latency.map(|l| l.as_secs_f64()),
