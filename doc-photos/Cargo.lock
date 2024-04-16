@@ -224,7 +224,7 @@ version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdb8867f378f33f78a811a8eb9bf108ad99430d7aad43315dd9319c827ef6247"
 dependencies = [
- "http",
+ "http 0.2.9",
  "log",
  "url",
  "wildmatch",
@@ -248,9 +248,9 @@ dependencies = [
  "bitflags 1.3.2",
  "bytes",
  "futures-util",
- "http",
- "http-body",
- "hyper",
+ "http 0.2.9",
+ "http-body 0.4.5",
+ "hyper 0.14.27",
  "itoa",
  "matchit",
  "memchr",
@@ -281,8 +281,8 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures-util",
- "http",
- "http-body",
+ "http 0.2.9",
+ "http-body 0.4.5",
  "mime",
  "rustversion",
  "tower-layer",
@@ -300,8 +300,8 @@ dependencies = [
  "bytes",
  "cookie",
  "futures-util",
- "http",
- "http-body",
+ "http 0.2.9",
+ "http-body 0.4.5",
  "mime",
  "pin-project-lite",
  "serde",
@@ -666,7 +666,7 @@ checksum = "76d0a7a42b9c13f2b2a1a7e64b949a19bcb56a49b190076e60261001ceaa5304"
 dependencies = [
  "bytes",
  "futures",
- "http",
+ "http 0.2.9",
  "mime",
  "mime_guess",
  "rand 0.8.5",
@@ -1204,7 +1204,7 @@ dependencies = [
  "futures",
  "git-version",
  "hex",
- "hyper",
+ "hyper 0.14.27",
  "ipfs-api-prelude",
  "iroh",
  "libipld",
@@ -1754,7 +1754,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "futures-util",
- "http",
+ "http 0.2.9",
  "indexmap 1.9.3",
  "slab",
  "tokio",
@@ -1858,13 +1858,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "http"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21b9ddb458710bc376481b842f5da65cdf31522de232c1ca8146abce2a358258"
+dependencies = [
+ "bytes",
+ "fnv",
+ "itoa",
+]
+
+[[package]]
 name = "http-body"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5f38f16d184e36f2408a55281cd658ecbd3ca05cce6d6510a176eca393e26d1"
 dependencies = [
  "bytes",
- "http",
+ "http 0.2.9",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "http-body"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cac85db508abc24a2e48553ba12a996e87244a0395ce011e62b37158745d643"
+dependencies = [
+ "bytes",
+ "http 1.1.0",
+]
+
+[[package]]
+name = "http-body-util"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0475f8b2ac86659c21b64320d5d653f9efe42acd2a4e560073ec61a155a34f1d"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "http 1.1.0",
+ "http-body 1.0.0",
  "pin-project-lite",
 ]
 
@@ -1916,8 +1950,8 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
- "http-body",
+ "http 0.2.9",
+ "http-body 0.4.5",
  "httparse",
  "httpdate",
  "itoa",
@@ -1930,17 +1964,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb5aa53871fc917b1a9ed87b683a5d86db645e23acb32c2e0785a353e522fb75"
+dependencies = [
+ "bytes",
+ "futures-channel",
+ "futures-util",
+ "http 1.1.0",
+ "http-body 1.0.0",
+ "httparse",
+ "httpdate",
+ "itoa",
+ "pin-project-lite",
+ "tokio",
+ "want",
+]
+
+[[package]]
 name = "hyper-rustls"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec3efd23720e2049821a693cbc7e65ea87c72f1c58ff2f9522ff332b1491e590"
 dependencies = [
  "futures-util",
- "http",
- "hyper",
+ "http 0.2.9",
+ "hyper 0.14.27",
  "rustls",
  "tokio",
  "tokio-rustls",
+]
+
+[[package]]
+name = "hyper-util"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca38ef113da30126bbff9cd1705f9273e15d45498615d138b0c20279ac7a76aa"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http 1.1.0",
+ "http-body 1.0.0",
+ "hyper 1.1.0",
+ "pin-project-lite",
+ "socket2 0.5.5",
+ "tokio",
 ]
 
 [[package]]
@@ -1991,8 +2060,8 @@ dependencies = [
  "attohttpc",
  "bytes",
  "futures",
- "http",
- "hyper",
+ "http 0.2.9",
+ "hyper 0.14.27",
  "log",
  "rand 0.8.5",
  "tokio",
@@ -2089,7 +2158,7 @@ dependencies = [
  "common-multipart-rfc7578",
  "dirs 3.0.2",
  "futures",
- "http",
+ "http 0.2.9",
  "parity-multiaddr",
  "serde",
  "serde_json",
@@ -2110,7 +2179,7 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 [[package]]
 name = "iroh"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2168,7 +2237,7 @@ dependencies = [
 [[package]]
 name = "iroh-base"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2197,7 +2266,7 @@ dependencies = [
 [[package]]
 name = "iroh-bytes"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2232,7 +2301,7 @@ dependencies = [
 [[package]]
 name = "iroh-gossip"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2273,20 +2342,27 @@ dependencies = [
 [[package]]
 name = "iroh-metrics"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
+ "anyhow",
  "erased_set",
- "hyper",
+ "http-body-util",
+ "hyper 1.1.0",
+ "hyper-util",
  "once_cell",
  "prometheus-client",
+ "reqwest",
+ "serde",
  "struct_iterable",
+ "time",
+ "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "iroh-net"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "aead",
  "anyhow",
@@ -2305,8 +2381,10 @@ dependencies = [
  "governor",
  "hex",
  "hostname",
- "http",
- "hyper",
+ "http 1.1.0",
+ "http-body-util",
+ "hyper 1.1.0",
+ "hyper-util",
  "igd",
  "iroh-base",
  "iroh-metrics",
@@ -2357,7 +2435,7 @@ dependencies = [
 [[package]]
 name = "iroh-sync"
 version = "0.11.0"
-source = "git+https://github.com/n0-computer/iroh?rev=adc88f39bf56a08973b28a316113081fe0ededfd#adc88f39bf56a08973b28a316113081fe0ededfd"
+source = "git+https://github.com/n0-computer/iroh?rev=9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc#9d047e0ebd42a0f1d34a1567c77dbc86bd9178dc"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2702,7 +2780,7 @@ dependencies = [
  "bytes",
  "encoding_rs",
  "futures-util",
- "http",
+ "http 0.2.9",
  "httparse",
  "log",
  "memchr",
@@ -3948,9 +4026,9 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
- "http-body",
- "hyper",
+ "http 0.2.9",
+ "http-body 0.4.5",
+ "hyper 0.14.27",
  "hyper-rustls",
  "ipnet",
  "js-sys",
@@ -4391,7 +4469,7 @@ version = "0.31.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ffe3ab7bf7f65c9f8ccd20aa136ce5b2140aa6d6a11339e823cd43a7d694a9e"
 dependencies = [
- "http",
+ "http 0.2.9",
  "pin-project",
  "sentry-core",
  "tower-layer",
@@ -5279,8 +5357,8 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
- "http",
- "http-body",
+ "http 0.2.9",
+ "http-body 0.4.5",
  "http-range-header",
  "httpdate",
  "mime",
@@ -5448,7 +5526,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "data-encoding",
- "http",
+ "http 0.2.9",
  "httparse",
  "log",
  "rand 0.8.5",
