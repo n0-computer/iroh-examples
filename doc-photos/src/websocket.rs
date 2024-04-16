@@ -150,7 +150,7 @@ impl From<iroh::net::magicsock::ConnectionType> for ConnectionTypeMsg {
 struct ConnectionInfoMsg {
     id: u64,
     #[serde_as(as = "DisplayFromStr")]
-    peer: PublicKey,
+    node: PublicKey,
     derp_url: Option<DerpUrl>,
     addrs: Vec<SocketAddrMsg>,
     conn_type: ConnectionTypeMsg,
@@ -162,7 +162,7 @@ impl From<iroh::net::magic_endpoint::ConnectionInfo> for ConnectionInfoMsg {
     fn from(value: iroh::net::magic_endpoint::ConnectionInfo) -> Self {
         ConnectionInfoMsg {
             id: value.id as _,
-            peer: value.public_key,
+            node: value.node_id,
             derp_url: value.derp_url,
             addrs: value.addrs.iter().map(|dai| dai.addr.into()).collect(),
             conn_type: value.conn_type.into(),

@@ -26,13 +26,13 @@ git-version = "0.3.5"
 hex = "0.4.3"
 hyper = { version = "0.14.26", features = ["server", "client", "http1", "tcp"] }
 ipfs-api-prelude = "0.3.0"
-iroh = { git = "https://github.com/n0-computer/iroh", rev = "540fd8827fd52a98357f7901a97406a7300c5e38" } #PR 2041
+iroh = { git = "https://github.com/n0-computer/iroh", rev = "bab35c5680b331293aac7b4a8ce8edca5d6bfd61" } #PR 2072
 libipld = "0.16.0"
 multibase = "0.9.1"
 multihash = "0.18"
 num_cpus = "1.15.0"
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std", "experimental-derive"] }
-quic-rpc = { version = "0.6", default-features = false, features = ["quinn-transport", "flume-transport"] }
+quic-rpc = { version = "0.7", default-features = false, features = ["quinn-transport", "flume-transport"] } # needs to be keep in sync with iroh's version
 quinn = "0.10.0"
 rand = "0.7"
 regex = "1.8.4"
