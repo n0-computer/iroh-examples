@@ -339,9 +339,9 @@ dependencies = [
 
 [[package]]
 name = "bao-tree"
-version = "0.9.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "155e7e0c896695a9049badd7bf2b915d29230e24dc82a7c7ef065eded072404f"
+checksum = "a82f048f1b3b5ce0c7900e59aaeee3041dab048c80e5ee17ddf2823013b155c6"
 dependencies = [
  "bytes",
  "futures",
@@ -1831,6 +1831,51 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "hickory-proto"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "091a6fbccf4860009355e3efc52ff4acf37a63489aad7435372d44ceeb6fbbcf"
+dependencies = [
+ "async-trait",
+ "cfg-if",
+ "data-encoding",
+ "enum-as-inner",
+ "futures-channel",
+ "futures-io",
+ "futures-util",
+ "idna 0.4.0",
+ "ipnet",
+ "once_cell",
+ "rand 0.8.5",
+ "thiserror",
+ "tinyvec",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "hickory-resolver"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35b8f021164e6a984c9030023544c57789c51760065cd510572fedcfb04164e8"
+dependencies = [
+ "cfg-if",
+ "futures-util",
+ "hickory-proto",
+ "ipconfig",
+ "lru-cache",
+ "once_cell",
+ "parking_lot",
+ "rand 0.8.5",
+ "resolv-conf",
+ "smallvec",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2223,7 +2268,7 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 [[package]]
 name = "iroh"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2282,7 +2327,7 @@ dependencies = [
 [[package]]
 name = "iroh-base"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2311,7 +2356,7 @@ dependencies = [
 [[package]]
 name = "iroh-bytes"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2349,7 +2394,7 @@ dependencies = [
 [[package]]
 name = "iroh-gossip"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2376,9 +2421,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-io"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19ace4f69567bfeb726672bab901d3e81be0c01119d860b2a10b7efb1553b880"
+checksum = "1fd67e386f948a6f09e71057b48fff51b6414f0080997495b5bdf2d1bdcdbe46"
 dependencies = [
  "bytes",
  "futures",
@@ -2390,7 +2435,7 @@ dependencies = [
 [[package]]
 name = "iroh-metrics"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -2410,7 +2455,7 @@ dependencies = [
 [[package]]
 name = "iroh-net"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "aead",
  "anyhow",
@@ -2428,6 +2473,7 @@ dependencies = [
  "futures",
  "governor",
  "hex",
+ "hickory-resolver",
  "hostname",
  "http 1.1.0",
  "http-body-util",
@@ -2471,7 +2517,6 @@ dependencies = [
  "tokio-rustls-acme",
  "tokio-util 0.7.10",
  "tracing",
- "trust-dns-resolver",
  "ttl_cache",
  "url",
  "watchable",
@@ -2485,7 +2530,7 @@ dependencies = [
 [[package]]
 name = "iroh-sync"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=df1efb3b48aa10a8a0cfedb51812a13b10756d89#df1efb3b48aa10a8a0cfedb51812a13b10756d89"
+source = "git+https://github.com/n0-computer/iroh?rev=540fd8827fd52a98357f7901a97406a7300c5e38#540fd8827fd52a98357f7901a97406a7300c5e38"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5507,52 +5552,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "trust-dns-proto"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3119112651c157f4488931a01e586aa459736e9d6046d3bd9105ffb69352d374"
-dependencies = [
- "async-trait",
- "cfg-if",
- "data-encoding",
- "enum-as-inner",
- "futures-channel",
- "futures-io",
- "futures-util",
- "idna 0.4.0",
- "ipnet",
- "once_cell",
- "rand 0.8.5",
- "smallvec",
- "thiserror",
- "tinyvec",
- "tokio",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "trust-dns-resolver"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a3e6c3aff1718b3c73e395d1f35202ba2ffa847c6a62eea0db8fb4cfe30be6"
-dependencies = [
- "cfg-if",
- "futures-util",
- "ipconfig",
- "lru-cache",
- "once_cell",
- "parking_lot",
- "rand 0.8.5",
- "resolv-conf",
- "smallvec",
- "thiserror",
- "tokio",
- "tracing",
- "trust-dns-proto",
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use iroh::{
     bytes::{
         store::{flat, Store as BaoStore},
@@ -115,9 +115,9 @@ async fn provide<B: BaoStore, D: DocStore>(
     } else {
         builder.secret_key(secret_key).spawn().await?
     };
-    let eps = provider.local_endpoints().await?;
+    let mut eps = provider.local_endpoints();
     println!("Listening addresses:");
-    for ep in eps {
+    for ep in eps.next().await.context("no endpoints")? {
         println!("  {}", ep.addr);
     }
     let region = provider.my_derp();
