@@ -18,13 +18,13 @@ impl Config {
             .parse()
             .expect("listen address is invalid");
 
-        let provider_address = std::env::var("IROH_IPFS_PROVIDER_PORT")
+        let provider_port = std::env::var("IROH_IPFS_PROVIDER_PORT")
             .map_or(Ok(4433), |s| s.parse())
             .expect("provider address is invalid");
 
         Config {
             listen_addr,
-            provider_port: provider_address,
+            provider_port,
         }
     }
 }
