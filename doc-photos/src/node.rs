@@ -86,7 +86,7 @@ pub async fn start_node(
 
 pub const DOC_PHOTOS_DEFAULT_RPC_PORT: u16 = 0x1340; // NOTE: intentionally different from default iroh RPC port
 pub const MAX_RPC_CONNECTIONS: u32 = 16;
-pub const MAX_RPC_STREAMS: u64 = 1024;
+pub const MAX_RPC_STREAMS: u32 = 1024;
 
 async fn provide<B: BaoStore, D: DocStore>(
     bao_store: B,
@@ -180,15 +180,18 @@ fn make_rpc_endpoint(
     rpc_port: u16,
 ) -> Result<impl ServiceEndpoint<ProviderService>> {
     let rpc_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, rpc_port));
-    let rpc_quinn_endpoint = quinn::Endpoint::server(
-        iroh::node::make_server_config(
-            secret_key,
-            MAX_RPC_STREAMS,
-            MAX_RPC_CONNECTIONS,
-            vec![RPC_ALPN.to_vec()],
-        )?,
-        rpc_addr,
+
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config.max_concurrent_bidi_streams(MAX_RPC_STREAMS.into());
+    let mut server_config = iroh::net::magic_endpoint::make_server_config(
+        secret_key,
+        vec![RPC_ALPN.to_vec()],
+        Some(transport_config),
+        false,
     )?;
+    server_config.concurrent_connections(MAX_RPC_CONNECTIONS);
+
+    let rpc_quinn_endpoint = quinn::Endpoint::server(server_config.clone(), rpc_addr.into())?;
     let rpc_endpoint =
         QuinnServerEndpoint::<ProviderRequest, ProviderResponse>::new(rpc_quinn_endpoint)?;
     Ok(rpc_endpoint)
