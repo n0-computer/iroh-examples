@@ -7,9 +7,10 @@ use axum::response::IntoResponse;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use iroh::bytes::Hash;
+use iroh::client::LiveEvent;
+use iroh::net::derp::DerpUrl;
 use iroh::net::key::PublicKey;
 use iroh::sync::{ContentStatus, NamespaceId};
-use iroh::sync_engine::LiveEvent;
 use sentry::{Hub, SentryFutureExt};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
@@ -120,8 +121,8 @@ struct DocIdMessage {
 #[derive(Serialize)]
 enum ConnectionTypeMsg {
     Direct { addr: SocketAddrMsg },
-    Relay { port: u16 },
-    Mixed { addr: SocketAddrMsg, region: u16 },
+    Relay { url: DerpUrl },
+    Mixed { addr: SocketAddrMsg, url: DerpUrl },
     None,
 }
 
@@ -131,12 +132,10 @@ impl From<iroh::net::magicsock::ConnectionType> for ConnectionTypeMsg {
             iroh::net::magicsock::ConnectionType::Direct(addr) => {
                 ConnectionTypeMsg::Direct { addr: addr.into() }
             }
-            iroh::net::magicsock::ConnectionType::Relay(region) => {
-                ConnectionTypeMsg::Relay { port: region }
-            }
-            iroh::net::magicsock::ConnectionType::Mixed(addr, region) => ConnectionTypeMsg::Mixed {
+            iroh::net::magicsock::ConnectionType::Relay(url) => ConnectionTypeMsg::Relay { url },
+            iroh::net::magicsock::ConnectionType::Mixed(addr, url) => ConnectionTypeMsg::Mixed {
                 addr: addr.into(),
-                region,
+                url,
             },
             iroh::net::magicsock::ConnectionType::None => ConnectionTypeMsg::None,
         }
@@ -151,8 +150,8 @@ impl From<iroh::net::magicsock::ConnectionType> for ConnectionTypeMsg {
 struct ConnectionInfoMsg {
     id: u64,
     #[serde_as(as = "DisplayFromStr")]
-    peer: PublicKey,
-    derp_region: Option<u16>,
+    node: PublicKey,
+    derp_url: Option<DerpUrl>,
     addrs: Vec<SocketAddrMsg>,
     conn_type: ConnectionTypeMsg,
     /// Latency in seconds.
@@ -163,8 +162,8 @@ impl From<iroh::net::magic_endpoint::ConnectionInfo> for ConnectionInfoMsg {
     fn from(value: iroh::net::magic_endpoint::ConnectionInfo) -> Self {
         ConnectionInfoMsg {
             id: value.id as _,
-            peer: value.public_key,
-            derp_region: value.derp_region,
+            node: value.node_id,
+            derp_url: value.derp_url,
             addrs: value.addrs.iter().map(|dai| dai.addr.into()).collect(),
             conn_type: value.conn_type.into(),
             latency: value.latency.map(|l| l.as_secs_f64()),

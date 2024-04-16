@@ -5,12 +5,10 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use iroh::{
     bytes::{
-        protocol::RequestToken,
         store::{flat, Store as BaoStore},
-        util::runtime,
         Hash,
     },
     client::{self, quic::RPC_ALPN, Iroh},
@@ -18,7 +16,7 @@ use iroh::{
         derp::{DerpMap, DerpMode},
         key::{PublicKey, SecretKey},
     },
-    node::{Node, StaticTokenAuthHandler},
+    node::Node,
     rpc_protocol::{ProviderRequest, ProviderResponse, ProviderService},
     sync::{store::Store as DocStore, AuthorId},
     util::path::IrohPaths,
@@ -33,33 +31,25 @@ use tokio::sync::{broadcast, oneshot::Sender};
 use crate::config::doc_photos_data_dir;
 
 pub async fn start_node(
-    addr: SocketAddr,
+    port: u16,
     rpc_port: u16,
     tx_rpc_client: Sender<client::mem::RpcClient>,
     provider_events_sender: Arc<broadcast::Sender<Event>>,
 ) -> Result<()> {
-    let tokio = tokio::runtime::Handle::current();
-    let tpc = tokio_util::task::LocalPoolHandle::new(num_cpus::get());
-    let rt = iroh::bytes::util::runtime::Handle::new(tokio, tpc);
     let rpc_port = ProviderRpcPort::Enabled(rpc_port);
     let derp_map = iroh::net::defaults::default_derp_map();
 
     let opts = ProvideOptions {
-        addr,
+        port,
         rpc_port,
         keylog: false,
-        request_token: None,
         derp_map: Some(derp_map),
     };
 
     let repo_root = doc_photos_data_dir()?;
-    let meta_dir = repo_root.join(IrohPaths::BaoFlatStoreMeta);
-    let blob_dir = repo_root.join(IrohPaths::BaoFlatStoreComplete);
-    let partial_blob_dir = repo_root.join(IrohPaths::BaoFlatStorePartial);
+    let blob_dir = repo_root.join(IrohPaths::BaoFlatStoreDir);
     let peer_data_path = repo_root.join(IrohPaths::PeerData);
-    tokio::fs::create_dir_all(&blob_dir).await?;
-    tokio::fs::create_dir_all(&partial_blob_dir).await?;
-    let db = flat::Store::load(&blob_dir, &partial_blob_dir, &meta_dir, &rt)
+    let db = flat::Store::load(&blob_dir)
         .await
         .with_context(|| format!("Failed to load iroh database from {}", blob_dir.display()))?;
     tracing::debug!("Starting iroh node config...");
@@ -68,7 +58,7 @@ pub async fn start_node(
     let store = iroh::sync::store::fs::Store::new(repo_root.join(IrohPaths::DocsDatabase))
         .context("no fs store")?;
     tracing::debug!("Starting iroh node config: got store");
-    let provider = provide(db.clone(), store, &rt, key, peer_data_path, opts).await?;
+    let provider = provide(db.clone(), store, key, peer_data_path, opts).await?;
     tracing::debug!("Subscribing to node events");
     provider
         .subscribe(move |event| {
@@ -96,27 +86,24 @@ pub async fn start_node(
 
 pub const DOC_PHOTOS_DEFAULT_RPC_PORT: u16 = 0x1340; // NOTE: intentionally different from default iroh RPC port
 pub const MAX_RPC_CONNECTIONS: u32 = 16;
-pub const MAX_RPC_STREAMS: u64 = 1024;
+pub const MAX_RPC_STREAMS: u32 = 1024;
 
 async fn provide<B: BaoStore, D: DocStore>(
     bao_store: B,
     doc_store: D,
-    rt: &runtime::Handle,
     key: Option<PathBuf>,
     peers_data_path: PathBuf,
     opts: ProvideOptions,
 ) -> Result<Node<B>> {
     let secret_key = get_secret_key(key).await?;
 
-    // TODO(arqu): custom auth handler
     let mut builder = Node::builder(bao_store, doc_store)
-        .custom_auth_handler(Arc::new(StaticTokenAuthHandler::new(opts.request_token)))
         .peers_data_path(peers_data_path)
         .keylog(opts.keylog);
     if let Some(dm) = opts.derp_map {
         builder = builder.derp_mode(DerpMode::Custom(dm));
     }
-    let builder = builder.bind_addr(opts.addr).runtime(rt);
+    let builder = builder.bind_port(opts.port);
 
     let provider = if let Some(rpc_port) = opts.rpc_port.into() {
         let rpc_endpoint = make_rpc_endpoint(&secret_key, rpc_port)?;
@@ -128,9 +115,9 @@ async fn provide<B: BaoStore, D: DocStore>(
     } else {
         builder.secret_key(secret_key).spawn().await?
     };
-    let eps = provider.local_endpoints().await?;
+    let mut eps = provider.local_endpoints();
     println!("Listening addresses:");
-    for ep in eps {
+    for ep in eps.next().await.context("no endpoints")? {
         println!("  {}", ep.addr);
     }
     let region = provider.my_derp();
@@ -138,7 +125,7 @@ async fn provide<B: BaoStore, D: DocStore>(
         "DERP Region: {}",
         region.map_or("None".to_string(), |r| r.to_string())
     );
-    println!("PeerID: {}", provider.peer_id());
+    println!("PeerID: {}", provider.node_id());
     println!();
     Ok(provider)
 }
@@ -193,15 +180,18 @@ fn make_rpc_endpoint(
     rpc_port: u16,
 ) -> Result<impl ServiceEndpoint<ProviderService>> {
     let rpc_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, rpc_port));
-    let rpc_quinn_endpoint = quinn::Endpoint::server(
-        iroh::node::make_server_config(
-            secret_key,
-            MAX_RPC_STREAMS,
-            MAX_RPC_CONNECTIONS,
-            vec![RPC_ALPN.to_vec()],
-        )?,
-        rpc_addr,
+
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config.max_concurrent_bidi_streams(MAX_RPC_STREAMS.into());
+    let mut server_config = iroh::net::magic_endpoint::make_server_config(
+        secret_key,
+        vec![RPC_ALPN.to_vec()],
+        Some(transport_config),
+        false,
     )?;
+    server_config.concurrent_connections(MAX_RPC_CONNECTIONS);
+
+    let rpc_quinn_endpoint = quinn::Endpoint::server(server_config.clone(), rpc_addr.into())?;
     let rpc_endpoint =
         QuinnServerEndpoint::<ProviderRequest, ProviderResponse>::new(rpc_quinn_endpoint)?;
     Ok(rpc_endpoint)
@@ -209,10 +199,9 @@ fn make_rpc_endpoint(
 
 #[derive(Debug)]
 pub struct ProvideOptions {
-    pub addr: SocketAddr,
+    pub port: u16,
     pub rpc_port: ProviderRpcPort,
     pub keylog: bool,
-    pub request_token: Option<RequestToken>,
     pub derp_map: Option<DerpMap>,
 }
 
@@ -359,7 +348,7 @@ pub type Event = iroh::node::Event;
 pub struct ProviderInfo {
     pub author_id: Option<String>,
     pub peer_id: String,
-    pub addr: SocketAddr,
+    pub port: u16,
     // TODO(b5): hack to work with auth token for the moment
     pub auth_token: String,
 }

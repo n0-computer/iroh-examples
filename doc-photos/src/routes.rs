@@ -49,7 +49,7 @@ impl AppState {
         let provider_details = ProviderInfo {
             author_id: None,
             peer_id: provider_peer_id.to_string(),
-            addr: config.provider_address.clone(),
+            port: config.provider_port.clone(),
             // Use the empty string as a sentinel value, real value is
             // set in the "provider" api handler
             auth_token: "".to_string(),
@@ -74,8 +74,8 @@ impl AppState {
         self.provider_details.peer_id.clone()
     }
 
-    pub fn provider_addr(&self) -> SocketAddr {
-        self.config.provider_address
+    pub fn provider_port(&self) -> u16 {
+        self.config.provider_port
     }
 
     pub fn get_author_id(&self) -> AuthorId {

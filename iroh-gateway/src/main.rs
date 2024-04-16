@@ -15,7 +15,7 @@ use derive_more::Deref;
 use futures::{pin_mut, StreamExt};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::bytes::{store::bao_tree::ByteNum, BlobFormat};
+use iroh::bytes::{store::bao_tree::ChunkNum, BlobFormat};
 use iroh::{
     bytes::{
         format::collection::Collection,
@@ -129,7 +129,7 @@ async fn get_collection_inner(
         RangeSpecSeq::from_ranges_infinite(vec![
             RangeSet2::all(),
             RangeSet2::all(),
-            RangeSet2::from(..ByteNum(2048).chunks()),
+            RangeSet2::from(..ChunkNum::chunks(2048)),
         ])
     } else {
         RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
@@ -211,7 +211,7 @@ async fn get_mime_type_inner(
     mime_classifier: &MimeClassifier,
 ) -> anyhow::Result<(u64, Mime)> {
     // read 2 KiB.
-    let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ByteNum(2048).chunks())));
+    let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
     let request = iroh::bytes::protocol::GetRequest::new(*hash, range);
     let req = iroh::bytes::get::fsm::start(connection.clone(), request);
     let connected = req.next().await?;
@@ -454,7 +454,7 @@ async fn forward_range(
                     match item {
                         BaoContentItem::Leaf(leaf) => {
                             tracing::trace!("got leaf {} {}", leaf.offset, leaf.data.len());
-                            for item in slice(leaf.offset.0, leaf.data, byte_ranges.clone()) {
+                            for item in slice(leaf.offset, leaf.data, byte_ranges.clone()) {
                                 send.send_async(Ok(item)).await?;
                             }
                         }

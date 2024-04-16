@@ -86,7 +86,7 @@ pub async fn blob_handler(
     State(app_state): State<AppState>,
     Path(hash): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let hash = Hash::from_str(&hash)?;
+    let hash = Hash::from_str(&hash).map_err(|e| AppError::Other(e.into()))?;
     let mut header = app_state.iroh().blobs.read(hash).await?;
     let data = header.read_to_bytes().await?;
     Ok(data)

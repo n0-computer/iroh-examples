@@ -11,8 +11,8 @@ license = "MIT OR Apache-2.0"
 # Required features for the protocol types.
 #
 # The protocol is using postcard, but we don't need a postcard dependency for just the type definitions
-iroh-net = "0.13.0"
-iroh-bytes = "0.13.0"
+iroh-net = { workspace = true }
+iroh-bytes = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"] }
 serde-big-array = "0.5.1"
@@ -21,7 +21,7 @@ hex = "0.4.3"
 # Optional features for the client functionality
 tracing = { version = "0.1", optional = true }
 quinn = { version = "0.10", optional = true }
-iroh-pkarr-node-discovery = { version = "0.2.0", optional = true }
+iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", optional = true }
 mainline = { version = "1.0.0", optional = true }
 anyhow = { version = "1", features = ["backtrace"], optional = true }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"], optional = true }
