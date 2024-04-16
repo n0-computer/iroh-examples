@@ -2223,7 +2223,7 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 [[package]]
 name = "iroh"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2282,7 +2282,7 @@ dependencies = [
 [[package]]
 name = "iroh-base"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2311,7 +2311,7 @@ dependencies = [
 [[package]]
 name = "iroh-bytes"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -2325,8 +2325,11 @@ dependencies = [
  "hex",
  "iroh-base",
  "iroh-io",
+ "iroh-metrics",
+ "iroh-net",
  "num_cpus",
  "once_cell",
+ "parking_lot",
  "postcard",
  "quinn",
  "rand 0.8.5",
@@ -2346,7 +2349,7 @@ dependencies = [
 [[package]]
 name = "iroh-gossip"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2387,7 +2390,7 @@ dependencies = [
 [[package]]
 name = "iroh-metrics"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -2407,7 +2410,7 @@ dependencies = [
 [[package]]
 name = "iroh-net"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "aead",
  "anyhow",
@@ -2482,7 +2485,7 @@ dependencies = [
 [[package]]
 name = "iroh-sync"
 version = "0.12.0"
-source = "git+https://github.com/n0-computer/iroh?rev=78445770add12fc387ecb89f4eac7b54b349e18a#78445770add12fc387ecb89f4eac7b54b349e18a"
+source = "git+https://github.com/n0-computer/iroh?rev=aeee7186894ee6249aa58eac7001d87cb9edf4d7#aeee7186894ee6249aa58eac7001d87cb9edf4d7"
 dependencies = [
  "anyhow",
  "bytes",
