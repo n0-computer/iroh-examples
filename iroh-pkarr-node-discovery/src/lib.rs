@@ -2,7 +2,7 @@
 //!
 //! Node discovery is being able to find connecting information about an iroh node based on just its node id.
 //!
-//! This crate implements a discovery mechanism for iroh-net based on <https://https://pkarr.org/>.
+//! This crate implements a discovery mechanism for iroh-net based on <https://pkarr.org/>.
 //!
 //! TLDR: Each node publishes its address to the mainline DHT as a DNS packet, signed with its private key.
 //! The DNS packet contains the node's direct addresses and optionally a DERP URL.
