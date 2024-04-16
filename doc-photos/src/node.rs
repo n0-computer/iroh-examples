@@ -33,7 +33,7 @@ use tokio::sync::{broadcast, oneshot::Sender};
 use crate::config::doc_photos_data_dir;
 
 pub async fn start_node(
-    addr: SocketAddr,
+    port: u16,
     rpc_port: u16,
     tx_rpc_client: Sender<client::mem::RpcClient>,
     provider_events_sender: Arc<broadcast::Sender<Event>>,
@@ -45,7 +45,7 @@ pub async fn start_node(
     let derp_map = iroh::net::defaults::default_derp_map();
 
     let opts = ProvideOptions {
-        addr,
+        port,
         rpc_port,
         keylog: false,
         request_token: None,
@@ -116,7 +116,7 @@ async fn provide<B: BaoStore, D: DocStore>(
     if let Some(dm) = opts.derp_map {
         builder = builder.derp_mode(DerpMode::Custom(dm));
     }
-    let builder = builder.bind_addr(opts.addr).runtime(rt);
+    let builder = builder.bind_port(opts.port).runtime(rt);
 
     let provider = if let Some(rpc_port) = opts.rpc_port.into() {
         let rpc_endpoint = make_rpc_endpoint(&secret_key, rpc_port)?;
@@ -209,7 +209,7 @@ fn make_rpc_endpoint(
 
 #[derive(Debug)]
 pub struct ProvideOptions {
-    pub addr: SocketAddr,
+    pub port: u16,
     pub rpc_port: ProviderRpcPort,
     pub keylog: bool,
     pub request_token: Option<RequestToken>,
@@ -359,7 +359,7 @@ pub type Event = iroh::node::Event;
 pub struct ProviderInfo {
     pub author_id: Option<String>,
     pub peer_id: String,
-    pub addr: SocketAddr,
+    pub port: u16,
     // TODO(b5): hack to work with auth token for the moment
     pub auth_token: String,
 }

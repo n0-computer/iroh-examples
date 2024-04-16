@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 use dotenv::dotenv;
 
@@ -10,8 +10,8 @@ use tracing::{error, info_span, Instrument};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use doc_photos::node::{self, Event, get_author, DOC_PHOTOS_DEFAULT_RPC_PORT};
-use doc_photos::{AppState, routes::load_config};
+use doc_photos::node::{self, get_author, Event, DOC_PHOTOS_DEFAULT_RPC_PORT};
+use doc_photos::{routes::load_config, AppState};
 
 fn main() -> Result<()> {
     dotenv().ok();
@@ -49,12 +49,16 @@ async fn main_impl() -> Result<()> {
     let sender_2 = sender.clone();
 
     // start iroh node
-    let iroh_addr = config.provider_address;
+    let iroh_port = config.provider_port;
     let _node_handle = tokio::spawn(
         async move {
-            if let Err(err) =
-                node::start_node(iroh_addr, DOC_PHOTOS_DEFAULT_RPC_PORT, rpc_client_tx, sender_2)
-                .await
+            if let Err(err) = node::start_node(
+                iroh_port,
+                DOC_PHOTOS_DEFAULT_RPC_PORT,
+                rpc_client_tx,
+                sender_2,
+            )
+            .await
             {
                 error!("Iroh node failed: {err:#}")
             }
@@ -70,12 +74,7 @@ async fn main_impl() -> Result<()> {
     let author_id = get_author(&iroh).await?;
 
     // provision app state
-    let state = AppState::new(
-        config,
-        iroh,
-        author_id,
-        sender,
-    ).await?;
+    let state = AppState::new(config, iroh, author_id, sender).await?;
 
     let app = state.create_app().await?;
     let addr = state.listen_addr();

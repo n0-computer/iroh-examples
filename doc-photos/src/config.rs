@@ -7,8 +7,8 @@ use std::net::SocketAddr;
 pub struct Config {
     /// Address on which the HTTP server is bound.
     pub listen_addr: SocketAddr,
-    /// The address on which iroh provider is bound.
-    pub provider_address: SocketAddr,
+    /// The port on which iroh provider is bound.
+    pub provider_port: u16,
 }
 
 impl Config {
@@ -18,14 +18,13 @@ impl Config {
             .parse()
             .expect("listen address is invalid");
 
-        let provider_address = std::env::var("IROH_IPFS_PROVIDER_ADDRESS")
-            .unwrap_or_else(|_| "127.0.0.1:4433".to_string())
-            .parse()
+        let provider_address = std::env::var("IROH_IPFS_PROVIDER_PORT")
+            .map_or(Ok(4433), |s| s.parse())
             .expect("provider address is invalid");
 
         Config {
             listen_addr,
-            provider_address,
+            provider_port: provider_address,
         }
     }
 }
