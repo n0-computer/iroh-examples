@@ -47,13 +47,9 @@ pub async fn start_node(
     };
 
     let repo_root = doc_photos_data_dir()?;
-    let meta_dir = repo_root.join(IrohPaths::BaoFlatStoreMeta);
-    let blob_dir = repo_root.join(IrohPaths::BaoFlatStoreComplete);
-    let partial_blob_dir = repo_root.join(IrohPaths::BaoFlatStorePartial);
+    let blob_dir = repo_root.join(IrohPaths::BaoFlatStoreDir);
     let peer_data_path = repo_root.join(IrohPaths::PeerData);
-    tokio::fs::create_dir_all(&blob_dir).await?;
-    tokio::fs::create_dir_all(&partial_blob_dir).await?;
-    let db = flat::Store::load(&blob_dir, &partial_blob_dir, &meta_dir)
+    let db = flat::Store::load(&blob_dir)
         .await
         .with_context(|| format!("Failed to load iroh database from {}", blob_dir.display()))?;
     tracing::debug!("Starting iroh node config...");
