@@ -85,6 +85,8 @@ impl Deref for Gateway {
     }
 }
 
+type MimeCache = LruCache<(Hash, Option<String>), (u64, Mime)>;
+
 #[derive(derive_more::Debug)]
 struct Inner {
     /// Endpoint to connect to nodes
@@ -95,7 +97,7 @@ struct Inner {
     #[debug("MimeClassifier")]
     mime_classifier: MimeClassifier,
     /// Cache of hashes to mime types
-    mime_cache: Mutex<LruCache<(Hash, Option<String>), (u64, Mime)>>,
+    mime_cache: Mutex<MimeCache>,
     /// Cache of hashes to collections
     collection_cache: Mutex<LruCache<Hash, Collection>>,
 }
