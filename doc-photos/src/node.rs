@@ -9,7 +9,6 @@ use futures::TryStreamExt;
 use iroh::{
     bytes::{
         store::{flat, Store as BaoStore},
-        util::runtime,
         Hash,
     },
     client::{self, quic::RPC_ALPN, Iroh},
@@ -37,9 +36,6 @@ pub async fn start_node(
     tx_rpc_client: Sender<client::mem::RpcClient>,
     provider_events_sender: Arc<broadcast::Sender<Event>>,
 ) -> Result<()> {
-    let tokio = tokio::runtime::Handle::current();
-    let tpc = tokio_util::task::LocalPoolHandle::new(num_cpus::get());
-    let rt = iroh::bytes::util::runtime::Handle::new(tokio, tpc);
     let rpc_port = ProviderRpcPort::Enabled(rpc_port);
     let derp_map = iroh::net::defaults::default_derp_map();
 
@@ -57,7 +53,7 @@ pub async fn start_node(
     let peer_data_path = repo_root.join(IrohPaths::PeerData);
     tokio::fs::create_dir_all(&blob_dir).await?;
     tokio::fs::create_dir_all(&partial_blob_dir).await?;
-    let db = flat::Store::load(&blob_dir, &partial_blob_dir, &meta_dir, &rt)
+    let db = flat::Store::load(&blob_dir, &partial_blob_dir, &meta_dir)
         .await
         .with_context(|| format!("Failed to load iroh database from {}", blob_dir.display()))?;
     tracing::debug!("Starting iroh node config...");
@@ -66,7 +62,7 @@ pub async fn start_node(
     let store = iroh::sync::store::fs::Store::new(repo_root.join(IrohPaths::DocsDatabase))
         .context("no fs store")?;
     tracing::debug!("Starting iroh node config: got store");
-    let provider = provide(db.clone(), store, &rt, key, peer_data_path, opts).await?;
+    let provider = provide(db.clone(), store, key, peer_data_path, opts).await?;
     tracing::debug!("Subscribing to node events");
     provider
         .subscribe(move |event| {
@@ -99,7 +95,6 @@ pub const MAX_RPC_STREAMS: u64 = 1024;
 async fn provide<B: BaoStore, D: DocStore>(
     bao_store: B,
     doc_store: D,
-    rt: &runtime::Handle,
     key: Option<PathBuf>,
     peers_data_path: PathBuf,
     opts: ProvideOptions,
@@ -112,7 +107,7 @@ async fn provide<B: BaoStore, D: DocStore>(
     if let Some(dm) = opts.derp_map {
         builder = builder.derp_mode(DerpMode::Custom(dm));
     }
-    let builder = builder.bind_port(opts.port).runtime(rt);
+    let builder = builder.bind_port(opts.port);
 
     let provider = if let Some(rpc_port) = opts.rpc_port.into() {
         let rpc_endpoint = make_rpc_endpoint(&secret_key, rpc_port)?;

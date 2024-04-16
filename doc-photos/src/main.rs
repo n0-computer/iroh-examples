@@ -30,10 +30,6 @@ fn main() -> Result<()> {
 }
 
 async fn main_impl() -> Result<()> {
-    let tokio = tokio::runtime::Handle::current();
-    let tpc = tokio_util::task::LocalPoolHandle::new(num_cpus::get());
-    let rt = iroh::bytes::util::runtime::Handle::new(tokio, tpc);
-
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(tracing_subscriber::fmt::layer())
@@ -70,7 +66,7 @@ async fn main_impl() -> Result<()> {
     let rpc_client = rpc_client_rx
         .await
         .context("did not receive rpc client from node")?;
-    let iroh = Iroh::new(rpc_client, rt);
+    let iroh = Iroh::new(rpc_client);
     let author_id = get_author(&iroh).await?;
 
     // provision app state
