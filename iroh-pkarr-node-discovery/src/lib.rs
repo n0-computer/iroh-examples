@@ -223,7 +223,7 @@ impl PkarrNodeDiscovery {
                 }
             };
             // do both at the same time
-            futures::future::join(relay_publish, dht_publish).await;
+            tokio::join!(relay_publish, dht_publish);
             tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
         }
     }
@@ -308,10 +308,10 @@ impl PkarrNodeDiscovery {
     async fn resolve(self, node_id: NodeId, co: Co<anyhow::Result<DiscoveryItem>>) {
         let pkarr_public_key =
             pkarr::PublicKey::try_from(*node_id.as_bytes()).expect("valid public key");
-        let resolve_dht = self.resolve_dht(pkarr_public_key.clone(), &co);
-        let resolve_relay = self.resolve_relay(pkarr_public_key, &co);
-        tokio::pin!(resolve_dht, resolve_relay);
-        futures::future::join(resolve_dht, resolve_relay).await;
+        tokio::join!(
+            self.resolve_dht(pkarr_public_key.clone(), &co),
+            self.resolve_relay(pkarr_public_key, &co)
+        );
     }
 }
 
