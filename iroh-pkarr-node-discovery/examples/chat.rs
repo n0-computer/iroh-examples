@@ -10,17 +10,59 @@
 //! To see what is going on, run with `RUST_LOG=iroh_pkarr_node_discovery=debug`.
 use std::str::FromStr;
 
-use anyhow::Context;
+use clap::Parser;
 use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
+use pkarr::url::Url;
 
 const CHAT_ALPN: &[u8] = b"pkarr-discovery-demo-chat";
 
-async fn chat_server() -> anyhow::Result<()> {
+#[derive(Parser)]
+struct Args {
+    /// The node id to connect to. If not set, the program will start a server.
+    node_id: Option<NodeId>,
+    /// Disable using the mainline DHT for discovery and publishing.
+    #[clap(long)]
+    disable_dht: bool,
+    /// Pkarr relay to use.
+    #[clap(long, default_value = "iroh")]
+    pkarr_relay: PkarrRelay,
+}
+
+#[derive(Debug, Clone)]
+enum PkarrRelay {
+    Disabled,
+    Iroh,
+    Custom(Url),
+}
+
+impl FromStr for PkarrRelay {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "disabled" => Ok(Self::Disabled),
+            "iroh" => Ok(Self::Iroh),
+            s => Ok(Self::Custom(Url::parse(s)?)),
+        }
+    }
+}
+
+fn build_discovery(args: Args) -> iroh_pkarr_node_discovery::Builder {
+    let builder = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder().dht(!args.disable_dht);
+    let builder = match args.pkarr_relay {
+        PkarrRelay::Disabled => builder,
+        PkarrRelay::Iroh => builder.iroh_pkarr_relay(),
+        PkarrRelay::Custom(url) => builder.pkarr_relay(url),
+    };
+    builder
+}
+
+async fn chat_server(args: Args) -> anyhow::Result<()> {
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder()
-        .secret_key(&secret_key)
-        .build();
+    let discovery = build_discovery(args)
+        .secret_key(secret_key.clone())
+        .build()?;
     let endpoint = MagicEndpoint::builder()
         .alpns(vec![CHAT_ALPN.to_vec()])
         .secret_key(secret_key)
@@ -51,11 +93,12 @@ async fn chat_server() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn chat_client(remote_node_id: NodeId) -> anyhow::Result<()> {
+async fn chat_client(args: Args) -> anyhow::Result<()> {
+    let remote_node_id = args.node_id.unwrap();
     let secret_key = iroh_net::key::SecretKey::generate();
     let node_id = secret_key.public();
     // note: we don't pass a secret key here, because we don't need to publish our address, don't spam the DHT
-    let discovery = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder().build();
+    let discovery = build_discovery(args).build()?;
     // we do not need to specify the alpn here, because we are not going to accept connections
     let endpoint = MagicEndpoint::builder()
         .secret_key(secret_key)
@@ -66,6 +109,7 @@ async fn chat_client(remote_node_id: NodeId) -> anyhow::Result<()> {
     let connection = endpoint
         .connect_by_node_id(&remote_node_id, CHAT_ALPN)
         .await?;
+    println!("connected to {}", remote_node_id);
     let (mut writer, mut reader) = connection.open_bi().await?;
     let _copy_to_stdout =
         tokio::spawn(async move { tokio::io::copy(&mut reader, &mut tokio::io::stdout()).await });
@@ -79,16 +123,11 @@ async fn chat_client(remote_node_id: NodeId) -> anyhow::Result<()> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
-    let args = std::env::args();
-    let first = args.into_iter().skip(1).next();
-    match first {
-        Some(node_id) => {
-            let node_id = NodeId::from_str(&node_id).context("invalid node id")?;
-            chat_client(node_id).await?;
-        }
-        None => {
-            chat_server().await?;
-        }
+    let args = Args::parse();
+    if args.node_id.is_some() {
+        chat_client(args).await?;
+    } else {
+        chat_server(args).await?;
     }
     Ok(())
 }

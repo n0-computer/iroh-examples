@@ -2,34 +2,28 @@
 //!
 //! Node discovery is being able to find connecting information about an iroh node based on just its node id.
 //!
-//! This crate implements a discovery mechanism for iroh-net based on <https://pkarr.org/>.
+//! This crate implements a discovery mechanism for iroh-net based on <https://https://pkarr.org/>.
 //!
 //! TLDR: Each node publishes its address to the mainline DHT as a DNS packet, signed with its private key.
 //! The DNS packet contains the node's direct addresses and optionally a DERP URL.
 use std::{
-    collections::BTreeSet,
-    net::SocketAddr,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use anyhow::Context;
 use futures::{stream::BoxStream, StreamExt};
+use genawaiter::sync::{Co, Gen};
 use iroh_net::{
     discovery::{Discovery, DiscoveryItem},
+    dns::node_info::NodeInfo,
     key::SecretKey,
     util::AbortingJoinHandle,
-    AddrInfo, MagicEndpoint, NodeAddr, NodeId,
+    AddrInfo, MagicEndpoint, NodeId,
 };
-use pkarr::{
-    dns::rdata::{RData, TXT},
-    dns::{Name, Packet, ResourceRecord, CLASS},
-    url::Url,
-    Keypair, PkarrClient, SignedPacket,
-};
+use pkarr::{url::Url, PkarrClient, PublicKey, SignedPacket};
 
-/// The key for the DERP URL TXT record.
-const RELAY_URL_KEY: &str = "_relay_url.iroh.";
+use iroh_net::discovery::pkarr_publish::{DEFAULT_PKARR_TTL, N0_DNS_PKARR_RELAY};
+
 /// Republish delay for the DHT. This is only for when the info does not change.
 /// If the info changes, it will be published immediately.
 const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
@@ -56,17 +50,40 @@ struct Inner {
     /// Optional keypair for signing the DNS packets.
     ///
     /// If this is None, the node will not publish its address to the DHT.
-    keypair: Option<pkarr::Keypair>,
+    secret_key: Option<SecretKey>,
+    /// Optional pkarr relay URL to use.
+    relay_url: Option<Url>,
+    /// Whether to publish to the mainline DHT.
+    dht: bool,
+    /// Time-to-live value for the DNS packets.
+    ttl: u32,
 }
 
 /// Builder for PkarrNodeDiscovery.
-#[derive(Debug, Default)]
-pub struct Builder<'a> {
+///
+/// By default, publishing to the DHT is enabled, and relay publishing is disabled.
+#[derive(Debug)]
+pub struct Builder {
     client: Option<PkarrClient>,
-    secret_key: Option<&'a SecretKey>,
+    secret_key: Option<SecretKey>,
+    ttl: Option<u32>,
+    pkarr_relay: Option<Url>,
+    dht: bool,
 }
 
-impl<'a> Builder<'a> {
+impl Default for Builder {
+    fn default() -> Self {
+        Self {
+            client: None,
+            secret_key: None,
+            ttl: None,
+            pkarr_relay: None,
+            dht: true,
+        }
+    }
+}
+
+impl Builder {
     /// Explicitly set the pkarr client to use.
     pub fn client(mut self, client: PkarrClient) -> Self {
         self.client = Some(client);
@@ -76,20 +93,58 @@ impl<'a> Builder<'a> {
     /// Set the secret key to use for signing the DNS packets.
     ///
     /// Without a secret key, the node will not publish its address to the DHT.
-    pub fn secret_key(mut self, secret_key: &'a SecretKey) -> Self {
+    pub fn secret_key(mut self, secret_key: SecretKey) -> Self {
         self.secret_key = Some(secret_key);
         self
     }
 
+    /// Set the time-to-live value for the DNS packets.
+    pub fn ttl(mut self, ttl: u32) -> Self {
+        self.ttl = Some(ttl);
+        self
+    }
+
+    /// Set the pkarr relay URL to use.
+    pub fn pkarr_relay(mut self, pkarr_relay: Url) -> Self {
+        self.pkarr_relay = Some(pkarr_relay);
+        self
+    }
+
+    /// Use the default pkarr relay URL.
+    pub fn iroh_pkarr_relay(mut self) -> Self {
+        self.pkarr_relay = Some(N0_DNS_PKARR_RELAY.parse().expect("valid URL"));
+        self
+    }
+
+    /// Set whether to publish to the mainline DHT.
+    pub fn dht(mut self, dht: bool) -> Self {
+        self.dht = dht;
+        self
+    }
+
     /// Build the discovery mechanism.
-    pub fn build(self) -> PkarrNodeDiscovery {
+    pub fn build(self) -> anyhow::Result<PkarrNodeDiscovery> {
         let client = self.client.unwrap_or_default();
-        PkarrNodeDiscovery::new(client, self.secret_key)
+        let ttl = self.ttl.unwrap_or(DEFAULT_PKARR_TTL);
+        let pkarr_relay = self.pkarr_relay;
+        let dht = self.dht;
+        anyhow::ensure!(
+            dht || pkarr_relay.is_some(),
+            "at least one of DHT or relay must be enabled"
+        );
+        Ok(PkarrNodeDiscovery::new(
+            client,
+            self.secret_key,
+            ttl,
+            pkarr_relay,
+            dht,
+        ))
     }
 }
 
 impl PkarrNodeDiscovery {
-    pub fn builder() -> Builder<'static> {
+    /// Create a new builder for PkarrNodeDiscovery.
+    pub fn builder() -> Builder {
         Builder::default()
     }
 
@@ -97,62 +152,186 @@ impl PkarrNodeDiscovery {
     ///
     /// If a secret key is provided, the node will publish its address to the DHT.
     /// If no secret key is provided, publish will be a no-op, but resolving other nodes will still work.
-    fn new(pkarr: PkarrClient, secret_key: Option<&SecretKey>) -> Self {
-        let keypair =
-            secret_key.map(|secret_key| pkarr::Keypair::from_secret_key(&secret_key.to_bytes()));
+    fn new(
+        pkarr: PkarrClient,
+        secret_key: Option<SecretKey>,
+        ttl: u32,
+        relay_url: Option<Url>,
+        dht: bool,
+    ) -> Self {
         Self(Arc::new(Inner {
-            keypair,
+            secret_key,
             pkarr,
+            ttl,
+            relay_url,
+            dht,
             task: Default::default(),
         }))
+    }
+
+    /// Periodically publish the node address to the DHT and relay.
+    async fn publish_loop(self, keypair: SecretKey, signed_packet: SignedPacket) {
+        let this = self;
+        let z32 = pkarr::PublicKey::try_from(*keypair.public().as_bytes())
+            .expect("valid public key")
+            .to_z32();
+        loop {
+            // initial delay. If the task gets aborted before this delay is over,
+            // we have not published anything to the DHT yet.
+            tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
+            // publish to the DHT if enabled
+            let dht_publish = async {
+                if this.0.dht {
+                    // note: the publish fn will be async only when the async feature is selected
+                    // this will probably change in the next version of pkarr.
+                    let res = this.0.pkarr.publish(&signed_packet).await;
+                    match res {
+                        Ok(info) => {
+                            tracing::debug!(
+                                "pkarr publish success. published under {} to {} nodes",
+                                z32,
+                                info.stored_at().len()
+                            );
+                            for node in info.stored_at() {
+                                tracing::trace!("stored address: {:?}", node);
+                            }
+                        }
+                        Err(e) => {
+                            // we could do a smaller delay here, but in general DHT publish
+                            // not working is due to a network issue, and if the network changes
+                            // the task will be restarted anyway.
+                            //
+                            // Being unable to publish to the DHT is something that is expected
+                            // to happen from time to time, so this does not warrant a error log.
+                            tracing::warn!("pkarr publish error: {}", e);
+                        }
+                    }
+                }
+            };
+            // publish to the relay if enabled
+            let relay_publish = async {
+                if let Some(url) = this.0.relay_url.as_ref() {
+                    tracing::info!("publishing to relay: {}", url);
+                    match this.0.pkarr.relay_put(url, &signed_packet).await {
+                        Ok(_) => {
+                            tracing::debug!("pkarr publish to relay success");
+                        }
+                        Err(e) => {
+                            tracing::warn!("pkarr publish to relay error: {}", e);
+                        }
+                    }
+                }
+            };
+            // do both at the same time
+            futures::future::join(relay_publish, dht_publish).await;
+            tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
+        }
+    }
+
+    async fn resolve_relay(
+        &self,
+        pkarr_public_key: PublicKey,
+        co: &Co<anyhow::Result<DiscoveryItem>>,
+    ) {
+        let Some(url) = &self.0.relay_url else {
+            return;
+        };
+        tracing::info!("resolving {} from relay {}", pkarr_public_key.to_z32(), url);
+        let response = self.0.pkarr.relay_get(url, pkarr_public_key).await;
+        match response {
+            Ok(Some(signed_packet)) => {
+                if let Ok(node_info) = NodeInfo::from_pkarr_signed_packet(&signed_packet) {
+                    let addr_info = node_info.into();
+                    tracing::info!("discovered node info from relay {:?}", addr_info);
+                    co.yield_(Ok(DiscoveryItem {
+                        provenance: "relay",
+                        last_updated: None,
+                        addr_info,
+                    }))
+                    .await;
+                } else {
+                    tracing::debug!("failed to parse signed packet as node info");
+                }
+            }
+            Ok(None) => {
+                tracing::debug!("no signed packet found in relay");
+            }
+            Err(e) => {
+                tracing::debug!("failed to get signed packet from relay: {}", e);
+                co.yield_(Err(e.into())).await;
+            }
+        }
+    }
+
+    /// Resolve a node id from the DHT.
+    async fn resolve_dht(
+        &self,
+        pkarr_public_key: PublicKey,
+        co: &Co<anyhow::Result<DiscoveryItem>>,
+    ) {
+        if !self.0.dht {
+            return;
+        };
+        tracing::info!("resolving {} from DHT", pkarr_public_key.to_z32());
+        let mut response = self.0.pkarr.resolve_raw(pkarr_public_key).await;
+        let mut highest_timestamp = 0u64;
+        while let Some(next) = response.next_async().await {
+            match SignedPacket::try_from(next.item) {
+                Ok(signed_packet) => {
+                    let timestamp = *signed_packet.timestamp();
+                    if timestamp < highest_timestamp {
+                        tracing::debug!("skipping outdated signed packet");
+                        continue;
+                    }
+                    highest_timestamp = timestamp;
+                    if let Ok(node_info) = NodeInfo::from_pkarr_signed_packet(&signed_packet) {
+                        let addr_info = node_info.into();
+                        tracing::debug!("discovered node info from DHT {:?}", addr_info);
+                        co.yield_(Ok(DiscoveryItem {
+                            provenance: "mainline",
+                            last_updated: None,
+                            addr_info,
+                        }))
+                        .await;
+                    } else {
+                        tracing::debug!("failed to parse signed packet as node info");
+                    }
+                }
+                Err(e) => {
+                    tracing::debug!("failed to parse signed packet: {}", e);
+                    co.yield_(Err(e.into())).await;
+                }
+            }
+        }
+    }
+
+    async fn resolve(self, node_id: NodeId, co: Co<anyhow::Result<DiscoveryItem>>) {
+        let pkarr_public_key =
+            pkarr::PublicKey::try_from(*node_id.as_bytes()).expect("valid public key");
+        let resolve_dht = self.resolve_dht(pkarr_public_key.clone(), &co);
+        let resolve_relay = self.resolve_relay(pkarr_public_key, &co);
+        tokio::pin!(resolve_dht, resolve_relay);
+        futures::future::join(resolve_dht, resolve_relay).await;
     }
 }
 
 impl Discovery for PkarrNodeDiscovery {
     fn publish(&self, info: &AddrInfo) {
-        tracing::debug!("publishing {:?}", info);
-        let Some(keypair) = &self.0.keypair else {
+        let Some(keypair) = &self.0.secret_key else {
             tracing::debug!("no keypair set, not publishing");
             return;
         };
-        let Ok(signed_packet) = node_addr_to_packet(keypair, info, 0) else {
+        tracing::debug!("publishing {:?}", info);
+        let info = NodeInfo {
+            node_id: keypair.public(),
+            relay_url: info.relay_url.clone().map(Url::from),
+        };
+        let Ok(signed_packet) = info.to_pkarr_signed_packet(keypair, self.0.ttl) else {
             tracing::warn!("failed to create signed packet");
             return;
         };
         let this = self.clone();
-        let z32 = keypair.public_key().to_z32();
-        let curr = tokio::spawn(async move {
-            loop {
-                // initial delay. If the task gets aborted before this delay is over,
-                // we have not published anything to the DHT yet.
-                tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
-                // note: the publish fn will be async only when the async feature is selected
-                // this will probably change in the next version of pkarr.
-                let res = this.0.pkarr.publish(&signed_packet).await;
-                match res {
-                    Ok(info) => {
-                        tracing::debug!(
-                            "pkarr publish success. published under {} to {} nodes",
-                            z32,
-                            info.stored_at().len()
-                        );
-                        for node in info.stored_at() {
-                            tracing::trace!("stored address: {:?}", node);
-                        }
-                    }
-                    Err(e) => {
-                        // we could do a smaller delay here, but in general DHT publish
-                        // not working is due to a network issue, and if the network changes
-                        // the task will be restarted anyway.
-                        //
-                        // Being unable to publish to the DHT is something that is expected
-                        // to happen from time to time, so this does not warrant a error log.
-                        tracing::warn!("pkarr publish error: {}", e);
-                    }
-                }
-                tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
-            }
-        });
+        let curr = tokio::spawn(this.publish_loop(keypair.clone(), signed_packet));
         let mut task = self.0.task.lock().unwrap();
         *task = Some(curr.into());
     }
@@ -163,139 +342,9 @@ impl Discovery for PkarrNodeDiscovery {
         node_id: NodeId,
     ) -> Option<BoxStream<'_, anyhow::Result<DiscoveryItem>>> {
         let this = self.clone();
-        let fut = async move {
-            let Ok(pkarr_public_key) = pkarr::PublicKey::try_from(*node_id.as_bytes()) else {
-                tracing::error!("invalid node id");
-                anyhow::bail!("invalid node id");
-            };
-            tracing::info!("resolving {} as {}", node_id, pkarr_public_key.to_z32());
-            // TODO: stream packets and return the first one that is valid
-            // Also, the resolve fn in the discovery trait should really return a stream
-            // so that resolution from multiple sources can be combined.
-            let packet = this
-                .0
-                .pkarr
-                .resolve(pkarr_public_key)
-                .await
-                .context("not found")?;
-            let addr = packet_to_node_addr(&node_id, &packet).context("invalid packet")?;
-            tracing::info!("resolved: {} to {:?}", node_id, addr);
-            Ok(DiscoveryItem {
-                provenance: "pkarr",
-                last_updated: None,
-                addr_info: addr.info,
-            })
-        };
-        Some(futures::stream::once(fut).boxed())
-    }
-}
-
-fn filter_txt(rr: &ResourceRecord) -> Option<String> {
-    if rr.class != CLASS::IN {
-        return None;
-    }
-    if let RData::TXT(txt) = &rr.rdata {
-        String::try_from(txt.clone()).ok()
-    } else {
-        None
-    }
-}
-
-/// Try to parse a node address from a signed packet.
-fn packet_to_node_addr(node_id: &NodeId, packet: &SignedPacket) -> anyhow::Result<NodeAddr> {
-    // set of direct addresses, provided that they are all valid socket addresses
-    let direct_addresses = packet
-        .resource_records("@")
-        .filter_map(filter_txt)
-        .map(|addr| anyhow::Ok(addr.parse()?))
-        .collect::<anyhow::Result<BTreeSet<SocketAddr>>>()?;
-
-    // first DERP URL, if any
-    let relay_url = packet
-        .resource_records(RELAY_URL_KEY)
-        .filter_map(filter_txt)
-        .map(|url| anyhow::Ok(Url::parse(&url)?.into()))
-        .next()
-        .transpose()?;
-    Ok(NodeAddr {
-        node_id: *node_id,
-        info: AddrInfo {
-            relay_url,
-            direct_addresses,
-        },
-    })
-}
-
-/// Create a signed packet from a node address.
-fn node_addr_to_packet(
-    keypair: &Keypair,
-    info: &AddrInfo,
-    ttl: u32,
-) -> pkarr::Result<SignedPacket> {
-    let mut packet = Packet::new_reply(0);
-    for addr in &info.direct_addresses {
-        let addr = addr.to_string();
-        packet.answers.push(ResourceRecord::new(
-            Name::new("@").unwrap(),
-            CLASS::IN,
-            ttl,
-            RData::TXT(TXT::try_from(addr.as_str())?.into_owned()),
-        ));
-    }
-    if let Some(url) = &info.relay_url {
-        packet.answers.push(ResourceRecord::new(
-            Name::new(RELAY_URL_KEY).unwrap(),
-            CLASS::IN,
-            ttl,
-            RData::TXT(TXT::try_from(url.as_str())?.into_owned()),
-        ));
-    }
-    SignedPacket::from_packet(keypair, &packet)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use proptest::prelude::*;
-    use std::net::SocketAddr;
-
-    fn arb_secret_key() -> impl Strategy<Value = iroh_net::key::SecretKey> {
-        prop::array::uniform32(any::<u8>())
-            .prop_map(|arr| iroh_net::key::SecretKey::from_bytes(&arr))
-    }
-
-    fn arb_addr_info() -> impl Strategy<Value = iroh_net::AddrInfo> {
-        prop::collection::btree_set(any::<SocketAddr>(), 0..10).prop_map(|direct_addresses| {
-            iroh_net::AddrInfo {
-                direct_addresses,
-                relay_url: None,
-            }
-        })
-    }
-
-    proptest! {
-        #[test]
-        #[ignore = "equality for ip addrs seems to be broken in rust stdlib"]
-        fn socketaddr_eq_is_broken(addr in any::<SocketAddr>()) {
-            let txt = format!("{}", addr);
-            let parsed = txt.parse::<SocketAddr>().unwrap();
-            if addr != parsed {
-                println!("addr: {:?}", addr);
-                println!("addr: {}", hex::encode(postcard::to_stdvec(&addr).unwrap()));
-                println!("addr: {:?}", parsed);
-                println!("addr: {}", hex::encode(postcard::to_stdvec(&parsed).unwrap()));
-            }
-            assert_eq!(addr, parsed);
-        }
-
-        #[test]
-        fn test_pkarr_roundtrip(info in arb_addr_info(), key in arb_secret_key()) {
-            let node_id = key.public();
-            let keypair = pkarr::Keypair::from_secret_key(&key.to_bytes());
-            let packet = node_addr_to_packet(&keypair, &info, 0).unwrap();
-            let addr = crate::packet_to_node_addr(&node_id, &packet).unwrap();
-            // compare the serialized bytes, because equality for ip addrs seems to be broken in rust stdlib
-            assert_eq!(postcard::to_stdvec(&addr.info).unwrap(), postcard::to_stdvec(&info).unwrap());
-        }
+        let pkarr_public_key =
+            pkarr::PublicKey::try_from(*node_id.as_bytes()).expect("valid public key");
+        tracing::info!("resolving {} as {}", node_id, pkarr_public_key.to_z32());
+        Some(Gen::new(|co| async move { this.resolve(node_id, co).await }).boxed())
     }
 }

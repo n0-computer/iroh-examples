@@ -14,12 +14,14 @@ description = "A discovery mechanism for iroh-net that uses the bittorrent mainl
 [dependencies]
 anyhow = "1.0.79"
 futures = "0.3.30"
+genawaiter = "0.99.1"
 iroh-net = "0.14.0"
 pkarr = { version = "1.0.1", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"
 
 [dev-dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
 hex = "0.4.3"
 postcard = "1.0.8"
 proptest = "1.4.0"
