@@ -1760,7 +1760,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
- "futures",
+ "futures-lite",
  "genawaiter",
  "hex",
  "iroh-net",

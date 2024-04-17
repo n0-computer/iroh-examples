@@ -13,7 +13,7 @@ description = "A discovery mechanism for iroh-net that uses the bittorrent mainl
 
 [dependencies]
 anyhow = "1.0.79"
-futures = "0.3.30"
+futures-lite = "2.3.0"
 genawaiter = "0.99.1"
 iroh-net = "0.14.0"
 pkarr = { version = "1.0.1", features = ["async"] }

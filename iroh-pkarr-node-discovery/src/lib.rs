@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use futures::{stream::BoxStream, StreamExt};
+use futures_lite::StreamExt;
 use genawaiter::sync::{Co, Gen};
 use iroh_net::{
     discovery::{Discovery, DiscoveryItem},
@@ -340,7 +340,7 @@ impl Discovery for PkarrNodeDiscovery {
         &self,
         _endpoint: MagicEndpoint,
         node_id: NodeId,
-    ) -> Option<BoxStream<'_, anyhow::Result<DiscoveryItem>>> {
+    ) -> Option<futures_lite::stream::Boxed<anyhow::Result<DiscoveryItem>>> {
         let this = self.clone();
         let pkarr_public_key =
             pkarr::PublicKey::try_from(*node_id.as_bytes()).expect("valid public key");
