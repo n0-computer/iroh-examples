@@ -2,7 +2,7 @@
 //!
 //! Node discovery is being able to find connecting information about an iroh node based on just its node id.
 //!
-//! This crate implements a discovery mechanism for iroh-net based on <https://https://pkarr.org/>.
+//! This crate implements a discovery mechanism for iroh-net based on <https://pkarr.org/>.
 //!
 //! TLDR: Each node publishes its address to the mainline DHT as a DNS packet, signed with its private key.
 //! The DNS packet contains the node's direct addresses and optionally a DERP URL.
@@ -31,7 +31,7 @@ const REPUBLISH_DELAY: Duration = Duration::from_secs(60 * 60);
 /// frequent network changes at startup.
 const INITIAL_PUBLISH_DELAY: Duration = Duration::from_millis(500);
 
-/// A discovery mechanism for iroh-net based on <https://https://pkarr.org/>.
+/// A discovery mechanism for iroh-net based on <https://pkarr.org/>.
 ///
 /// TLDR: it stores node addresses in DNS records, signed by the node's private key,
 /// and publishes them to the bittorrent mainline DHT.

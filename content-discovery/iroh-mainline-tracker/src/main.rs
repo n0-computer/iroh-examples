@@ -70,7 +70,9 @@ async fn create_endpoint(
     publish: bool,
 ) -> anyhow::Result<MagicEndpoint> {
     let mainline_discovery = if publish {
-        PkarrNodeDiscovery::builder().secret_key(key.clone()).build()?
+        PkarrNodeDiscovery::builder()
+            .secret_key(key.clone())
+            .build()?
     } else {
         PkarrNodeDiscovery::default()
     };

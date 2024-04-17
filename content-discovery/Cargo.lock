@@ -1922,7 +1922,7 @@ name = "iroh-pkarr-node-discovery"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "futures",
+ "futures-lite",
  "genawaiter",
  "iroh-net",
  "pkarr",
