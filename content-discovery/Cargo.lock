@@ -1923,6 +1923,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "futures",
+ "genawaiter",
  "iroh-net",
  "pkarr",
  "tokio",
