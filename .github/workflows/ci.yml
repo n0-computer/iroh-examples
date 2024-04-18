@@ -13,7 +13,7 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.75"
-  RS_EXAMPLES_LIST: "content-discovery,doc-photos,dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-gateway,iroh-ipfs,iroh-pkarr-naming-system,iroh-pkarr-node-discovery,iroh-s3-bao-store"
+  RS_EXAMPLES_LIST: "content-discovery,doc-photos,dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-gateway,iroh-pkarr-naming-system,iroh-pkarr-node-discovery,iroh-s3-bao-store"
   GO_EXAMPLES_LIST: "dall_e_worker"
 
 jobs:
