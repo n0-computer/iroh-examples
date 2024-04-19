@@ -105,7 +105,7 @@ fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
         return Ok(NodeAddr {
             node_id,
             info: AddrInfo {
-                derp_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
+                relay_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
                 direct_addresses: Default::default(),
             },
         });
