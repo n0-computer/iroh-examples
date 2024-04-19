@@ -28,8 +28,11 @@ async fn generate(args: GenerateArgs) -> anyhow::Result<()> {
     let size = data.size().await?;
     let tree = BaoTree::new(size, block_size);
     println!(
-        "Computing outboard for {} of size {} with block size {}",
-        args.data, size, block_size
+        "Computing outboard for {} of size {} with block log {}, size {}",
+        args.data,
+        size,
+        block_size.chunk_log(),
+        block_size.bytes()
     );
     let hash =
         bao_tree::io::fsm::outboard_post_order(Cursor::new(data), tree, &mut outboard).await?;
