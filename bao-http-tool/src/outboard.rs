@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bao_tree::{blake3::Hash, iter::BaoChunk, ChunkRangesRef, TreeNode};
+use bao_tree::{blake3::Hash, iter::BaoChunk, BaoTree, ChunkRangesRef, TreeNode};
 
 struct SparseOutboardCache<T> {
     cache: Arc<RwLock<BTreeMap<TreeNode, (Hash, Hash)>>>,
@@ -35,17 +35,27 @@ impl<T: bao_tree::io::fsm::Outboard> bao_tree::io::fsm::Outboard for SparseOutbo
     }
 }
 
+/// Get the set of node IDs needed to encode the given chunk ranges.
+pub async fn node_ids(
+    tree: BaoTree,
+    ranges: &ChunkRangesRef,
+) -> impl Iterator<Item = TreeNode> + '_ {
+    // todo!
+    // let ranges = bao_tree::rec::truncate_ranges(ranges, outboard.tree().size())
+    tree.ranges_pre_order_chunks_iter_ref(ranges, tree.block_size().chunk_log())
+        .filter_map(|chunk| match chunk {
+            BaoChunk::Parent { node, .. } => Some(node),
+            _ => None,
+        })
+}
+
+/// Prefetch all nodes in the tree that are needed to encode the given chunk ranges.
 pub async fn prefetch(
     mut outboard: impl bao_tree::io::fsm::Outboard,
     ranges: &ChunkRangesRef,
 ) -> io::Result<()> {
-    let tree = outboard.tree();
-    // todo!
-    // let ranges = bao_tree::rec::truncate_ranges(ranges, outboard.tree().size())
-    for chunk in tree.ranges_pre_order_chunks_iter_ref(ranges, tree.block_size().chunk_log()) {
-        if let BaoChunk::Parent { node, .. } = chunk {
-            outboard.load(node).await?;
-        }
+    for node in node_ids(outboard.tree(), ranges).await {
+        outboard.load(node).await?;
     }
     Ok(())
 }
