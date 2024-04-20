@@ -1,14 +1,20 @@
 use std::io::Cursor;
 
 use bao_tree::{
-    io::{fsm::encode_ranges_validated, round_up_to_chunks},
+    io::{
+        fsm::{encode_ranges_validated, outboard_post_order},
+        outboard::PreOrderOutboard,
+        round_up_to_chunks,
+    },
     BaoTree, BlockSize, ByteRanges,
 };
 use clap::Parser;
 use iroh_io::{AsyncSliceReader, HttpAdapter};
 use tokio_util::either::Either;
 mod args;
+mod outboard;
 use args::{GenerateArgs, PathOrUrl, SubCommand, ValidateArgs};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::args::Args;
 
@@ -34,8 +40,7 @@ async fn generate(args: GenerateArgs) -> anyhow::Result<()> {
         block_size.chunk_log(),
         block_size.bytes()
     );
-    let hash =
-        bao_tree::io::fsm::outboard_post_order(Cursor::new(data), tree, &mut outboard).await?;
+    let hash = outboard_post_order(Cursor::new(data), tree, &mut outboard).await?;
     println!("Computed hash: {}", hash.to_hex());
     let filename = args
         .target
@@ -75,7 +80,7 @@ async fn validate(args: ValidateArgs) -> anyhow::Result<()> {
     println!("Byte ranges: {:?}", byte_ranges);
     println!("Chunk ranges: {:?}", chunk_ranges);
     let tree = BaoTree::new(size, block_size);
-    let outboard = bao_tree::io::outboard::PreOrderOutboard {
+    let outboard = PreOrderOutboard {
         root: args.hash,
         data: outboard,
         tree,
@@ -91,8 +96,17 @@ async fn validate(args: ValidateArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn setup_logging() {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+        .with(EnvFilter::from_default_env())
+        .try_init()
+        .ok();
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    setup_logging();
     let args = Args::parse();
     match args.subcommand {
         SubCommand::Validate(args) => validate(args).await?,
