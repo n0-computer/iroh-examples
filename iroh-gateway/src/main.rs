@@ -25,7 +25,7 @@ use iroh::{
         Hash,
     },
     net::{MagicEndpoint, NodeAddr},
-    ticket::BlobTicket,
+    ticket::{BlobTicket, NodeTicket},
 };
 use lru::LruCache;
 use mime::Mime;
@@ -518,7 +518,7 @@ async fn main() -> anyhow::Result<()> {
         .default_node
         .map(|default_node| {
             Ok(
-                if let Ok(node_ticket) = default_node.parse::<BlobTicket>() {
+                if let Ok(node_ticket) = default_node.parse::<NodeTicket>() {
                     node_ticket.node_addr().clone()
                 } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
                     blob_ticket.node_addr().clone()
