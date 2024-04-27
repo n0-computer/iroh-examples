@@ -17,6 +17,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use iroh::bytes::{store::bao_tree::ChunkNum, BlobFormat};
 use iroh::{
+    base::key::NodeId,
     bytes::{
         format::collection::Collection,
         get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
@@ -24,7 +25,7 @@ use iroh::{
         store::bao_tree::io::fsm::BaoContentItem,
         Hash,
     },
-    net::{MagicEndpoint, NodeAddr},
+    net::{discovery::dns::DnsDiscovery, MagicEndpoint, NodeAddr},
     ticket::{BlobTicket, NodeTicket},
 };
 use lru::LruCache;
@@ -513,19 +514,22 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     let args = args::Args::parse();
     let magic_port = args.magic_port.unwrap_or_default();
-    let endpoint = MagicEndpoint::builder().bind(magic_port).await?;
+    let endpoint = MagicEndpoint::builder()
+        .discovery(Box::new(DnsDiscovery::n0_dns()))
+        .bind(magic_port)
+        .await?;
     let default_node = args
         .default_node
         .map(|default_node| {
-            Ok(
-                if let Ok(node_ticket) = default_node.parse::<NodeTicket>() {
-                    node_ticket.node_addr().clone()
-                } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
-                    blob_ticket.node_addr().clone()
-                } else {
-                    anyhow::bail!("invalid default node");
-                },
-            )
+            Ok(if let Ok(node_id) = default_node.parse::<NodeId>() {
+                node_id.into()
+            } else if let Ok(node_ticket) = default_node.parse::<NodeTicket>() {
+                node_ticket.node_addr().clone()
+            } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
+                blob_ticket.node_addr().clone()
+            } else {
+                anyhow::bail!("invalid default node");
+            })
         })
         .transpose()?;
     let gateway = Gateway(Arc::new(Inner {
