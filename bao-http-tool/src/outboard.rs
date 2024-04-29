@@ -4,7 +4,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bao_tree::{blake3::Hash, iter::BaoChunk, BaoTree, ChunkRangesRef, TreeNode};
+use bao_tree::{blake3::Hash, iter::BaoChunk, BaoTree, ByteRanges, ChunkRangesRef, TreeNode};
+use range_collections::{range_set::RangeSetRange, RangeSetRef};
 
 struct SparseOutboardCache<T> {
     cache: Arc<RwLock<BTreeMap<TreeNode, (Hash, Hash)>>>,
@@ -47,6 +48,37 @@ pub async fn node_ids(
             BaoChunk::Parent { node, .. } => Some(node),
             _ => None,
         })
+}
+
+/// Compute the byte ranges of a pre order offset without size prefix to encode the given nodes.
+pub fn pre_order_ranges(tree: BaoTree, nodes: impl IntoIterator<Item = TreeNode>) -> ByteRanges {
+    let mut res = ByteRanges::empty();
+    for node in nodes {
+        if let Some(offset) = tree.post_order_offset(node) {
+            let offset = offset.value() * 64;
+            res |= ByteRanges::from(offset..offset + 64);
+        }
+    }
+    res
+}
+
+/// Rounds up ranges to the nearest chunk boundaries, where a chunk is 2^block_shift bytes.
+pub fn simplify(ranges: &RangeSetRef<u64>, block_shift: u8) -> ByteRanges {
+    let mut res = ByteRanges::empty();
+    for item in ranges.iter() {
+        match item {
+            RangeSetRange::Range(range) => {
+                let start = (range.start >> block_shift) << block_shift;
+                let end = ((range.end + ((1 << block_shift) - 1)) >> block_shift) << block_shift;
+                res |= ByteRanges::from(start..end);
+            }
+            RangeSetRange::RangeFrom(range) => {
+                let start = (range.start >> block_shift) << block_shift;
+                res |= ByteRanges::from(start..);
+            }
+        }
+    }
+    res
 }
 
 /// Prefetch all nodes in the tree that are needed to encode the given chunk ranges.
