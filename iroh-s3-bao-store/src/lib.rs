@@ -24,12 +24,11 @@ struct Inner {
 impl S3Store {
     pub async fn import_mem(&self, data: Bytes) -> anyhow::Result<Hash> {
         let size = data.as_ref().len() as u64;
-        let (mut outboard, hash) = {
+        let (outboard, hash) = {
             let outboard = PostOrderMemOutboard::create(&data, IROH_BLOCK_SIZE).flip();
             let hash = outboard.root;
-            (outboard.into_inner_with_prefix(), hash)
+            (outboard.data, hash)
         };
-        outboard.splice(0..8, []);
         let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
         let outboard = PreOrderMemOutboard {
             root: hash,
@@ -48,12 +47,11 @@ impl S3Store {
         let mut http_adapter = HttpAdapter::new(url.clone());
         let data = http_adapter.read_to_end().await?;
         let size = data.len() as u64;
-        let (mut outboard, hash) = {
+        let (outboard, hash) = {
             let outboard = PostOrderMemOutboard::create(data, IROH_BLOCK_SIZE).flip();
             let hash = outboard.root;
-            (outboard.into_inner_with_prefix(), hash)
+            (outboard.data, hash)
         };
-        outboard.splice(0..8, []);
         let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
         let outboard = PreOrderMemOutboard {
             root: hash,
