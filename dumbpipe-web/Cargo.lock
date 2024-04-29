@@ -789,7 +789,7 @@ dependencies = [
  "anyhow",
  "clap",
  "hex",
- "iroh-net",
+ "iroh-net 0.14.0",
  "quinn",
  "tokio",
  "tokio-util",
@@ -983,6 +983,17 @@ dependencies = [
  "futures-sink",
  "futures-task",
  "futures-util",
+]
+
+[[package]]
+name = "futures-buffered"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de8419e65098e54c06f5ae8a130a79e8ba2e391ff995d260ca5d77ea72ab2fe3"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "pin-project-lite",
 ]
 
 [[package]]
@@ -1613,6 +1624,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "iroh-base"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4ff15b3a7bbecfa19396dfd6af7d20e02e60dd817e13b617dfc79d43188997"
+dependencies = [
+ "aead",
+ "anyhow",
+ "bao-tree",
+ "crypto_box",
+ "data-encoding",
+ "derive_more",
+ "ed25519-dalek",
+ "hex",
+ "once_cell",
+ "postcard",
+ "rand",
+ "rand_core",
+ "serde",
+ "serde-error",
+ "ssh-key",
+ "thiserror",
+ "ttl_cache",
+ "url",
+ "zeroize",
+]
+
+[[package]]
 name = "iroh-blake3"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1658,6 +1696,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "iroh-metrics"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6196daef67717a1cc8598eef64939525f7ccecc8d6692b3283086771121d9226"
+dependencies = [
+ "anyhow",
+ "erased_set",
+ "http-body-util",
+ "hyper 1.0.1",
+ "hyper-util",
+ "once_cell",
+ "prometheus-client",
+ "reqwest",
+ "serde",
+ "struct_iterable",
+ "time",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "iroh-net"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1683,8 +1742,81 @@ dependencies = [
  "hyper 1.0.1",
  "hyper-util",
  "igd-next",
- "iroh-base",
- "iroh-metrics",
+ "iroh-base 0.14.0",
+ "iroh-metrics 0.14.0",
+ "libc",
+ "netlink-packet-core",
+ "netlink-packet-route",
+ "netlink-sys",
+ "num_enum",
+ "once_cell",
+ "parking_lot",
+ "pkarr",
+ "postcard",
+ "quinn",
+ "quinn-proto",
+ "quinn-udp",
+ "rand",
+ "rand_core",
+ "rcgen 0.11.3",
+ "reqwest",
+ "ring 0.17.6",
+ "rtnetlink",
+ "rustls",
+ "rustls-webpki",
+ "serde",
+ "smallvec",
+ "socket2 0.5.5",
+ "strum",
+ "stun-rs",
+ "surge-ping",
+ "thiserror",
+ "time",
+ "tokio",
+ "tokio-rustls",
+ "tokio-rustls-acme",
+ "tokio-util",
+ "tracing",
+ "url",
+ "watchable",
+ "webpki-roots",
+ "windows 0.51.1",
+ "wmi",
+ "x509-parser 0.15.1",
+ "z32",
+]
+
+[[package]]
+name = "iroh-net"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "824cb1b5c624d3e0179b4a23deaca80a8717608aeada5983ca17f139627ab7d9"
+dependencies = [
+ "aead",
+ "anyhow",
+ "backoff",
+ "bytes",
+ "default-net",
+ "der",
+ "derive_more",
+ "duct",
+ "flume",
+ "futures-buffered",
+ "futures-lite",
+ "futures-sink",
+ "futures-util",
+ "governor",
+ "hex",
+ "hickory-proto",
+ "hickory-resolver",
+ "hostname",
+ "http 1.0.0",
+ "http-body-util",
+ "hyper 1.0.1",
+ "hyper-util",
+ "igd-next",
+ "iroh-base 0.15.0",
+ "iroh-metrics 0.15.0",
  "libc",
  "netlink-packet-core",
  "netlink-packet-route",
@@ -2881,7 +3013,7 @@ dependencies = [
  "http-body-util",
  "hyper 1.0.1",
  "hyper-util",
- "iroh-net",
+ "iroh-net 0.15.0",
  "quinn",
  "tokio",
  "tracing",
@@ -2998,9 +3130,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.9"
+version = "0.21.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "629648aced5775d558af50b2b4c7b02983a04b312126d45eeead26e7caa498b9"
+checksum = "3f56a14d1f48b391359b22f731fd4bd7e43c97f3c50eee276f3aa09c94784d3e"
 dependencies = [
  "log",
  "ring 0.17.6",

@@ -325,6 +325,7 @@ impl Discovery for PkarrNodeDiscovery {
         let info = NodeInfo {
             node_id: keypair.public(),
             relay_url: info.relay_url.clone().map(Url::from),
+            direct_addresses: Default::default(),
         };
         let Ok(signed_packet) = info.to_pkarr_signed_packet(keypair, self.0.ttl) else {
             tracing::warn!("failed to create signed packet");
