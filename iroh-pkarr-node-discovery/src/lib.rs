@@ -175,10 +175,10 @@ impl PkarrNodeDiscovery {
         let z32 = pkarr::PublicKey::try_from(*keypair.public().as_bytes())
             .expect("valid public key")
             .to_z32();
+        // initial delay. If the task gets aborted before this delay is over,
+        // we have not published anything to the DHT yet.
+        tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
         loop {
-            // initial delay. If the task gets aborted before this delay is over,
-            // we have not published anything to the DHT yet.
-            tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
             // publish to the DHT if enabled
             let dht_publish = async {
                 if this.0.dht {
@@ -224,7 +224,7 @@ impl PkarrNodeDiscovery {
             };
             // do both at the same time
             tokio::join!(relay_publish, dht_publish);
-            tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
+            tokio::time::sleep(REPUBLISH_DELAY).await;
         }
     }
 

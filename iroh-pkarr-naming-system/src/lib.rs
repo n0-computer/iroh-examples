@@ -64,8 +64,8 @@ impl IPNS {
             let pkarr = self.0.pkarr.clone();
             let signed_packet: SignedPacket = Self::to_signed_packet(&secret_key, &record, 0)?;
             let publish_task = tokio::spawn(async move {
+                tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
                 loop {
-                    tokio::time::sleep(INITIAL_PUBLISH_DELAY).await;
                     let res = pkarr.publish(&signed_packet).await;
                     match res {
                         Ok(sqm) => {
@@ -75,7 +75,7 @@ impl IPNS {
                             tracing::warn!("Failed to publish record: {}", e);
                         }
                     }
-                    tokio::time::sleep(REPUBLISH_DELAY - INITIAL_PUBLISH_DELAY).await;
+                    tokio::time::sleep(REPUBLISH_DELAY).await;
                 }
             });
             let mut packets = self.0.packets.lock().unwrap();
