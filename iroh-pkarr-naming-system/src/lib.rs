@@ -79,7 +79,7 @@ impl IPNS {
                 }
             });
             let mut packets = self.0.packets.lock().unwrap();
-            packets.insert(key, (record, AbortingJoinHandle(publish_task)));
+            packets.insert(key, (record, AbortingJoinHandle::from(publish_task)));
         } else {
             let mut packets = self.0.packets.lock().unwrap();
             packets.remove(&key);
