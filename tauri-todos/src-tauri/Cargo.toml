@@ -1,0 +1,33 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "Todos with Iroh"
+license = "MIT OR Apache-2.0"
+authors = ["dignifiedquire <me@dignifiedquire.com>", "n0 team"]
+repository = "https://github.com/n0-computer/iroh-example-todos"
+default-run = "app"
+edition = "2021"
+rust-version = "1.65"
+
+[build-dependencies]
+tauri-build = { version = "1.0.4", features = [] }
+
+[dependencies]
+anyhow = "1"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "1.6.1", features = ["api-all"] }
+tokio = { version = "1" }
+iroh = "0.15.0"
+bytes = "1"
+num_cpus = { version = "1.15.0" }
+tokio-util = { version = "0.7" }
+futures-lite = "2.3.0"
+
+[features]
+# by default Tauri runs in production mode
+# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
+default = [ "custom-protocol" ]
+# this feature is used used for production builds where `devPath` points to the filesystem
+# DO NOT remove this
+custom-protocol = [ "tauri/custom-protocol" ]
