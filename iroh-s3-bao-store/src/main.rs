@@ -1,6 +1,5 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use futures::{future, FutureExt};
 use indicatif::{
     HumanBytes, HumanDuration, MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle,
 };
@@ -175,7 +174,7 @@ impl Drop for ClientStatus {
 }
 
 impl EventSender for ClientStatus {
-    fn send(&self, event: iroh::bytes::provider::Event) -> futures::prelude::future::BoxFuture<()> {
+    fn send(&self, event: iroh::bytes::provider::Event) -> futures_lite::future::Boxed<()> {
         tracing::info!("{:?}", event);
         let msg = match event {
             provider::Event::ClientConnected { connection_id } => {
@@ -212,7 +211,7 @@ impl EventSender for ClientStatus {
         if let Some(msg) = msg {
             self.current.set_message(msg);
         }
-        future::ready(()).boxed()
+        Box::pin(std::future::ready(()))
     }
 }
 
