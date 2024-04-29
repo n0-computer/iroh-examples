@@ -111,7 +111,7 @@ fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
         });
     }
     // then try to parse as a node ticket
-    if let Ok(ticket) = iroh_net::ticket::NodeTicket::from_str(subdomain) {
+    if let Ok(ticket) = dumbpipe::NodeTicket::from_str(subdomain) {
         return Ok(ticket.node_addr().clone());
     }
     Err(anyhow::anyhow!("invalid subdomain"))
