@@ -37,8 +37,14 @@ const INITIAL_PUBLISH_DELAY: Duration = Duration::from_millis(500);
 /// and publishes them to the bittorrent mainline DHT.
 ///
 /// Calling publish will start a background task that periodically publishes the node address.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PkarrNodeDiscovery(Arc<Inner>);
+
+impl Default for PkarrNodeDiscovery {
+    fn default() -> Self {
+        Self::builder().build().expect("valid builder")
+    }
+}
 
 #[derive(Debug, Default)]
 struct Inner {
@@ -57,6 +63,8 @@ struct Inner {
     dht: bool,
     /// Time-to-live value for the DNS packets.
     ttl: u32,
+    /// True to include the direct addresses in the DNS packet.
+    include_direct_addresses: bool,
 }
 
 /// Builder for PkarrNodeDiscovery.
@@ -69,6 +77,7 @@ pub struct Builder {
     ttl: Option<u32>,
     pkarr_relay: Option<Url>,
     dht: bool,
+    include_direct_addresses: bool,
 }
 
 impl Default for Builder {
@@ -79,6 +88,7 @@ impl Default for Builder {
             ttl: None,
             pkarr_relay: None,
             dht: true,
+            include_direct_addresses: false,
         }
     }
 }
@@ -111,7 +121,7 @@ impl Builder {
     }
 
     /// Use the default pkarr relay URL.
-    pub fn iroh_pkarr_relay(mut self) -> Self {
+    pub fn n0_dns_pkarr_relay(mut self) -> Self {
         self.pkarr_relay = Some(N0_DNS_PKARR_RELAY.parse().expect("valid URL"));
         self
     }
@@ -122,23 +132,33 @@ impl Builder {
         self
     }
 
+    /// Set whether to include the direct addresses in the DNS packet.
+    pub fn include_direct_addresses(mut self, include_direct_addresses: bool) -> Self {
+        self.include_direct_addresses = include_direct_addresses;
+        self
+    }
+
     /// Build the discovery mechanism.
     pub fn build(self) -> anyhow::Result<PkarrNodeDiscovery> {
-        let client = self.client.unwrap_or_default();
+        let pkarr = self.client.unwrap_or_default();
         let ttl = self.ttl.unwrap_or(DEFAULT_PKARR_TTL);
-        let pkarr_relay = self.pkarr_relay;
+        let relay_url = self.pkarr_relay;
         let dht = self.dht;
+        let include_direct_addresses = self.include_direct_addresses;
         anyhow::ensure!(
-            dht || pkarr_relay.is_some(),
+            dht || relay_url.is_some(),
             "at least one of DHT or relay must be enabled"
         );
-        Ok(PkarrNodeDiscovery::new(
-            client,
-            self.secret_key,
+
+        Ok(PkarrNodeDiscovery(Arc::new(Inner {
+            pkarr,
+            secret_key: self.secret_key,
             ttl,
-            pkarr_relay,
+            relay_url,
             dht,
-        ))
+            include_direct_addresses,
+            task: Default::default(),
+        })))
     }
 }
 
@@ -146,27 +166,6 @@ impl PkarrNodeDiscovery {
     /// Create a new builder for PkarrNodeDiscovery.
     pub fn builder() -> Builder {
         Builder::default()
-    }
-
-    /// Create a new discovery mechanism.
-    ///
-    /// If a secret key is provided, the node will publish its address to the DHT.
-    /// If no secret key is provided, publish will be a no-op, but resolving other nodes will still work.
-    fn new(
-        pkarr: PkarrClient,
-        secret_key: Option<SecretKey>,
-        ttl: u32,
-        relay_url: Option<Url>,
-        dht: bool,
-    ) -> Self {
-        Self(Arc::new(Inner {
-            secret_key,
-            pkarr,
-            ttl,
-            relay_url,
-            dht,
-            task: Default::default(),
-        }))
     }
 
     /// Periodically publish the node address to the DHT and relay.
@@ -325,7 +324,11 @@ impl Discovery for PkarrNodeDiscovery {
         let info = NodeInfo {
             node_id: keypair.public(),
             relay_url: info.relay_url.clone().map(Url::from),
-            direct_addresses: Default::default(),
+            direct_addresses: if self.0.include_direct_addresses {
+                info.direct_addresses.clone()
+            } else {
+                Default::default()
+            },
         };
         let Ok(signed_packet) = info.to_pkarr_signed_packet(keypair, self.0.ttl) else {
             tracing::warn!("failed to create signed packet");

@@ -1,6 +1,6 @@
 [package]
 name = "iroh-pkarr-node-discovery"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Rüdiger Klaehn <rklaehn@protonmail.com>", "n0 team"]
 keywords = ["network", "p2p"]

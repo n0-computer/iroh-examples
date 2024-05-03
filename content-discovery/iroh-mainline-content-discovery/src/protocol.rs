@@ -136,7 +136,7 @@ impl SignedAnnounce {
     }
 }
 
-///
+/// Flags for a query.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct QueryFlags {
     /// Only return peers that supposedly have the complete data.
