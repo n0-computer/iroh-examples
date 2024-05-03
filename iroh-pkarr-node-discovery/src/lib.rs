@@ -37,8 +37,14 @@ const INITIAL_PUBLISH_DELAY: Duration = Duration::from_millis(500);
 /// and publishes them to the bittorrent mainline DHT.
 ///
 /// Calling publish will start a background task that periodically publishes the node address.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PkarrNodeDiscovery(Arc<Inner>);
+
+impl Default for PkarrNodeDiscovery {
+    fn default() -> Self {
+        Self::builder().build().expect("valid builder")
+    }
+}
 
 #[derive(Debug, Default)]
 struct Inner {
@@ -115,7 +121,7 @@ impl Builder {
     }
 
     /// Use the default pkarr relay URL.
-    pub fn iroh_pkarr_relay(mut self) -> Self {
+    pub fn n0_dns_pkarr_relay(mut self) -> Self {
         self.pkarr_relay = Some(N0_DNS_PKARR_RELAY.parse().expect("valid URL"));
         self
     }
