@@ -26,6 +26,6 @@ missing_debug_implementations = "warn"
 unused-async = "warn"
 
 [workspace.dependencies]
-iroh-net = "0.15.0"
-iroh-bytes = "0.15.0"
-iroh-base = "0.15.0"
+iroh-net = "0.14.0"
+iroh-bytes = "0.14.0"
+iroh-base = "0.14.0"
