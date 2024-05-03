@@ -3,8 +3,8 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 use bao_tree::io::fsm::Outboard;
-use bao_tree::io::outboard::PreOrderMemOutboard;
-use bao_tree::{BaoTree, ByteNum};
+use bao_tree::io::outboard::{PostOrderMemOutboard, PreOrderMemOutboard};
+use bao_tree::BaoTree;
 use bytes::Bytes;
 use iroh::bytes::store::bao_tree::blake3;
 use iroh::bytes::store::{BaoBlobSize, MapEntry};
@@ -24,11 +24,17 @@ struct Inner {
 impl S3Store {
     pub async fn import_mem(&self, data: Bytes) -> anyhow::Result<Hash> {
         let size = data.as_ref().len() as u64;
-        let (mut outboard, hash) = bao_tree::io::outboard(&data, IROH_BLOCK_SIZE);
-        outboard.splice(0..8, []);
-        let tree = BaoTree::new(ByteNum(size), IROH_BLOCK_SIZE);
-        let outboard = PreOrderMemOutboard::new(hash, tree, outboard.into())
-            .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
+        let (outboard, hash) = {
+            let outboard = PostOrderMemOutboard::create(&data, IROH_BLOCK_SIZE).flip();
+            let hash = outboard.root;
+            (outboard.data, hash)
+        };
+        let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
+        let outboard = PreOrderMemOutboard {
+            root: hash,
+            tree,
+            data: outboard.into(),
+        };
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
@@ -41,11 +47,17 @@ impl S3Store {
         let mut http_adapter = HttpAdapter::new(url.clone());
         let data = http_adapter.read_to_end().await?;
         let size = data.len() as u64;
-        let (mut outboard, hash) = bao_tree::io::outboard(data, IROH_BLOCK_SIZE);
-        outboard.splice(0..8, []);
-        let tree = BaoTree::new(ByteNum(size), IROH_BLOCK_SIZE);
-        let outboard = PreOrderMemOutboard::new(hash, tree, outboard.into())
-            .map_err(|e| anyhow::anyhow!("outboard creation fail {}", e))?;
+        let (outboard, hash) = {
+            let outboard = PostOrderMemOutboard::create(data, IROH_BLOCK_SIZE).flip();
+            let hash = outboard.root;
+            (outboard.data, hash)
+        };
+        let tree = BaoTree::new(size, IROH_BLOCK_SIZE);
+        let outboard = PreOrderMemOutboard {
+            root: hash,
+            tree,
+            data: outboard.into(),
+        };
         let mut state = self.0.entries.lock().unwrap();
         state.insert(
             hash,
@@ -133,10 +145,10 @@ impl AsyncSliceReader for File {
         }
     }
 
-    async fn len(&mut self) -> io::Result<u64> {
+    async fn size(&mut self) -> io::Result<u64> {
         match self {
-            Self::S3(s3) => s3.len().await,
-            Self::Inline(bytes) => bytes.len().await,
+            Self::S3(s3) => s3.size().await,
+            Self::Inline(bytes) => bytes.size().await,
         }
     }
 }
