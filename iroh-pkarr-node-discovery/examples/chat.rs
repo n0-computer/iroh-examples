@@ -30,8 +30,11 @@ struct Args {
 
 #[derive(Debug, Clone)]
 enum PkarrRelay {
+    /// Disable pkarr relay.
     Disabled,
+    /// Use the iroh pkarr relay.
     Iroh,
+    /// Use a custom pkarr relay.
     Custom(Url),
 }
 
@@ -51,7 +54,7 @@ fn build_discovery(args: Args) -> iroh_pkarr_node_discovery::Builder {
     let builder = iroh_pkarr_node_discovery::PkarrNodeDiscovery::builder().dht(!args.disable_dht);
     let builder = match args.pkarr_relay {
         PkarrRelay::Disabled => builder,
-        PkarrRelay::Iroh => builder.iroh_pkarr_relay(),
+        PkarrRelay::Iroh => builder.n0_dns_pkarr_relay(),
         PkarrRelay::Custom(url) => builder.pkarr_relay(url),
     };
     builder
