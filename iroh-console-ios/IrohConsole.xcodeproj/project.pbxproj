@@ -1,0 +1,956 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4226587D2AB100D5000BCD34 /* UserSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4226587C2AB100D5000BCD34 /* UserSession.swift */; };
+		4226587F2AB1EE52000BCD34 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4226587E2AB1EE52000BCD34 /* ImagePicker.swift */; };
+		422658812AB24925000BCD34 /* AnchorEgressSummaryStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658802AB24925000BCD34 /* AnchorEgressSummaryStats.swift */; };
+		422658832AB24D8A000BCD34 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658822AB24D8A000BCD34 /* Extensions.swift */; };
+		422658852AB25C4E000BCD34 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658842AB25C4E000BCD34 /* MockData.swift */; };
+		422658872AB25E6A000BCD34 /* UserProfileRound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658862AB25E6A000BCD34 /* UserProfileRound.swift */; };
+		422658892AB38399000BCD34 /* NodeHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658882AB38399000BCD34 /* NodeHome.swift */; };
+		4226588B2AB3EECF000BCD34 /* ShareDoc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4226588A2AB3EECF000BCD34 /* ShareDoc.swift */; };
+		4226588D2AB3EFBA000BCD34 /* PickDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4226588C2AB3EFBA000BCD34 /* PickDocument.swift */; };
+		422658932ABA2441000BCD34 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422658922ABA2441000BCD34 /* UserProfile.swift */; };
+		42344C2D2A71B25D001CE259 /* SpaceMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C242A71B25D001CE259 /* SpaceMono-Regular.ttf */; };
+		42344C2E2A71B25D001CE259 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C252A71B25D001CE259 /* SpaceGrotesk-Bold.ttf */; };
+		42344C2F2A71B25D001CE259 /* SpaceMono-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C262A71B25D001CE259 /* SpaceMono-BoldItalic.ttf */; };
+		42344C302A71B25D001CE259 /* SpaceMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C272A71B25D001CE259 /* SpaceMono-Bold.ttf */; };
+		42344C312A71B25D001CE259 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C282A71B25D001CE259 /* SpaceGrotesk-Light.ttf */; };
+		42344C322A71B25D001CE259 /* SpaceMono-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C292A71B25D001CE259 /* SpaceMono-Italic.ttf */; };
+		42344C332A71B25D001CE259 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C2A2A71B25D001CE259 /* SpaceGrotesk-Medium.ttf */; };
+		42344C342A71B25D001CE259 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C2B2A71B25D001CE259 /* SpaceGrotesk-SemiBold.ttf */; };
+		42344C352A71B25D001CE259 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 42344C2C2A71B25D001CE259 /* SpaceGrotesk-Regular.ttf */; };
+		42344C372A71C213001CE259 /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42344C362A71C213001CE259 /* Document.swift */; };
+		42344C3A2A71E9F6001CE259 /* TestHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42344C392A71E9F6001CE259 /* TestHome.swift */; };
+		42436ADD2A8321AB00D5EB53 /* IrohNodeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42436ADC2A8321AB00D5EB53 /* IrohNodeManager.swift */; };
+		4256A1852A9C447300D7758E /* DocEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4256A1842A9C447300D7758E /* DocEntry.swift */; };
+		425A9E992A7DC4DF00268BC9 /* Welcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425A9E982A7DC4DF00268BC9 /* Welcome.swift */; };
+		425A9E9B2A7DC59000268BC9 /* Login.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425A9E9A2A7DC59000268BC9 /* Login.swift */; };
+		425A9E9D2A7DC59A00268BC9 /* Signup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425A9E9C2A7DC59A00268BC9 /* Signup.swift */; };
+		426195322ABD033B00693CB5 /* NewDoc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426195312ABD033B00693CB5 /* NewDoc.swift */; };
+		4263A46C2A83DEE9004D8A49 /* IrohAnchorAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4263A46B2A83DEE9004D8A49 /* IrohAnchorAPI.swift */; };
+		4263A46F2A83DFF8004D8A49 /* IrohAnchorAPITypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4263A46E2A83DFF8004D8A49 /* IrohAnchorAPITypes.swift */; };
+		4263A4712A83E0C6004D8A49 /* IrohAnchorAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4263A4702A83E0C6004D8A49 /* IrohAnchorAPIClient.swift */; };
+		4263A4732A843C85004D8A49 /* JoinDocSyncTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4263A4722A843C85004D8A49 /* JoinDocSyncTest.swift */; };
+		426572562A72000100D96F8D /* EditConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426572552A72000100D96F8D /* EditConfig.swift */; };
+		426572582A72045100D96F8D /* DocEvents.json in Resources */ = {isa = PBXBuildFile; fileRef = 426572572A72045100D96F8D /* DocEvents.json */; };
+		4265725A2A720F8B00D96F8D /* DocSyncTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426572592A720F8B00D96F8D /* DocSyncTest.swift */; };
+		4265725C2A72160500D96F8D /* NewDocSyncTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4265725B2A72160500D96F8D /* NewDocSyncTest.swift */; };
+		4265725E2A72198B00D96F8D /* TestLobby.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4265725D2A72198B00D96F8D /* TestLobby.swift */; };
+		426572612A72E71100D96F8D /* Topbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426572602A72E71100D96F8D /* Topbar.swift */; };
+		426572632A72E85200D96F8D /* DailyEgressBarChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426572622A72E85200D96F8D /* DailyEgressBarChart.swift */; };
+		426572652A72F90400D96F8D /* Images in Resources */ = {isa = PBXBuildFile; fileRef = 426572642A72F90400D96F8D /* Images */; };
+		4266B64B2B5B1F28006DE0D5 /* IrohLib in Frameworks */ = {isa = PBXBuildFile; productRef = 4266B64A2B5B1F28006DE0D5 /* IrohLib */; };
+		42A4F3FC2ACCF96400F4A9F4 /* CodeScanner in Frameworks */ = {isa = PBXBuildFile; productRef = 42A4F3FB2ACCF96400F4A9F4 /* CodeScanner */; };
+		42B934382A5504A60085D27D /* AnchorsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B934372A5504A60085D27D /* AnchorsList.swift */; };
+		42B9343A2A5505820085D27D /* Network.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B934392A5505820085D27D /* Network.swift */; };
+		42B9343C2A5506910085D27D /* ModelData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B9343B2A5506910085D27D /* ModelData.swift */; };
+		42B9343E2A5507150085D27D /* Networks.json in Resources */ = {isa = PBXBuildFile; fileRef = 42B9343D2A5507150085D27D /* Networks.json */; };
+		42B934432A5509580085D27D /* AnchorHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B934422A5509580085D27D /* AnchorHome.swift */; };
+		42B934452A55098F0085D27D /* Modes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B934442A55098F0085D27D /* Modes.swift */; };
+		42B934582A5DB5730085D27D /* AddAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B934572A5DB5730085D27D /* AddAnchor.swift */; };
+		42BFCCA62A984949006CC2AB /* Console.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42BFCCA52A984949006CC2AB /* Console.swift */; };
+		42F69E422A1C5002006F772D /* irohApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F69E412A1C5002006F772D /* irohApp.swift */; };
+		42F69E442A1C5002006F772D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F69E432A1C5002006F772D /* ContentView.swift */; };
+		42F69E462A1C5003006F772D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 42F69E452A1C5003006F772D /* Assets.xcassets */; };
+		42F69E492A1C5003006F772D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 42F69E482A1C5003006F772D /* Preview Assets.xcassets */; };
+		42F69E532A1C5003006F772D /* irohTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F69E522A1C5003006F772D /* irohTests.swift */; };
+		42F69E5D2A1C5003006F772D /* irohUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F69E5C2A1C5003006F772D /* irohUITests.swift */; };
+		42F69E5F2A1C5003006F772D /* irohUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F69E5E2A1C5003006F772D /* irohUITestsLaunchTests.swift */; };
+		42FE7F332A98B664007DE329 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42F69E762A1C7238006F772D /* SystemConfiguration.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		42F69E4F2A1C5003006F772D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42F69E362A1C5002006F772D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42F69E3D2A1C5002006F772D;
+			remoteInfo = iroh;
+		};
+		42F69E592A1C5003006F772D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 42F69E362A1C5002006F772D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 42F69E3D2A1C5002006F772D;
+			remoteInfo = iroh;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		4226587C2AB100D5000BCD34 /* UserSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSession.swift; sourceTree = "<group>"; };
+		4226587E2AB1EE52000BCD34 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
+		422658802AB24925000BCD34 /* AnchorEgressSummaryStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorEgressSummaryStats.swift; sourceTree = "<group>"; };
+		422658822AB24D8A000BCD34 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		422658842AB25C4E000BCD34 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		422658862AB25E6A000BCD34 /* UserProfileRound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileRound.swift; sourceTree = "<group>"; };
+		422658882AB38399000BCD34 /* NodeHome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHome.swift; sourceTree = "<group>"; };
+		4226588A2AB3EECF000BCD34 /* ShareDoc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDoc.swift; sourceTree = "<group>"; };
+		4226588C2AB3EFBA000BCD34 /* PickDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickDocument.swift; sourceTree = "<group>"; };
+		422658922ABA2441000BCD34 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		42344C242A71B25D001CE259 /* SpaceMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Regular.ttf"; sourceTree = "<group>"; };
+		42344C252A71B25D001CE259 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		42344C262A71B25D001CE259 /* SpaceMono-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-BoldItalic.ttf"; sourceTree = "<group>"; };
+		42344C272A71B25D001CE259 /* SpaceMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Bold.ttf"; sourceTree = "<group>"; };
+		42344C282A71B25D001CE259 /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		42344C292A71B25D001CE259 /* SpaceMono-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Italic.ttf"; sourceTree = "<group>"; };
+		42344C2A2A71B25D001CE259 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		42344C2B2A71B25D001CE259 /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		42344C2C2A71B25D001CE259 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		42344C362A71C213001CE259 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
+		42344C392A71E9F6001CE259 /* TestHome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHome.swift; sourceTree = "<group>"; };
+		42436ADC2A8321AB00D5EB53 /* IrohNodeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrohNodeManager.swift; sourceTree = "<group>"; };
+		4256A1842A9C447300D7758E /* DocEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocEntry.swift; sourceTree = "<group>"; };
+		425A9E982A7DC4DF00268BC9 /* Welcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Welcome.swift; sourceTree = "<group>"; };
+		425A9E9A2A7DC59000268BC9 /* Login.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Login.swift; sourceTree = "<group>"; };
+		425A9E9C2A7DC59A00268BC9 /* Signup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Signup.swift; sourceTree = "<group>"; };
+		426195312ABD033B00693CB5 /* NewDoc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDoc.swift; sourceTree = "<group>"; };
+		4263A46B2A83DEE9004D8A49 /* IrohAnchorAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrohAnchorAPI.swift; sourceTree = "<group>"; };
+		4263A46E2A83DFF8004D8A49 /* IrohAnchorAPITypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrohAnchorAPITypes.swift; sourceTree = "<group>"; };
+		4263A4702A83E0C6004D8A49 /* IrohAnchorAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrohAnchorAPIClient.swift; sourceTree = "<group>"; };
+		4263A4722A843C85004D8A49 /* JoinDocSyncTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinDocSyncTest.swift; sourceTree = "<group>"; };
+		426572552A72000100D96F8D /* EditConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditConfig.swift; sourceTree = "<group>"; };
+		426572572A72045100D96F8D /* DocEvents.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = DocEvents.json; sourceTree = "<group>"; };
+		426572592A720F8B00D96F8D /* DocSyncTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocSyncTest.swift; sourceTree = "<group>"; };
+		4265725B2A72160500D96F8D /* NewDocSyncTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDocSyncTest.swift; sourceTree = "<group>"; };
+		4265725D2A72198B00D96F8D /* TestLobby.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestLobby.swift; sourceTree = "<group>"; };
+		426572602A72E71100D96F8D /* Topbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Topbar.swift; sourceTree = "<group>"; };
+		426572622A72E85200D96F8D /* DailyEgressBarChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyEgressBarChart.swift; sourceTree = "<group>"; };
+		426572642A72F90400D96F8D /* Images */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Images; sourceTree = "<group>"; };
+		426572662A72FEA400D96F8D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		42B934372A5504A60085D27D /* AnchorsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorsList.swift; sourceTree = "<group>"; };
+		42B934392A5505820085D27D /* Network.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Network.swift; sourceTree = "<group>"; };
+		42B9343B2A5506910085D27D /* ModelData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelData.swift; sourceTree = "<group>"; };
+		42B9343D2A5507150085D27D /* Networks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Networks.json; sourceTree = "<group>"; };
+		42B934422A5509580085D27D /* AnchorHome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnchorHome.swift; sourceTree = "<group>"; };
+		42B934442A55098F0085D27D /* Modes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Modes.swift; sourceTree = "<group>"; };
+		42B934572A5DB5730085D27D /* AddAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddAnchor.swift; sourceTree = "<group>"; };
+		42BFCCA52A984949006CC2AB /* Console.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Console.swift; sourceTree = "<group>"; };
+		42F69E3E2A1C5002006F772D /* IrohConsole.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IrohConsole.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42F69E412A1C5002006F772D /* irohApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = irohApp.swift; sourceTree = "<group>"; };
+		42F69E432A1C5002006F772D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		42F69E452A1C5003006F772D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		42F69E482A1C5003006F772D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		42F69E4E2A1C5003006F772D /* IrohConsoleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IrohConsoleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		42F69E522A1C5003006F772D /* irohTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = irohTests.swift; sourceTree = "<group>"; };
+		42F69E582A1C5003006F772D /* IrohConsoleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IrohConsoleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		42F69E5C2A1C5003006F772D /* irohUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = irohUITests.swift; sourceTree = "<group>"; };
+		42F69E5E2A1C5003006F772D /* irohUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = irohUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		42F69E762A1C7238006F772D /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		42F69E3B2A1C5002006F772D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4266B64B2B5B1F28006DE0D5 /* IrohLib in Frameworks */,
+				42A4F3FC2ACCF96400F4A9F4 /* CodeScanner in Frameworks */,
+				42FE7F332A98B664007DE329 /* SystemConfiguration.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E4B2A1C5003006F772D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E552A1C5003006F772D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		42344C232A71B1D6001CE259 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				42344C252A71B25D001CE259 /* SpaceGrotesk-Bold.ttf */,
+				42344C282A71B25D001CE259 /* SpaceGrotesk-Light.ttf */,
+				42344C2A2A71B25D001CE259 /* SpaceGrotesk-Medium.ttf */,
+				42344C2C2A71B25D001CE259 /* SpaceGrotesk-Regular.ttf */,
+				42344C2B2A71B25D001CE259 /* SpaceGrotesk-SemiBold.ttf */,
+				42344C272A71B25D001CE259 /* SpaceMono-Bold.ttf */,
+				42344C262A71B25D001CE259 /* SpaceMono-BoldItalic.ttf */,
+				42344C292A71B25D001CE259 /* SpaceMono-Italic.ttf */,
+				42344C242A71B25D001CE259 /* SpaceMono-Regular.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		42344C382A71E9A7001CE259 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				42344C392A71E9F6001CE259 /* TestHome.swift */,
+				426572592A720F8B00D96F8D /* DocSyncTest.swift */,
+				4265725B2A72160500D96F8D /* NewDocSyncTest.swift */,
+				4265725D2A72198B00D96F8D /* TestLobby.swift */,
+				4263A4722A843C85004D8A49 /* JoinDocSyncTest.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		425A9EA12A8291FE00268BC9 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		4263A46D2A83DFB6004D8A49 /* iroh_dot_network_api */ = {
+			isa = PBXGroup;
+			children = (
+				4263A46B2A83DEE9004D8A49 /* IrohAnchorAPI.swift */,
+				4263A46E2A83DFF8004D8A49 /* IrohAnchorAPITypes.swift */,
+				4263A4702A83E0C6004D8A49 /* IrohAnchorAPIClient.swift */,
+			);
+			path = iroh_dot_network_api;
+			sourceTree = "<group>";
+		};
+		426572542A71FFE900D96F8D /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				426572552A72000100D96F8D /* EditConfig.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		4265725F2A72E6F300D96F8D /* Subviews */ = {
+			isa = PBXGroup;
+			children = (
+				426572602A72E71100D96F8D /* Topbar.swift */,
+				426572622A72E85200D96F8D /* DailyEgressBarChart.swift */,
+				4226587E2AB1EE52000BCD34 /* ImagePicker.swift */,
+				422658802AB24925000BCD34 /* AnchorEgressSummaryStats.swift */,
+				422658862AB25E6A000BCD34 /* UserProfileRound.swift */,
+			);
+			path = Subviews;
+			sourceTree = "<group>";
+		};
+		42B9343F2A55085A0085D27D /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				42B934392A5505820085D27D /* Network.swift */,
+				42B9343B2A5506910085D27D /* ModelData.swift */,
+				42B934442A55098F0085D27D /* Modes.swift */,
+				42344C362A71C213001CE259 /* Document.swift */,
+				4226587C2AB100D5000BCD34 /* UserSession.swift */,
+				422658842AB25C4E000BCD34 /* MockData.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		42B934402A5508640085D27D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				42BFCCA42A98492D006CC2AB /* Console */,
+				4265725F2A72E6F300D96F8D /* Subviews */,
+				426572542A71FFE900D96F8D /* Config */,
+				42344C382A71E9A7001CE259 /* Tests */,
+				42B934562A5DB3940085D27D /* Onboarding */,
+				42B934512A5AD67F0085D27D /* Anchors */,
+				425A9E9A2A7DC59000268BC9 /* Login.swift */,
+				422658882AB38399000BCD34 /* NodeHome.swift */,
+				422658922ABA2441000BCD34 /* UserProfile.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		42B934412A55087C0085D27D /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				426572572A72045100D96F8D /* DocEvents.json */,
+				42B9343D2A5507150085D27D /* Networks.json */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		42B934512A5AD67F0085D27D /* Anchors */ = {
+			isa = PBXGroup;
+			children = (
+				42B934372A5504A60085D27D /* AnchorsList.swift */,
+				42B934422A5509580085D27D /* AnchorHome.swift */,
+				42B934572A5DB5730085D27D /* AddAnchor.swift */,
+			);
+			path = Anchors;
+			sourceTree = "<group>";
+		};
+		42B934562A5DB3940085D27D /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				425A9E982A7DC4DF00268BC9 /* Welcome.swift */,
+				425A9E9C2A7DC59A00268BC9 /* Signup.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		42BFCCA42A98492D006CC2AB /* Console */ = {
+			isa = PBXGroup;
+			children = (
+				42BFCCA52A984949006CC2AB /* Console.swift */,
+				4256A1842A9C447300D7758E /* DocEntry.swift */,
+				4226588A2AB3EECF000BCD34 /* ShareDoc.swift */,
+				4226588C2AB3EFBA000BCD34 /* PickDocument.swift */,
+				426195312ABD033B00693CB5 /* NewDoc.swift */,
+			);
+			path = Console;
+			sourceTree = "<group>";
+		};
+		42F69E352A1C5002006F772D = {
+			isa = PBXGroup;
+			children = (
+				425A9EA12A8291FE00268BC9 /* Packages */,
+				42F69E402A1C5002006F772D /* iroh */,
+				42F69E512A1C5003006F772D /* irohTests */,
+				42F69E5B2A1C5003006F772D /* irohUITests */,
+				42F69E3F2A1C5002006F772D /* Products */,
+				42F69E6D2A1C54BF006F772D /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		42F69E3F2A1C5002006F772D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				42F69E3E2A1C5002006F772D /* IrohConsole.app */,
+				42F69E4E2A1C5003006F772D /* IrohConsoleTests.xctest */,
+				42F69E582A1C5003006F772D /* IrohConsoleUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		42F69E402A1C5002006F772D /* iroh */ = {
+			isa = PBXGroup;
+			children = (
+				426572662A72FEA400D96F8D /* Info.plist */,
+				42F69E412A1C5002006F772D /* irohApp.swift */,
+				42F69E432A1C5002006F772D /* ContentView.swift */,
+				42436ADC2A8321AB00D5EB53 /* IrohNodeManager.swift */,
+				42B934402A5508640085D27D /* Views */,
+				42B9343F2A55085A0085D27D /* Model */,
+				42B934412A55087C0085D27D /* Data */,
+				4263A46D2A83DFB6004D8A49 /* iroh_dot_network_api */,
+				42F69E452A1C5003006F772D /* Assets.xcassets */,
+				426572642A72F90400D96F8D /* Images */,
+				42344C232A71B1D6001CE259 /* Fonts */,
+				42F69E472A1C5003006F772D /* Preview Content */,
+				422658822AB24D8A000BCD34 /* Extensions.swift */,
+			);
+			path = iroh;
+			sourceTree = "<group>";
+		};
+		42F69E472A1C5003006F772D /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				42F69E482A1C5003006F772D /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		42F69E512A1C5003006F772D /* irohTests */ = {
+			isa = PBXGroup;
+			children = (
+				42F69E522A1C5003006F772D /* irohTests.swift */,
+			);
+			path = irohTests;
+			sourceTree = "<group>";
+		};
+		42F69E5B2A1C5003006F772D /* irohUITests */ = {
+			isa = PBXGroup;
+			children = (
+				42F69E5C2A1C5003006F772D /* irohUITests.swift */,
+				42F69E5E2A1C5003006F772D /* irohUITestsLaunchTests.swift */,
+			);
+			path = irohUITests;
+			sourceTree = "<group>";
+		};
+		42F69E6D2A1C54BF006F772D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				42F69E762A1C7238006F772D /* SystemConfiguration.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		42F69E3D2A1C5002006F772D /* IrohConsole */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42F69E622A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsole" */;
+			buildPhases = (
+				42F69E3A2A1C5002006F772D /* Sources */,
+				42F69E3B2A1C5002006F772D /* Frameworks */,
+				42F69E3C2A1C5002006F772D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = IrohConsole;
+			packageProductDependencies = (
+				42A4F3FB2ACCF96400F4A9F4 /* CodeScanner */,
+				4266B64A2B5B1F28006DE0D5 /* IrohLib */,
+			);
+			productName = iroh;
+			productReference = 42F69E3E2A1C5002006F772D /* IrohConsole.app */;
+			productType = "com.apple.product-type.application";
+		};
+		42F69E4D2A1C5003006F772D /* IrohConsoleTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42F69E652A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsoleTests" */;
+			buildPhases = (
+				42F69E4A2A1C5003006F772D /* Sources */,
+				42F69E4B2A1C5003006F772D /* Frameworks */,
+				42F69E4C2A1C5003006F772D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42F69E502A1C5003006F772D /* PBXTargetDependency */,
+			);
+			name = IrohConsoleTests;
+			productName = irohTests;
+			productReference = 42F69E4E2A1C5003006F772D /* IrohConsoleTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		42F69E572A1C5003006F772D /* IrohConsoleUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42F69E682A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsoleUITests" */;
+			buildPhases = (
+				42F69E542A1C5003006F772D /* Sources */,
+				42F69E552A1C5003006F772D /* Frameworks */,
+				42F69E562A1C5003006F772D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42F69E5A2A1C5003006F772D /* PBXTargetDependency */,
+			);
+			name = IrohConsoleUITests;
+			productName = irohUITests;
+			productReference = 42F69E582A1C5003006F772D /* IrohConsoleUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		42F69E362A1C5002006F772D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1430;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					42F69E3D2A1C5002006F772D = {
+						CreatedOnToolsVersion = 14.3;
+					};
+					42F69E4D2A1C5003006F772D = {
+						CreatedOnToolsVersion = 14.3;
+						TestTargetID = 42F69E3D2A1C5002006F772D;
+					};
+					42F69E572A1C5003006F772D = {
+						CreatedOnToolsVersion = 14.3;
+						TestTargetID = 42F69E3D2A1C5002006F772D;
+					};
+				};
+			};
+			buildConfigurationList = 42F69E392A1C5002006F772D /* Build configuration list for PBXProject "IrohConsole" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 42F69E352A1C5002006F772D;
+			packageReferences = (
+				42A4F3FA2ACCF96400F4A9F4 /* XCRemoteSwiftPackageReference "CodeScanner" */,
+				4266B6492B5B1F28006DE0D5 /* XCLocalSwiftPackageReference "../iroh-ffi/IrohLib" */,
+			);
+			productRefGroup = 42F69E3F2A1C5002006F772D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				42F69E3D2A1C5002006F772D /* IrohConsole */,
+				42F69E4D2A1C5003006F772D /* IrohConsoleTests */,
+				42F69E572A1C5003006F772D /* IrohConsoleUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		42F69E3C2A1C5002006F772D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42344C332A71B25D001CE259 /* SpaceGrotesk-Medium.ttf in Resources */,
+				42F69E492A1C5003006F772D /* Preview Assets.xcassets in Resources */,
+				426572652A72F90400D96F8D /* Images in Resources */,
+				42344C352A71B25D001CE259 /* SpaceGrotesk-Regular.ttf in Resources */,
+				42344C2F2A71B25D001CE259 /* SpaceMono-BoldItalic.ttf in Resources */,
+				42344C312A71B25D001CE259 /* SpaceGrotesk-Light.ttf in Resources */,
+				42344C2D2A71B25D001CE259 /* SpaceMono-Regular.ttf in Resources */,
+				42344C2E2A71B25D001CE259 /* SpaceGrotesk-Bold.ttf in Resources */,
+				42B9343E2A5507150085D27D /* Networks.json in Resources */,
+				42344C322A71B25D001CE259 /* SpaceMono-Italic.ttf in Resources */,
+				426572582A72045100D96F8D /* DocEvents.json in Resources */,
+				42344C302A71B25D001CE259 /* SpaceMono-Bold.ttf in Resources */,
+				42F69E462A1C5003006F772D /* Assets.xcassets in Resources */,
+				42344C342A71B25D001CE259 /* SpaceGrotesk-SemiBold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E4C2A1C5003006F772D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E562A1C5003006F772D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		42F69E3A2A1C5002006F772D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42B934432A5509580085D27D /* AnchorHome.swift in Sources */,
+				42BFCCA62A984949006CC2AB /* Console.swift in Sources */,
+				422658892AB38399000BCD34 /* NodeHome.swift in Sources */,
+				422658872AB25E6A000BCD34 /* UserProfileRound.swift in Sources */,
+				4226587F2AB1EE52000BCD34 /* ImagePicker.swift in Sources */,
+				4256A1852A9C447300D7758E /* DocEntry.swift in Sources */,
+				426572612A72E71100D96F8D /* Topbar.swift in Sources */,
+				42344C3A2A71E9F6001CE259 /* TestHome.swift in Sources */,
+				425A9E9D2A7DC59A00268BC9 /* Signup.swift in Sources */,
+				4263A4712A83E0C6004D8A49 /* IrohAnchorAPIClient.swift in Sources */,
+				426572562A72000100D96F8D /* EditConfig.swift in Sources */,
+				426572632A72E85200D96F8D /* DailyEgressBarChart.swift in Sources */,
+				42B9343A2A5505820085D27D /* Network.swift in Sources */,
+				4265725C2A72160500D96F8D /* NewDocSyncTest.swift in Sources */,
+				42B934382A5504A60085D27D /* AnchorsList.swift in Sources */,
+				425A9E992A7DC4DF00268BC9 /* Welcome.swift in Sources */,
+				4265725E2A72198B00D96F8D /* TestLobby.swift in Sources */,
+				4263A46C2A83DEE9004D8A49 /* IrohAnchorAPI.swift in Sources */,
+				4226587D2AB100D5000BCD34 /* UserSession.swift in Sources */,
+				42B9343C2A5506910085D27D /* ModelData.swift in Sources */,
+				422658812AB24925000BCD34 /* AnchorEgressSummaryStats.swift in Sources */,
+				4226588B2AB3EECF000BCD34 /* ShareDoc.swift in Sources */,
+				422658932ABA2441000BCD34 /* UserProfile.swift in Sources */,
+				42F69E442A1C5002006F772D /* ContentView.swift in Sources */,
+				4226588D2AB3EFBA000BCD34 /* PickDocument.swift in Sources */,
+				422658832AB24D8A000BCD34 /* Extensions.swift in Sources */,
+				42436ADD2A8321AB00D5EB53 /* IrohNodeManager.swift in Sources */,
+				42B934582A5DB5730085D27D /* AddAnchor.swift in Sources */,
+				4263A4732A843C85004D8A49 /* JoinDocSyncTest.swift in Sources */,
+				425A9E9B2A7DC59000268BC9 /* Login.swift in Sources */,
+				4265725A2A720F8B00D96F8D /* DocSyncTest.swift in Sources */,
+				4263A46F2A83DFF8004D8A49 /* IrohAnchorAPITypes.swift in Sources */,
+				426195322ABD033B00693CB5 /* NewDoc.swift in Sources */,
+				42B934452A55098F0085D27D /* Modes.swift in Sources */,
+				422658852AB25C4E000BCD34 /* MockData.swift in Sources */,
+				42F69E422A1C5002006F772D /* irohApp.swift in Sources */,
+				42344C372A71C213001CE259 /* Document.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E4A2A1C5003006F772D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42F69E532A1C5003006F772D /* irohTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		42F69E542A1C5003006F772D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42F69E5F2A1C5003006F772D /* irohUITestsLaunchTests.swift in Sources */,
+				42F69E5D2A1C5003006F772D /* irohUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42F69E502A1C5003006F772D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42F69E3D2A1C5002006F772D /* IrohConsole */;
+			targetProxy = 42F69E4F2A1C5003006F772D /* PBXContainerItemProxy */;
+		};
+		42F69E5A2A1C5003006F772D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 42F69E3D2A1C5002006F772D /* IrohConsole */;
+			targetProxy = 42F69E592A1C5003006F772D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		42F69E602A1C5003006F772D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		42F69E612A1C5003006F772D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		42F69E632A1C5003006F772D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"iroh/Preview Content\"";
+				DEVELOPMENT_TEAM = 7K8LD2955M;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				EXCLUDED_ARCHS = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iroh/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Iroh;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to scan QR codes with network configuration info";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used for adding photos to documents";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.1;
+				OTHER_LDFLAGS = "-v";
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.console;
+				PRODUCT_NAME = IrohConsole;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		42F69E642A1C5003006F772D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"iroh/Preview Content\"";
+				DEVELOPMENT_TEAM = 7K8LD2955M;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				EXCLUDED_ARCHS = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iroh/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Iroh;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to scan QR codes with network configuration info";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used for adding photos to documents";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.1;
+				OTHER_LDFLAGS = "-v";
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.console;
+				PRODUCT_NAME = IrohConsole;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		42F69E662A1C5003006F772D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5A7G78D7YK;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.irohTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IrohConsole.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IrohConsole";
+			};
+			name = Debug;
+		};
+		42F69E672A1C5003006F772D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5A7G78D7YK;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.irohTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IrohConsole.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IrohConsole";
+			};
+			name = Release;
+		};
+		42F69E692A1C5003006F772D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5A7G78D7YK;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.irohUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = iroh;
+			};
+			name = Debug;
+		};
+		42F69E6A2A1C5003006F772D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5A7G78D7YK;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.iroh.irohUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = iroh;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		42F69E392A1C5002006F772D /* Build configuration list for PBXProject "IrohConsole" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42F69E602A1C5003006F772D /* Debug */,
+				42F69E612A1C5003006F772D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42F69E622A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsole" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42F69E632A1C5003006F772D /* Debug */,
+				42F69E642A1C5003006F772D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42F69E652A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsoleTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42F69E662A1C5003006F772D /* Debug */,
+				42F69E672A1C5003006F772D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42F69E682A1C5003006F772D /* Build configuration list for PBXNativeTarget "IrohConsoleUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				42F69E692A1C5003006F772D /* Debug */,
+				42F69E6A2A1C5003006F772D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4266B6492B5B1F28006DE0D5 /* XCLocalSwiftPackageReference "../iroh-ffi/IrohLib" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../iroh-ffi/IrohLib";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		42A4F3FA2ACCF96400F4A9F4 /* XCRemoteSwiftPackageReference "CodeScanner" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twostraws/CodeScanner";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.3.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4266B64A2B5B1F28006DE0D5 /* IrohLib */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = IrohLib;
+		};
+		42A4F3FB2ACCF96400F4A9F4 /* CodeScanner */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42A4F3FA2ACCF96400F4A9F4 /* XCRemoteSwiftPackageReference "CodeScanner" */;
+			productName = CodeScanner;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 42F69E362A1C5002006F772D /* Project object */;
+}
