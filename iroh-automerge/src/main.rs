@@ -168,7 +168,8 @@ async fn main() -> Result<()> {
             .accept()
             .await
             .ok_or_else(|| anyhow::anyhow!("no connection"))?;
-        let (_remote_node_id, alpn, conn) = inet::magic_endpoint::accept_conn(conn).await?;
+
+        let (_remote_node_id, alpn, conn) = inet::MagicEndpoint::accept(conn).await?;
         ensure!(alpn.as_bytes() == ALPN, "invalid alpn");
 
         let (mut send, mut recv) = conn.accept_bi().await?;

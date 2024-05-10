@@ -46,7 +46,8 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
         let mut stream = client.blobs.download(iroh::rpc_protocol::BlobDownloadRequest {
             hash,
             format,
-            peer: node_addr,
+            nodes: vec![node_addr],
+            mode: iroh::rpc_protocol::DownloadMode::Queued,
             tag: SetTagOption::Auto,
         }).await?;
         while stream.next().await.is_some() {}
