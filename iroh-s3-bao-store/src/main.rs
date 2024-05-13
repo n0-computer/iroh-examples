@@ -245,7 +245,8 @@ async fn serve_db(
         let db = db.clone();
         let rt = rt.clone();
         let ps = ps.clone();
-        tokio::spawn(handle_connection(connecting, db, ps.new_client(), rt));
+        let conn = connecting.await?;
+        tokio::spawn(handle_connection(conn, db, ps.new_client(), rt));
     }
     Ok(())
 }

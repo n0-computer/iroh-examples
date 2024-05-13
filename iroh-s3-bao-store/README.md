@@ -1,6 +1,6 @@
 # S3-store
 
-This is an example how to use iroh-bytes to serve content from the web,
+This is an example how to use iroh-blobs to serve content from the web,
 e.g. from an s3 bucket.
 
 This works by downloading the content and computing an outboard in memory.
