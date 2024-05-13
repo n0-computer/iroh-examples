@@ -3,7 +3,7 @@
 This is a stateless http gateway. It can be used to serve content from
 a local or remote iroh node.
 
-It will connect to the local iroh node via the iroh-bytes protocol.
+It will connect to the local iroh node via the iroh-blobs protocol.
 
 # Prerequisites
 
