@@ -1,7 +1,7 @@
 //! QuinnEndpoint is a wrapper around a quinn::SendStream and quinn::RecvStream
 //!
 //! It implements AsyncRead and AsyncWrite so it can be used with tokio::io::copy
-use quinn::{RecvStream, SendStream};
+use iroh_quinn::{RecvStream, SendStream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};

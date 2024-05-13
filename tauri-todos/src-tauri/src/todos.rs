@@ -1,14 +1,11 @@
 use std::str::FromStr;
-
 use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::{Stream, StreamExt};
-use iroh::client::{
-    mem::{Doc, Iroh},
-    Entry, LiveEvent,
-};
-use iroh::rpc_protocol::{DocTicket, ShareMode};
-use iroh::sync::AuthorId;
+use iroh::client::{MemIroh as Iroh, MemDoc as Doc};
+use iroh::client::docs::{LiveEvent, ShareMode, Entry};
+use iroh::docs::{AuthorId, DocTicket};
+// use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
 
 /// Todo in a list of todos.
@@ -134,7 +131,7 @@ impl Todos {
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
         let mut entries = self
             .doc
-            .get_many(iroh::sync::store::Query::single_latest_per_key())
+            .get_many(iroh::docs::store::Query::single_latest_per_key())
             .await?;
 
         let mut todos = Vec::new();
@@ -164,7 +161,7 @@ impl Todos {
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
         let entry = self
             .doc
-            .get_many(iroh::sync::store::Query::single_latest_per_key().key_exact(id))
+            .get_many(iroh::docs::store::Query::single_latest_per_key().key_exact(id))
             .await?
             .next()
             .await

@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
-# needs to keep updated with the dep of iroh-bytes
+# needs to keep updated with the dep of iroh-blobs
 bao-tree = { version = "0.13", features = ["tokio_fsm"], default-features = false }
 bytes = "1"
 derive_more = { version = "1.0.0-beta.1", features = ["debug", "display", "from", "try_into"] }
@@ -19,12 +19,12 @@ futures = "0.3.25"
 hex = "0.4.3"
 humantime = "2.1.0"
 iroh-net = { workspace = true }
-iroh-bytes = { workspace = true }
+iroh-blobs = { workspace = true }
 iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", default-features = false }
 mainline = { version = "1.0.0", features = ["async"] }
 pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"] }
-quinn = "0.10"
+iroh-quinn = "0.10.2"
 rand = "0.8"
 rcgen = "0.12.0"
 redb = "1.5.0"

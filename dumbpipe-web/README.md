@@ -1,6 +1,6 @@
 # A web frontend for dumbpipe
 
-This forwards http requests to https://crates.io/crates/dumbpipe
+This forwards http requests to [dumbpipe](https://crates.io/crates/dumbpipe)
 
 You give a node url like `<ticket>.localhost:8080` or `nodeid`.localhost:8000,
 and the request will be forwarded to the dumbpipe command running under that

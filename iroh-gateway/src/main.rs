@@ -15,18 +15,19 @@ use derive_more::Deref;
 use futures::{pin_mut, StreamExt};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::bytes::{store::bao_tree::ChunkNum, BlobFormat};
 use iroh::{
-    base::key::NodeId,
-    bytes::{
+    base::{
+        key::NodeId,
+        ticket::{BlobTicket, NodeTicket},
+    },
+    blobs::{
         format::collection::Collection,
         get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
-        protocol::RangeSpecSeq,
-        store::bao_tree::io::fsm::BaoContentItem,
-        Hash,
+        protocol::{RangeSpecSeq, ALPN},
+        store::bao_tree::{io::fsm::BaoContentItem, ChunkNum},
+        BlobFormat, Hash,
     },
     net::{discovery::dns::DnsDiscovery, MagicEndpoint, NodeAddr},
-    ticket::{BlobTicket, NodeTicket},
 };
 use lru::LruCache;
 use mime::Mime;
@@ -114,18 +115,15 @@ impl Inner {
     }
 
     /// Get the mime type for a hash from the remote node.
-    async fn get_default_connection(&self) -> anyhow::Result<quinn::Connection> {
-        let connection = self
-            .endpoint
-            .connect(self.default_node()?, iroh::bytes::protocol::ALPN)
-            .await?;
+    async fn get_default_connection(&self) -> anyhow::Result<iroh_quinn::Connection> {
+        let connection = self.endpoint.connect(self.default_node()?, ALPN).await?;
         Ok(connection)
     }
 }
 
 async fn get_collection_inner(
     hash: &Hash,
-    connection: &quinn::Connection,
+    connection: &iroh_quinn::Connection,
     headers: bool,
 ) -> anyhow::Result<(Collection, Vec<(Hash, u64, Vec<u8>)>)> {
     let spec = if headers {
@@ -137,8 +135,8 @@ async fn get_collection_inner(
     } else {
         RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
     };
-    let request = iroh::bytes::protocol::GetRequest::new(*hash, spec);
-    let req = iroh::bytes::get::fsm::start(connection.clone(), request);
+    let request = iroh::blobs::protocol::GetRequest::new(*hash, spec);
+    let req = iroh::blobs::get::fsm::start(connection.clone(), request);
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(at_start_root) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -172,7 +170,7 @@ async fn get_collection_inner(
 async fn get_collection(
     gateway: &Gateway,
     hash: &Hash,
-    connection: &quinn::Connection,
+    connection: &iroh_quinn::Connection,
 ) -> anyhow::Result<Collection> {
     if let Some(res) = gateway.collection_cache.lock().unwrap().get(hash) {
         return Ok(res.clone());
@@ -210,13 +208,13 @@ fn get_extension(name: &str) -> Option<String> {
 async fn get_mime_type_inner(
     hash: &Hash,
     ext: Option<&str>,
-    connection: &quinn::Connection,
+    connection: &iroh_quinn::Connection,
     mime_classifier: &MimeClassifier,
 ) -> anyhow::Result<(u64, Mime)> {
     // read 2 KiB.
     let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
-    let request = iroh::bytes::protocol::GetRequest::new(*hash, range);
-    let req = iroh::bytes::get::fsm::start(connection.clone(), request);
+    let request = iroh::blobs::protocol::GetRequest::new(*hash, range);
+    let req = iroh::blobs::get::fsm::start(connection.clone(), request);
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -257,7 +255,7 @@ async fn get_mime_type(
     gateway: &Gateway,
     hash: &Hash,
     name: Option<&str>,
-    connection: &quinn::Connection,
+    connection: &iroh_quinn::Connection,
 ) -> anyhow::Result<(u64, Mime)> {
     let ext = name.and_then(get_extension);
     let key = (*hash, ext.clone());
@@ -313,7 +311,7 @@ async fn handle_ticket_index(
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
-        .connect(ticket.node_addr().clone(), iroh::bytes::protocol::ALPN)
+        .connect(ticket.node_addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
     let prefix = format!("/ticket/{}", ticket);
@@ -337,7 +335,7 @@ async fn handle_ticket_request(
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
-        .connect(ticket.node_addr().clone(), iroh::bytes::protocol::ALPN)
+        .connect(ticket.node_addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
     let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
@@ -346,7 +344,7 @@ async fn handle_ticket_request(
 
 async fn collection_index(
     gateway: &Gateway,
-    connection: quinn::Connection,
+    connection: iroh_quinn::Connection,
     hash: &Hash,
     link_prefix: &str,
 ) -> anyhow::Result<impl IntoResponse> {
@@ -383,7 +381,7 @@ async fn collection_index(
 
 async fn forward_collection_range(
     gateway: &Gateway,
-    connection: quinn::Connection,
+    connection: iroh_quinn::Connection,
     hash: &Hash,
     suffix: &str,
     range: (Option<u64>, Option<u64>),
@@ -418,7 +416,7 @@ fn format_content_range(start: Option<u64>, end: Option<u64>, size: u64) -> Stri
 
 async fn forward_range(
     gateway: &Gateway,
-    connection: quinn::Connection,
+    connection: iroh_quinn::Connection,
     hash: &Hash,
     name: Option<&str>,
     (start, end): (Option<u64>, Option<u64>),
@@ -433,7 +431,7 @@ async fn forward_range(
     let (_size, mime) = get_mime_type(gateway, hash, name, &connection).await?;
     tracing::debug!("mime: {}", mime);
     let chunk_ranges = RangeSpecSeq::from_ranges(vec![chunk_ranges]);
-    let request = iroh::bytes::protocol::GetRequest::new(*hash, chunk_ranges.clone());
+    let request = iroh::blobs::protocol::GetRequest::new(*hash, chunk_ranges.clone());
     let status_code = if byte_ranges.is_all() {
         StatusCode::OK
     } else {
@@ -443,7 +441,7 @@ async fn forward_range(
     let (send, recv) = flume::bounded::<result::Result<Bytes, DecodeError>>(2);
 
     tracing::trace!("requesting {:?}", request);
-    let req = iroh::bytes::get::fsm::start(connection.clone(), request);
+    let req = iroh::blobs::get::fsm::start(connection.clone(), request);
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
