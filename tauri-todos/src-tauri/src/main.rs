@@ -6,14 +6,16 @@ mod todos;
 
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
-use iroh::{client::LiveEvent, sync::ContentStatus};
+use iroh::client::MemIroh as Iroh;
+use iroh::client::docs::LiveEvent;
+use iroh::docs::{ContentStatus};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
 use self::todos::{Todo, Todos};
 
 // this example uses a persistend iroh node stored in the application data directory
-type IrohNode = iroh::node::Node<iroh::bytes::store::fs::Store>;
+type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
@@ -46,7 +48,7 @@ impl AppState {
         }
     }
 
-    fn iroh(&self) -> iroh::client::mem::Iroh {
+    fn iroh(&self) -> Iroh {
         self.iroh.client().clone()
     }
 
