@@ -778,15 +778,15 @@ dependencies = [
 
 [[package]]
 name = "dumbpipe"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d223ffff50f8750de0b35f32f648426d7b331e70aaf99aa725072c88789918f0"
+checksum = "698be98a0c5443dcde44c1fad3ac6012c25c45fa49fb495e934888ca746f0663"
 dependencies = [
  "anyhow",
  "clap",
  "hex",
  "iroh-net",
- "quinn",
+ "iroh-quinn",
  "tokio",
  "tokio-util",
  "tracing",
@@ -1668,8 +1668,9 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "iroh-base"
-version = "0.15.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#ec48b0d7eaef7f976f8d04e74629a4df07dcf39b"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a1a5323b25a181b1434a44f9f59ebc478d21156cf9bf91aa850ad0d626f833"
 dependencies = [
  "aead",
  "anyhow",
@@ -1718,8 +1719,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.15.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#ec48b0d7eaef7f976f8d04e74629a4df07dcf39b"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0b4f668653628979461eabe56853a694b1eb4713e87ed25f2224618165c0e67"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -1738,8 +1740,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.15.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#ec48b0d7eaef7f976f8d04e74629a4df07dcf39b"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bea6e221dfbe6301965a5ec9b6bae2c156375a4baafdbdbad7a93c3dcf950d6"
 dependencies = [
  "aead",
  "anyhow",
@@ -2751,54 +2754,6 @@ name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
-
-[[package]]
-name = "quinn"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cc2c5017e4b43d5995dcea317bc46c1e09404c0a9664d2908f7f02dfe943d75"
-dependencies = [
- "bytes",
- "pin-project-lite",
- "quinn-proto",
- "quinn-udp",
- "rustc-hash",
- "rustls",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "quinn-proto"
-version = "0.10.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "141bf7dfde2fbc246bfd3fe12f2455aa24b0fbd9af535d8c86c7bd1381ff2b1a"
-dependencies = [
- "bytes",
- "rand",
- "ring 0.16.20",
- "rustc-hash",
- "rustls",
- "rustls-native-certs",
- "slab",
- "thiserror",
- "tinyvec",
- "tracing",
-]
-
-[[package]]
-name = "quinn-udp"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "055b4e778e8feb9f93c4e439f71dc2156ef13360b432b799e179a8c4cdf0b1d7"
-dependencies = [
- "bytes",
- "libc",
- "socket2",
- "tracing",
- "windows-sys 0.48.0",
-]
 
 [[package]]
 name = "quote"
