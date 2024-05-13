@@ -1,5 +1,5 @@
-use iroh_bytes::{Hash, HashAndFormat};
-use iroh::ticket::BlobTicket;
+use iroh::base::ticket::BlobTicket;
+use iroh_blobs::{Hash, HashAndFormat};
 use iroh_pkarr_naming_system::{Record, IPNS};
 use std::{fmt::Display, process, str::FromStr};
 

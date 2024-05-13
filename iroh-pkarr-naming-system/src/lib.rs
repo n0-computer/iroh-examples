@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
-use iroh_bytes::HashAndFormat;
+use iroh_blobs::HashAndFormat;
 use iroh_net::{key::SecretKey, util::AbortingJoinHandle};
 use pkarr::{
     dns::{
