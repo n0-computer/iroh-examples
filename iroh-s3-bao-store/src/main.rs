@@ -4,7 +4,7 @@ use indicatif::{
     HumanBytes, HumanDuration, MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle,
 };
 use iroh::base::ticket::BlobTicket;
-use iroh::bytes::{
+use iroh::blobs::{
     provider::{self, handle_connection, EventSender},
     BlobFormat,
 };
@@ -62,7 +62,7 @@ impl Display for Format {
     }
 }
 
-fn print_hash(hash: &iroh::bytes::Hash, format: Format) -> String {
+fn print_hash(hash: &iroh::blobs::Hash, format: Format) -> String {
     match format {
         Format::Hex => hash.to_hex().to_string(),
         Format::Cid => hash.to_string(),
@@ -174,7 +174,7 @@ impl Drop for ClientStatus {
 }
 
 impl EventSender for ClientStatus {
-    fn send(&self, event: iroh::bytes::provider::Event) -> futures_lite::future::Boxed<()> {
+    fn send(&self, event: iroh::blobs::provider::Event) -> futures_lite::future::Boxed<()> {
         tracing::info!("{:?}", event);
         let msg = match event {
             provider::Event::ClientConnected { connection_id } => {
@@ -223,7 +223,7 @@ async fn serve_db(
     let secret_key = get_or_create_secret(true)?;
     // create a magicsocket endpoint
     let endpoint_fut = MagicEndpoint::builder()
-        .alpns(vec![iroh::bytes::protocol::ALPN.to_vec()])
+        .alpns(vec![iroh::blobs::protocol::ALPN.to_vec()])
         .secret_key(secret_key)
         .bind(magic_port);
     // wait for the endpoint to be ready
@@ -269,7 +269,7 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
     let collection = hashes
         .iter()
         .cloned()
-        .collect::<iroh::bytes::format::collection::Collection>();
+        .collect::<iroh::blobs::format::collection::Collection>();
     let blobs = collection.to_blobs();
     let mut last_hash = None;
     for blob in blobs {
@@ -299,7 +299,7 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
     let collection = hashes
         .iter()
         .cloned()
-        .collect::<iroh::bytes::format::collection::Collection>();
+        .collect::<iroh::blobs::format::collection::Collection>();
     let blobs = collection.to_blobs();
     let mut last_hash = None;
     for blob in blobs {
