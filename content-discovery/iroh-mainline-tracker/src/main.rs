@@ -20,14 +20,13 @@ use iroh_mainline_tracker::{
     options::Options,
     tracker::Tracker,
 };
-use iroh_net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    MagicEndpoint, NodeId,
-};
+use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use tokio::io::AsyncWriteExt;
 
 use crate::args::Args;
+
+use iroh_mainline_tracker::tracker::get_alpn;
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
@@ -86,8 +85,8 @@ async fn create_endpoint(
 
 /// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
 pub async fn accept_conn(
-    mut conn: quinn::Connecting,
-) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
+    mut conn: iroh_quinn::Connecting,
+) -> anyhow::Result<(NodeId, String, iroh_quinn::Connection)> {
     let alpn = get_alpn(&mut conn).await?;
     let conn = conn.await?;
     let peer_id = get_remote_node_id(&conn)?;
@@ -136,7 +135,7 @@ async fn server(args: Args) -> anyhow::Result<()> {
     let udp_socket = tokio::net::UdpSocket::bind(udp_bind_addr).await?;
     let quinn_bind_addr =
         SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, options.quinn_port));
-    let quinn_endpoint = quinn::Endpoint::server(server_config, quinn_bind_addr)?;
+    let quinn_endpoint = iroh_quinn::Endpoint::server(server_config, quinn_bind_addr)?;
     // set the quinn port to the actual port we bound to so the DHT will announce it correctly
     options.quinn_port = quinn_endpoint.local_addr()?.port();
     let magic_endpoint = create_endpoint(key.clone(), options.magic_port, true).await?;
@@ -191,7 +190,9 @@ async fn main() -> anyhow::Result<()> {
 
 /// Returns default server configuration along with its certificate.
 #[allow(clippy::field_reassign_with_default)] // https://github.com/rust-lang/rust-clippy/issues/6527
-fn configure_server(secret_key: &iroh_net::key::SecretKey) -> anyhow::Result<quinn::ServerConfig> {
+fn configure_server(
+    secret_key: &iroh_net::key::SecretKey,
+) -> anyhow::Result<iroh_quinn::ServerConfig> {
     make_server_config(secret_key, 8, 1024, vec![ALPN.to_vec()])
 }
 
@@ -201,10 +202,10 @@ pub fn make_server_config(
     max_streams: u64,
     max_connections: u32,
     alpn_protocols: Vec<Vec<u8>>,
-) -> anyhow::Result<quinn::ServerConfig> {
+) -> anyhow::Result<iroh_quinn::ServerConfig> {
     let tls_server_config = iroh_net::tls::make_server_config(secret_key, alpn_protocols, false)?;
-    let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_server_config));
-    let mut transport_config = quinn::TransportConfig::default();
+    let mut server_config = iroh_quinn::ServerConfig::with_crypto(Arc::new(tls_server_config));
+    let mut transport_config = iroh_quinn::TransportConfig::default();
     transport_config
         .max_concurrent_bidi_streams(max_streams.try_into()?)
         .max_concurrent_uni_streams(0u32.into());

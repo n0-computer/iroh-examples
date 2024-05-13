@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 iroh-net = { workspace = true }
-iroh-bytes = { workspace = true }
+iroh-blobs = { workspace = true }
 iroh-base = { workspace = true }
 iroh-mainline-content-discovery = { path = "../iroh-mainline-content-discovery" }
 mainline = { version = "1.0.0" }

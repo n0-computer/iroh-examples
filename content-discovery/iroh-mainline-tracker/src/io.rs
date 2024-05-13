@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
-use iroh_bytes::{get::Stats, HashAndFormat};
+use iroh_blobs::{get::Stats, HashAndFormat};
 use iroh_mainline_content_discovery::protocol::{AnnounceKind, SignedAnnounce};
 use iroh_net::NodeId;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -91,7 +91,7 @@ pub fn log_connection_attempt(
     path: &Option<PathBuf>,
     host: &NodeId,
     t0: Instant,
-    outcome: &anyhow::Result<quinn::Connection>,
+    outcome: &anyhow::Result<iroh_quinn::Connection>,
 ) -> anyhow::Result<()> {
     if let Some(path) = path {
         let now = SystemTime::now()

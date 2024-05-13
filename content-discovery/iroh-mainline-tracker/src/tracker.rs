@@ -6,7 +6,7 @@ use std::{
 };
 
 use bao_tree::ChunkNum;
-use iroh_bytes::{
+use iroh_blobs::{
     get::{fsm::EndBlobNext, Stats},
     hashseq::HashSeq,
     protocol::GetRequest,
@@ -19,10 +19,7 @@ use iroh_mainline_content_discovery::{
     },
     to_infohash,
 };
-use iroh_net::{
-    magic_endpoint::{get_alpn, get_remote_node_id},
-    MagicEndpoint, NodeId,
-};
+use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
 use rand::Rng;
 use redb::{ReadableTable, RedbValue};
 use serde::{Deserialize, Serialize};
@@ -34,7 +31,7 @@ mod util;
 
 use crate::{
     io::{log_connection_attempt, log_probe_attempt},
-    iroh_bytes_util::{
+    iroh_blobs_util::{
         chunk_probe, get_hash_seq_and_sizes, random_hash_seq_ranges, unverified_size, verified_size,
     },
     options::Options,
@@ -876,7 +873,7 @@ impl Tracker {
             tracing::info!("got connecting");
             let tracker = self.clone();
             tokio::spawn(async move {
-                let Ok((remote_node_id, alpn, conn)) = accept_conn(connecting).await else {
+                let Ok((remote_node_id, alpn, conn)) = magic_accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
                     return;
                 };
@@ -890,7 +887,7 @@ impl Tracker {
         Ok(())
     }
 
-    pub async fn quinn_accept_loop(self, endpoint: quinn::Endpoint) -> std::io::Result<()> {
+    pub async fn quinn_accept_loop(self, endpoint: iroh_quinn::Endpoint) -> std::io::Result<()> {
         let local_addr = endpoint.local_addr()?;
         println!("quinn listening on {}", local_addr);
         while let Some(connecting) = endpoint.accept().await {
@@ -951,7 +948,10 @@ impl Tracker {
     }
 
     /// Handle a single incoming connection on the tracker ALPN.
-    pub async fn handle_connection(&self, connection: quinn::Connection) -> anyhow::Result<()> {
+    pub async fn handle_connection(
+        &self,
+        connection: iroh_quinn::Connection,
+    ) -> anyhow::Result<()> {
         tracing::debug!("calling accept_bi");
         let (mut send, mut recv) = connection.accept_bi().await?;
         tracing::debug!("got bi stream");
@@ -1018,7 +1018,7 @@ impl Tracker {
 
     async fn get_or_insert_size(
         &self,
-        connection: &quinn::Connection,
+        connection: &iroh_quinn::Connection,
         hash: &Hash,
     ) -> anyhow::Result<u64> {
         let size_opt = self.get_size(*hash).await?;
@@ -1035,7 +1035,7 @@ impl Tracker {
 
     async fn get_or_insert_sizes(
         &self,
-        connection: &quinn::Connection,
+        connection: &iroh_quinn::Connection,
         hash: &Hash,
     ) -> anyhow::Result<(HashSeq, Arc<[u64]>)> {
         let sizes = self.get_sizes(*hash).await?;
@@ -1053,7 +1053,7 @@ impl Tracker {
 
     async fn probe(
         &self,
-        connection: &quinn::Connection,
+        connection: &iroh_quinn::Connection,
         host: &NodeId,
         content: &HashAndFormat,
         probe_kind: ProbeKind,
@@ -1098,9 +1098,9 @@ impl Tracker {
                         .join(", ");
                     tracing::debug!("Seq probing {} using {}", cap, text);
                     let request = GetRequest::new(*hash, ranges);
-                    let request = iroh_bytes::get::fsm::start(connection.clone(), request);
+                    let request = iroh_blobs::get::fsm::start(connection.clone(), request);
                     let connected = request.next().await?;
-                    let iroh_bytes::get::fsm::ConnectedNext::StartChild(child) =
+                    let iroh_blobs::get::fsm::ConnectedNext::StartChild(child) =
                         connected.next().await?
                     else {
                         unreachable!("request does not include root");
@@ -1202,7 +1202,7 @@ impl Tracker {
         let res = self
             .0
             .magic_endpoint
-            .connect_by_node_id(&host, iroh_bytes::protocol::ALPN)
+            .connect_by_node_id(&host, iroh_blobs::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
         let connection = match res {
@@ -1242,9 +1242,31 @@ impl Tracker {
 
 /// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
 async fn accept_conn(
-    mut conn: quinn::Connecting,
-) -> anyhow::Result<(NodeId, String, quinn::Connection)> {
+    mut conn: iroh_quinn::Connecting,
+) -> anyhow::Result<(NodeId, String, iroh_quinn::Connection)> {
     let alpn = get_alpn(&mut conn).await?;
+    let conn = conn.await?;
+    let peer_id = get_remote_node_id(&conn)?;
+    Ok((peer_id, alpn, conn))
+}
+
+/// Extract the ALPN protocol from the peer's TLS certificate.
+pub async fn get_alpn(connecting: &mut iroh_quinn::Connecting) -> anyhow::Result<String> {
+    let data = connecting.handshake_data().await?;
+    match data.downcast::<iroh_quinn::crypto::rustls::HandshakeData>() {
+        Ok(data) => match data.protocol {
+            Some(protocol) => std::string::String::from_utf8(protocol).map_err(Into::into),
+            None => anyhow::bail!("no ALPN protocol available"),
+        },
+        Err(_) => anyhow::bail!("unknown handshake type"),
+    }
+}
+
+/// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
+async fn magic_accept_conn(
+    mut conn: iroh_net::magic_endpoint::Connecting,
+) -> anyhow::Result<(NodeId, String, iroh_quinn::Connection)> {
+    let alpn = conn.alpn().await?;
     let conn = conn.await?;
     let peer_id = get_remote_node_id(&conn)?;
     Ok((peer_id, alpn, conn))

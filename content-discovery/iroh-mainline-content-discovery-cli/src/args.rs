@@ -1,7 +1,7 @@
 //! Command line arguments.
 use clap::{Parser, Subcommand};
 use iroh_base::ticket::BlobTicket;
-use iroh_bytes::{Hash, HashAndFormat};
+use iroh_blobs::{Hash, HashAndFormat};
 use iroh_net::NodeId;
 use std::{fmt::Display, net::SocketAddr, str::FromStr};
 
