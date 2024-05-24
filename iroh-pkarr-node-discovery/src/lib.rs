@@ -18,7 +18,7 @@ use iroh_net::{
     dns::node_info::NodeInfo,
     key::SecretKey,
     util::AbortingJoinHandle,
-    AddrInfo, MagicEndpoint, NodeId,
+    AddrInfo, Endpoint as Endpoint, NodeId,
 };
 use pkarr::{url::Url, PkarrClient, PublicKey, SignedPacket};
 
@@ -342,7 +342,7 @@ impl Discovery for PkarrNodeDiscovery {
 
     fn resolve(
         &self,
-        _endpoint: MagicEndpoint,
+        _endpoint: Endpoint,
         node_id: NodeId,
     ) -> Option<futures_lite::stream::Boxed<anyhow::Result<DiscoveryItem>>> {
         let this = self.clone();

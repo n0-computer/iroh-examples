@@ -1,4 +1,4 @@
-//! An example chat application using the iroh-net magic endpoint and
+//! An example chat application using the iroh-net endpoint and
 //! pkarr node discovery.
 //!
 //! Starting the example without args creates a server that publishes its
@@ -11,7 +11,7 @@
 use std::str::FromStr;
 
 use clap::Parser;
-use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
+use iroh_net::{endpoint::get_remote_node_id, Endpoint, NodeId};
 use pkarr::url::Url;
 
 const CHAT_ALPN: &[u8] = b"pkarr-discovery-demo-chat";
@@ -66,7 +66,7 @@ async fn chat_server(args: Args) -> anyhow::Result<()> {
     let discovery = build_discovery(args)
         .secret_key(secret_key.clone())
         .build()?;
-    let endpoint = MagicEndpoint::builder()
+    let endpoint = Endpoint::builder()
         .alpns(vec![CHAT_ALPN.to_vec()])
         .secret_key(secret_key)
         .discovery(Box::new(discovery))
@@ -103,7 +103,7 @@ async fn chat_client(args: Args) -> anyhow::Result<()> {
     // note: we don't pass a secret key here, because we don't need to publish our address, don't spam the DHT
     let discovery = build_discovery(args).build()?;
     // we do not need to specify the alpn here, because we are not going to accept connections
-    let endpoint = MagicEndpoint::builder()
+    let endpoint = Endpoint::builder()
         .secret_key(secret_key)
         .discovery(Box::new(discovery))
         .bind(0)
