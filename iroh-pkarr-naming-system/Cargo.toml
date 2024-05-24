@@ -8,12 +8,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.79"
 derive_more = "0.99.17"
-# iroh = "0.17"
-# iroh-blobs = "0.17"
-# iroh-net = "0.17"
-iroh = { git="https://github.com/n0-computer/iroh", branch="main" }
-iroh-blobs = { git="https://github.com/n0-computer/iroh", branch="main" }
-iroh-net = { git="https://github.com/n0-computer/iroh", branch="main" }
+iroh = "0.17"
+iroh-blobs = "0.17"
+iroh-net = "0.17"
 pkarr = { version = "1.0.1", features = ["async", "dht"] }
 tokio = "1.35.1"
 tracing = "0.1.40"

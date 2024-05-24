@@ -1701,8 +1701,9 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "iroh"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "906100b305fb5008b193c9004f05e6a31b3b1c358fce0f780fdd3c1909e43241"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -1741,8 +1742,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1be0b442ed44d20905cf77c673169906c883e05c829e3fb303b131e925139fc"
 dependencies = [
  "aead",
  "anyhow",
@@ -1782,8 +1784,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-blobs"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5b99863d557104010b94b4b69f3721ea0a8fea00c3002f2521edd77bb676635"
 dependencies = [
  "anyhow",
  "bao-tree",
@@ -1821,8 +1824,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-docs"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e768d16fef62e8dbefedab63b31706b64267e972a6420cbc5824907508c931ae"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1855,8 +1859,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-gossip"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "857aa77a0b29283edf99224bd12cd739684c5873e639b85adb38b8d1d777162d"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1893,8 +1898,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd54b9cf342b2618efc8d3ff6cdcd083fa5a2cf6cc78bb473bd32e228eabb40e"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -1913,8 +1919,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.16.0"
-source = "git+https://github.com/n0-computer/iroh?branch=main#1e31dcfaae6c2e6b46052a04adba844ec629677d"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a744000e6c5704479eeb4751eb23b9b8e7e56a0fc484beb8831694fc93e378f"
 dependencies = [
  "aead",
  "anyhow",
@@ -1959,9 +1966,9 @@ dependencies = [
  "postcard",
  "rand",
  "rand_core",
- "rcgen 0.11.3",
+ "rcgen",
  "reqwest 0.12.4",
- "ring 0.17.8",
+ "ring",
  "rtnetlink",
  "rustls 0.21.12",
  "rustls-webpki 0.101.7",
@@ -2027,7 +2034,7 @@ checksum = "c6bf92478805e67f2320459285496e1137edf5171411001a0d4d85f9bbafb792"
 dependencies = [
  "bytes",
  "rand",
- "ring 0.17.8",
+ "ring",
  "rustc-hash",
  "rustls 0.21.12",
  "rustls-native-certs",
@@ -3081,24 +3088,12 @@ dependencies = [
 
 [[package]]
 name = "rcgen"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52c4f3084aa3bc7dfbba4eff4fab2a54db4324965d8872ab933565e6fbd83bc6"
-dependencies = [
- "pem",
- "ring 0.16.20",
- "time",
- "yasna",
-]
-
-[[package]]
-name = "rcgen"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48406db8ac1f3cbc7dcdb56ec355343817958a356ff430259bb07baf7607e1e1"
 dependencies = [
  "pem",
- "ring 0.17.8",
+ "ring",
  "time",
  "yasna",
 ]
@@ -3315,21 +3310,6 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
-dependencies = [
- "cc",
- "libc",
- "once_cell",
- "spin 0.5.2",
- "untrusted 0.7.1",
- "web-sys",
- "winapi",
-]
-
-[[package]]
-name = "ring"
 version = "0.17.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c17fa4cb658e3583423e915b9f3acc01cceaee1860e33d59ebae66adc3a2dc0d"
@@ -3339,7 +3319,7 @@ dependencies = [
  "getrandom",
  "libc",
  "spin 0.9.8",
- "untrusted 0.9.0",
+ "untrusted",
  "windows-sys 0.52.0",
 ]
 
@@ -3432,7 +3412,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f56a14d1f48b391359b22f731fd4bd7e43c97f3c50eee276f3aa09c94784d3e"
 dependencies = [
  "log",
- "ring 0.17.8",
+ "ring",
  "rustls-webpki 0.101.7",
  "sct",
 ]
@@ -3444,7 +3424,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf4ef73721ac7bcd79b2b315da7779d8fc09718c6b3d2d1b2d94850eb8c18432"
 dependencies = [
  "log",
- "ring 0.17.8",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki 0.102.4",
  "subtle",
@@ -3494,8 +3474,8 @@ version = "0.101.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b6275d1ee7a1cd780b64aca7726599a1dbc893b1e64144529e55c3c2f745765"
 dependencies = [
- "ring 0.17.8",
- "untrusted 0.9.0",
+ "ring",
+ "untrusted",
 ]
 
 [[package]]
@@ -3504,9 +3484,9 @@ version = "0.102.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff448f7e92e913c4b7d4c6d8e4540a1724b319b4152b8aef6d4cf8339712b33e"
 dependencies = [
- "ring 0.17.8",
+ "ring",
  "rustls-pki-types",
- "untrusted 0.9.0",
+ "untrusted",
 ]
 
 [[package]]
@@ -3560,8 +3540,8 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
 dependencies = [
- "ring 0.17.8",
- "untrusted 0.9.0",
+ "ring",
+ "untrusted",
 ]
 
 [[package]]
@@ -4270,9 +4250,9 @@ dependencies = [
  "num-bigint",
  "pem",
  "proc-macro2",
- "rcgen 0.12.1",
+ "rcgen",
  "reqwest 0.11.27",
- "ring 0.17.8",
+ "ring",
  "rustls 0.21.12",
  "serde",
  "serde_json",
@@ -4516,12 +4496,6 @@ dependencies = [
  "crypto-common",
  "subtle",
 ]
-
-[[package]]
-name = "untrusted"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "untrusted"

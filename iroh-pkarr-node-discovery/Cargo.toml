@@ -15,8 +15,7 @@ description = "A discovery mechanism for iroh-net that uses the bittorrent mainl
 anyhow = "1.0.79"
 futures-lite = "2.3.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
-iroh-net = { git="https://github.com/n0-computer/iroh", branch="main" }
-# iroh-net = "0.17"
+iroh-net = "0.17"
 pkarr = { version = "1.0.1", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"
