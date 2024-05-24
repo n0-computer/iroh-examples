@@ -3,9 +3,9 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// The magic port to listen on.
+    /// The port to listen on.
     #[clap(long)]
-    pub magic_port: Option<u16>,
+    pub iroh_port: Option<u16>,
 
     /// The quinn port to listen on.
     ///

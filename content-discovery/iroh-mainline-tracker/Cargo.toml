@@ -24,7 +24,7 @@ iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", default-
 mainline = { version = "1.0.0", features = ["async"] }
 pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"] }
-iroh-quinn = "0.10.2"
+iroh-quinn = "0.10.5"
 rand = "0.8"
 rcgen = "0.12.0"
 redb = "1.5.0"

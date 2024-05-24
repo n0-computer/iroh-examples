@@ -15,7 +15,7 @@ use futures::{
     FutureExt, Stream, StreamExt,
 };
 use iroh_blobs::HashAndFormat;
-use iroh_net::{MagicEndpoint, NodeId};
+use iroh_net::{Endpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 
 use crate::protocol::{
@@ -26,12 +26,12 @@ use crate::protocol::{
 ///
 /// You can only announce content you yourself claim to have, to avoid spamming other nodes.
 ///
-/// `endpoint` is the magic endpoint to use for announcing.
+/// `endpoint` is the iroh endpoint to use for announcing.
 /// `tracker` is the node id of the tracker to announce to. It must understand the [TRACKER_ALPN] protocol.
 /// `content` is the content to announce.
 /// `kind` is the kind of the announcement. We can claim to have the complete data or only some of it.
 pub async fn announce(
-    connection: iroh_net::magic_endpoint::Connection,
+    connection: iroh_net::endpoint::Connection,
     signed_announce: SignedAnnounce,
 ) -> anyhow::Result<()> {
     let (mut send, mut recv) = connection.open_bi().await?;
@@ -80,8 +80,8 @@ async fn query_socket_one(
     Ok(result.hosts)
 }
 
-async fn query_magic_one(
-    endpoint: MagicEndpoint,
+async fn query_iroh_one(
+    endpoint: Endpoint,
     node_id: &NodeId,
     args: Query,
 ) -> anyhow::Result<Vec<SignedAnnounce>> {
@@ -106,7 +106,7 @@ impl QuinnConnectionProvider<SocketAddr> for iroh_quinn::Endpoint {
 
 /// Query multiple trackers in parallel and merge the results.
 pub fn query_trackers(
-    endpoint: MagicEndpoint,
+    endpoint: Endpoint,
     trackers: impl IntoIterator<Item = NodeId>,
     args: Query,
     query_parallelism: usize,
@@ -115,7 +115,7 @@ pub fn query_trackers(
         .map(move |tracker| {
             let endpoint = endpoint.clone();
             async move {
-                let hosts = match query_magic_one(endpoint, &tracker, args).await {
+                let hosts = match query_iroh_one(endpoint, &tracker, args).await {
                     Ok(hosts) => hosts.into_iter().map(anyhow::Ok).collect(),
                     Err(cause) => vec![Err(cause)],
                 };
@@ -177,7 +177,7 @@ pub fn announce_dht(
 
 /// Assume an existing connection to a tracker and query it for peers for some content.
 pub async fn query(
-    connection: iroh_net::magic_endpoint::Connection,
+    connection: iroh_net::endpoint::Connection,
     args: Query,
 ) -> anyhow::Result<QueryResponse> {
     tracing::info!("connected to {:?}", connection.remote_address());
@@ -217,7 +217,7 @@ async fn create_endpoint(
     key: iroh_net::key::SecretKey,
     port: u16,
     publish: bool,
-) -> anyhow::Result<MagicEndpoint> {
+) -> anyhow::Result<Endpoint> {
     let mainline_discovery = if publish {
         PkarrNodeDiscovery::builder()
             .secret_key(key.clone())
@@ -225,7 +225,7 @@ async fn create_endpoint(
     } else {
         PkarrNodeDiscovery::default()
     };
-    iroh_net::MagicEndpoint::builder()
+    iroh_net::Endpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
         .alpns(vec![ALPN.to_vec()])
@@ -273,19 +273,19 @@ impl std::str::FromStr for TrackerId {
 pub async fn connect(
     tracker: &TrackerId,
     local_port: u16,
-) -> anyhow::Result<iroh_net::magic_endpoint::Connection> {
+) -> anyhow::Result<iroh_net::endpoint::Connection> {
     match tracker {
         TrackerId::Quinn(tracker) => connect_socket(*tracker, local_port).await,
-        TrackerId::Iroh(tracker) => connect_magic(tracker, local_port).await,
+        TrackerId::Iroh(tracker) => connect_iroh(tracker, local_port).await,
         TrackerId::Udp(_) => anyhow::bail!("can not connect to udp tracker"),
     }
 }
 
-/// Create a magic endpoint and connect to a tracker using the [crate::protocol::ALPN] protocol.
-async fn connect_magic(
+/// Create a iroh endpoint and connect to a tracker using the [crate::protocol::ALPN] protocol.
+async fn connect_iroh(
     tracker: &NodeId,
     local_port: u16,
-) -> anyhow::Result<iroh_net::magic_endpoint::Connection> {
+) -> anyhow::Result<iroh_net::endpoint::Connection> {
     // todo: uncomment once the connection problems are fixed
     // for now, a random node id is more reliable.
     // let key = load_secret_key(tracker_path(CLIENT_KEY)?).await?;
@@ -300,7 +300,7 @@ async fn connect_magic(
 async fn connect_socket(
     tracker: SocketAddr,
     local_port: u16,
-) -> anyhow::Result<iroh_net::magic_endpoint::Connection> {
+) -> anyhow::Result<iroh_net::endpoint::Connection> {
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, local_port));
     let endpoint = create_quinn_client(bind_addr, vec![ALPN.to_vec()], false)?;
     tracing::info!("trying to connect to tracker at {:?}", tracker);

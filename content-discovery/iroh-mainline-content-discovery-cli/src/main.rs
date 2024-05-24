@@ -14,7 +14,7 @@ use iroh_mainline_content_discovery::{
     protocol::{AbsoluteTime, Announce, AnnounceKind, Query, QueryFlags, SignedAnnounce},
     to_infohash, UdpDiscovery,
 };
-use iroh_net::magic_endpoint;
+use iroh_net::endpoint;
 use tokio::io::AsyncWriteExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -56,12 +56,12 @@ async fn announce(args: AnnounceArgs) -> anyhow::Result<()> {
         discovery.announce_once(signed_announce).await?;
     }
     if !args.magicsock_tracker.is_empty() {
-        let magic_endpoint = magic_endpoint::MagicEndpoint::builder()
-            .bind(args.magic_port.unwrap_or_default())
+        let iroh_endpoint = endpoint::Endpoint::builder()
+            .bind(args.iroh_port.unwrap_or_default())
             .await?;
         for tracker in args.magicsock_tracker {
             println!("announcing via magicsock to {:?}: {}", tracker, content);
-            let connection = magic_endpoint
+            let connection = iroh_endpoint
                 .connect_by_node_id(&tracker, iroh_mainline_content_discovery::protocol::ALPN)
                 .await?;
             iroh_mainline_content_discovery::announce(connection, signed_announce).await?;

@@ -19,7 +19,7 @@ use iroh_mainline_content_discovery::{
     },
     to_infohash,
 };
-use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
+use iroh_net::{endpoint::get_remote_node_id, Endpoint, NodeId};
 use rand::Rng;
 use redb::{ReadableTable, RedbValue};
 use serde::{Deserialize, Serialize};
@@ -62,8 +62,8 @@ struct Inner {
     probe_tasks: TaskMap<NodeId>,
     /// A handle to the DHT client, which is used to announce to the DHT.
     dht: Arc<mainline::async_dht::AsyncDht>,
-    /// The magic endpoint, which is used to accept incoming connections and to probe peers.
-    magic_endpoint: MagicEndpoint,
+    /// The iroh endpoint, which is used to accept incoming connections and to probe peers.
+    endpoint: Endpoint,
     /// To spawn non-send futures.
     local_pool: tokio_util::task::LocalPoolHandle,
     /// The handle to the actor thread.
@@ -740,7 +740,7 @@ impl Tracker {
     /// Create a new tracker server.
     ///
     /// You will have to drive the tracker server yourself, using `handle_connection` and `probe_loop`.
-    pub fn new(options: Options, magic_endpoint: MagicEndpoint) -> anyhow::Result<Self> {
+    pub fn new(options: Options, endpoint: Endpoint) -> anyhow::Result<Self> {
         tracing::info!(
             "creating tracker using database at {}",
             options.announce_data_path.display()
@@ -771,7 +771,7 @@ impl Tracker {
             options,
             announce_tasks: Default::default(),
             probe_tasks: Default::default(),
-            magic_endpoint,
+            endpoint,
             local_pool: tpc,
             dht,
             handle: Some(handle),
@@ -868,12 +868,12 @@ impl Tracker {
         rx.await?
     }
 
-    pub async fn magic_accept_loop(self, endpoint: MagicEndpoint) -> std::io::Result<()> {
+    pub async fn iroh_accept_loop(self, endpoint: Endpoint) -> std::io::Result<()> {
         while let Some(connecting) = endpoint.accept().await {
             tracing::info!("got connecting");
             let tracker = self.clone();
             tokio::spawn(async move {
-                let Ok((remote_node_id, alpn, conn)) = magic_accept_conn(connecting).await else {
+                let Ok((remote_node_id, alpn, conn)) = iroh_accept_conn(connecting).await else {
                     tracing::error!("error accepting connection");
                     return;
                 };
@@ -1201,7 +1201,7 @@ impl Tracker {
         let t0 = Instant::now();
         let res = self
             .0
-            .magic_endpoint
+            .endpoint
             .connect_by_node_id(&host, iroh_blobs::protocol::ALPN)
             .await;
         log_connection_attempt(&self.0.options.dial_log, &host, t0, &res)?;
@@ -1263,8 +1263,8 @@ pub async fn get_alpn(connecting: &mut iroh_quinn::Connecting) -> anyhow::Result
 }
 
 /// Accept an incoming connection and extract the client-provided [`NodeId`] and ALPN protocol.
-async fn magic_accept_conn(
-    mut conn: iroh_net::magic_endpoint::Connecting,
+async fn iroh_accept_conn(
+    mut conn: iroh_net::endpoint::Connecting,
 ) -> anyhow::Result<(NodeId, String, iroh_quinn::Connection)> {
     let alpn = conn.alpn().await?;
     let conn = conn.await?;

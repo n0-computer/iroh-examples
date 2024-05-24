@@ -58,8 +58,8 @@ pub struct Options {
     /// to the DHT. Set to 0 to listen on a random port.
     pub quinn_port: u16,
 
-    /// The magic port to listen on. Set to 0 to listen on a random port.
-    pub magic_port: u16,
+    /// The iroh port to listen on. Set to 0 to listen on a random port.
+    pub iroh_port: u16,
 
     /// The UDP port to listen on. Set to 0 to listen on a random port.
     pub udp_port: u16,
@@ -81,7 +81,7 @@ impl Default for Options {
             probe_log: None,
             announce_data_path: "announce.redb".into(),
             quinn_port: 0,
-            magic_port: 0,
+            iroh_port: 0,
             udp_port: 0,
         }
     }
@@ -105,7 +105,7 @@ impl Options {
             probe_log: Some("probe.log".into()),
             announce_data_path: "announce.redb".into(),
             quinn_port: 0,
-            magic_port: 0,
+            iroh_port: 0,
             udp_port: 0,
         }
     }
