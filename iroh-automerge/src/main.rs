@@ -14,7 +14,7 @@ struct Peer {
     auto_commit: AutoCommit,
     sync_state: sync::State,
     storage: Vec<u8>,
-    ep: inet::MagicEndpoint,
+    ep: inet::Endpoint,
 }
 
 const ALPN: &[u8] = b"iroh/automerge/1";
@@ -22,7 +22,7 @@ const DEFAULT_PORT: u16 = 8888;
 
 impl Peer {
     async fn new() -> Result<Self> {
-        let ep = inet::MagicEndpoint::builder()
+        let ep = inet::Endpoint::builder()
             .alpns(vec![ALPN.to_vec()])
             .bind(DEFAULT_PORT)
             .await?;
@@ -48,7 +48,7 @@ impl Peer {
 
     #[allow(unused)]
     async fn load(data: &[u8]) -> Result<Self> {
-        let ep = inet::MagicEndpoint::builder()
+        let ep = inet::Endpoint::builder()
             .alpns(vec![ALPN.to_vec()])
             .bind(DEFAULT_PORT)
             .await?;
