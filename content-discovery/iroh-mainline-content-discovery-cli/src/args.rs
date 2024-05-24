@@ -95,9 +95,9 @@ pub struct AnnounceArgs {
     #[clap(long)]
     pub udp_port: Option<u16>,
 
-    /// the port to use for announcing via magicsock
+    /// the port to use for announcing via iroh
     #[clap(long)]
-    pub magic_port: Option<u16>,
+    pub iroh_port: Option<u16>,
 
     /// the port to use for announcing via quic
     #[clap(long)]

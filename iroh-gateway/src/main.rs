@@ -27,7 +27,7 @@ use iroh::{
         store::bao_tree::{io::fsm::BaoContentItem, ChunkNum},
         BlobFormat, Hash,
     },
-    net::{discovery::dns::DnsDiscovery, MagicEndpoint, NodeAddr},
+    net::{discovery::dns::DnsDiscovery, Endpoint, NodeAddr},
 };
 use lru::LruCache;
 use mime::Mime;
@@ -92,7 +92,7 @@ type MimeCache = LruCache<(Hash, Option<String>), (u64, Mime)>;
 #[derive(derive_more::Debug)]
 struct Inner {
     /// Endpoint to connect to nodes
-    endpoint: MagicEndpoint,
+    endpoint: Endpoint,
     /// Default node to connect to when not specified in the url
     default_node: Option<NodeAddr>,
     /// Mime classifier
@@ -511,10 +511,10 @@ async fn forward_range(
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     let args = args::Args::parse();
-    let magic_port = args.magic_port.unwrap_or_default();
-    let endpoint = MagicEndpoint::builder()
+    let iroh_port = args.iroh_port.unwrap_or_default();
+    let endpoint = Endpoint::builder()
         .discovery(Box::new(DnsDiscovery::n0_dns()))
-        .bind(magic_port)
+        .bind(iroh_port)
         .await?;
     let default_node = args
         .default_node

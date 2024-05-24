@@ -21,7 +21,7 @@ flume = "0.11.0"
 futures-lite = "2.3"
 hex = "0.4.3"
 indicatif = "0.17.7"
-iroh = "0.16"
+iroh = "0.17"
 iroh-io = { version = "0.6.0", features = ["x-http"] }
 num_cpus = "1.16.0"
 rand = "0.8.5"

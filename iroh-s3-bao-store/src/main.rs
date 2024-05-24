@@ -8,7 +8,7 @@ use iroh::blobs::{
     provider::{self, handle_connection, EventSender},
     BlobFormat,
 };
-use iroh::net::{key::SecretKey, MagicEndpoint, NodeAddr};
+use iroh::net::{key::SecretKey, Endpoint, NodeAddr};
 use iroh_io::{AsyncSliceReaderExt, HttpAdapter};
 use iroh_s3_bao_store::S3Store;
 use serde::Deserialize;
@@ -26,7 +26,7 @@ use url::Url;
 /// For all subcommands, you can specify a secret key using the IROH_SECRET
 /// environment variable. If you don't, a random one will be generated.
 ///
-/// You can also specify a port for the magicsocket. If you don't, a random one
+/// You can also specify a port for the iroh socket. If you don't, a random one
 /// will be chosen.
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -80,12 +80,12 @@ pub enum Commands {
 
 #[derive(Parser, Debug)]
 pub struct CommonArgs {
-    /// The port for the magic socket to listen on.
+    /// The port for the iroh socket to listen on.
     ///
     /// Defauls to a random free port, but it can be useful to specify a fixed
     /// port, e.g. to configure a firewall rule.
     #[clap(long, default_value_t = 0)]
-    pub magic_port: u16,
+    pub iroh_port: u16,
 
     #[clap(long, default_value_t = Format::Hex)]
     pub format: Format,
@@ -217,15 +217,15 @@ impl EventSender for ClientStatus {
 
 async fn serve_db(
     db: S3Store,
-    magic_port: u16,
+    iroh_port: u16,
     on_addr: impl FnOnce(NodeAddr) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     let secret_key = get_or_create_secret(true)?;
-    // create a magicsocket endpoint
-    let endpoint_fut = MagicEndpoint::builder()
+    // create an iroh endpoint
+    let endpoint_fut = Endpoint::builder()
         .alpns(vec![iroh::blobs::protocol::ALPN.to_vec()])
         .secret_key(secret_key)
-        .bind(magic_port);
+        .bind(iroh_port);
     // wait for the endpoint to be ready
     let endpoint = endpoint_fut.await?;
     // wait for the endpoint to figure out its address before making a ticket
@@ -277,7 +277,7 @@ async fn serve_s3(args: ServeS3Args) -> anyhow::Result<()> {
         last_hash = Some(db.import_mem(blob).await?);
     }
 
-    serve_db(db, args.common.magic_port, |addr| {
+    serve_db(db, args.common.iroh_port, |addr| {
         if let Some(hash) = last_hash {
             let ticket = BlobTicket::new(addr.clone(), hash, BlobFormat::HashSeq)?;
             println!("collection: {}", ticket);
@@ -307,7 +307,7 @@ async fn serve_urls(args: ImportS3Args) -> anyhow::Result<()> {
         last_hash = Some(db.import_mem(blob).await?);
     }
 
-    serve_db(db, args.common.magic_port, |addr| {
+    serve_db(db, args.common.iroh_port, |addr| {
         for (name, hash) in &hashes {
             let ticket = BlobTicket::new(addr.clone(), *hash, BlobFormat::Raw)?;
             println!("{} {}", name, ticket);

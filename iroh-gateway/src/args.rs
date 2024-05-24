@@ -32,9 +32,9 @@ pub struct Args {
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
 
-    /// Magic port for the node, random if not specified.
+    /// Iroh port for the node, random if not specified.
     #[clap(long)]
-    pub magic_port: Option<u16>,
+    pub iroh_port: Option<u16>,
 
     /// Certificate mode, default is none.
     #[clap(long, default_value = "none")]

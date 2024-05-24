@@ -20,7 +20,7 @@ use iroh_mainline_tracker::{
     options::Options,
     tracker::Tracker,
 };
-use iroh_net::{magic_endpoint::get_remote_node_id, MagicEndpoint, NodeId};
+use iroh_net::{endpoint::get_remote_node_id, Endpoint, NodeId};
 use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
 use tokio::io::AsyncWriteExt;
 
@@ -48,7 +48,7 @@ macro_rules! log {
 }
 
 /// Wait until the endpoint has figured out it's own DERP region.
-async fn await_derp_region(endpoint: &MagicEndpoint) -> anyhow::Result<()> {
+async fn await_relay_region(endpoint: &Endpoint) -> anyhow::Result<()> {
     let t0 = Instant::now();
     loop {
         let addr = endpoint.my_addr().await?;
@@ -67,7 +67,7 @@ async fn create_endpoint(
     key: iroh_net::key::SecretKey,
     port: u16,
     publish: bool,
-) -> anyhow::Result<MagicEndpoint> {
+) -> anyhow::Result<Endpoint> {
     let mainline_discovery = if publish {
         PkarrNodeDiscovery::builder()
             .secret_key(key.clone())
@@ -75,7 +75,7 @@ async fn create_endpoint(
     } else {
         PkarrNodeDiscovery::default()
     };
-    iroh_net::MagicEndpoint::builder()
+    iroh_net::Endpoint::builder()
         .secret_key(key)
         .discovery(Box::new(mainline_discovery))
         .alpns(vec![ALPN.to_vec()])
@@ -121,8 +121,8 @@ async fn server(args: Args) -> anyhow::Result<()> {
     if let Some(quinn_port) = args.quinn_port {
         options.quinn_port = quinn_port;
     }
-    if let Some(magic_port) = args.magic_port {
-        options.magic_port = magic_port;
+    if let Some(iroh_port) = args.iroh_port {
+        options.iroh_port = iroh_port;
     }
     if let Some(udp_port) = args.udp_port {
         options.udp_port = udp_port;
@@ -138,10 +138,10 @@ async fn server(args: Args) -> anyhow::Result<()> {
     let quinn_endpoint = iroh_quinn::Endpoint::server(server_config, quinn_bind_addr)?;
     // set the quinn port to the actual port we bound to so the DHT will announce it correctly
     options.quinn_port = quinn_endpoint.local_addr()?.port();
-    let magic_endpoint = create_endpoint(key.clone(), options.magic_port, true).await?;
-    let db = Tracker::new(options, magic_endpoint.clone())?;
-    await_derp_region(&magic_endpoint).await?;
-    let addr = magic_endpoint.my_addr().await?;
+    let iroh_endpoint = create_endpoint(key.clone(), options.iroh_port, true).await?;
+    let db = Tracker::new(options, iroh_endpoint.clone())?;
+    await_relay_region(&iroh_endpoint).await?;
+    let addr = iroh_endpoint.my_addr().await?;
     log!("listening on {:?}", addr);
     log!("tracker addr: {}\n", addr.node_id);
     log!("usage:");
@@ -153,7 +153,7 @@ async fn server(args: Args) -> anyhow::Result<()> {
     let db2 = db.clone();
     let db3 = db.clone();
     let db4 = db.clone();
-    let magic_accept_task = tokio::spawn(db.magic_accept_loop(magic_endpoint));
+    let iroh_accept_task = tokio::spawn(db.iroh_accept_loop(iroh_endpoint));
     let quinn_accept_task = tokio::spawn(db2.quinn_accept_loop(quinn_endpoint));
     let udp_accept_task = tokio::spawn(db4.udp_accept_loop(udp_socket));
     let gc_task = tokio::spawn(db3.gc_loop());
@@ -161,8 +161,8 @@ async fn server(args: Args) -> anyhow::Result<()> {
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("shutting down");
         }
-        res = magic_accept_task => {
-            tracing::error!("magic accept task exited");
+        res = iroh_accept_task => {
+            tracing::error!("iroh accept task exited");
             res??;
         }
         res = quinn_accept_task => {
