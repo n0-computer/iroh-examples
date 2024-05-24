@@ -12,7 +12,7 @@ use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
 use iroh_net::key::SecretKey;
-use iroh_net::{AddrInfo, MagicEndpoint, NodeAddr};
+use iroh_net::{AddrInfo, Endpoint, NodeAddr};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -23,9 +23,9 @@ pub struct Args {
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
 
-    /// The port to use for the magicsocket. Random by default.
+    /// The port to use for the iroh socket. Random by default.
     #[clap(long, default_value_t = 0)]
-    pub magic_port: u16,
+    pub iroh_port: u16,
 }
 
 /// Get the secret key or generate a new one.
@@ -44,9 +44,9 @@ fn get_or_create_secret() -> anyhow::Result<SecretKey> {
 
 mod quinn_endpoint;
 
-/// global magic endpoint
-static ENDPOINT: OnceLock<MagicEndpoint> = OnceLock::new();
-fn endpoint() -> &'static MagicEndpoint {
+/// global iroh endpoint
+static ENDPOINT: OnceLock<Endpoint> = OnceLock::new();
+fn endpoint() -> &'static Endpoint {
     ENDPOINT.get().unwrap()
 }
 
@@ -55,12 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
     let args = Args::parse();
     let secret_key = get_or_create_secret()?;
-    // Create a magic endpoint and set it as a global
+    // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let endpoint = MagicEndpoint::builder()
+    let endpoint = Endpoint::builder()
         .secret_key(secret_key)
-        .bind(args.magic_port)
+        .bind(args.iroh_port)
         .await?;
     ENDPOINT.set(endpoint).expect("endpoint already set");
 

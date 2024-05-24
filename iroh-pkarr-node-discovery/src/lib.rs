@@ -18,7 +18,7 @@ use iroh_net::{
     dns::node_info::NodeInfo,
     key::SecretKey,
     util::AbortingJoinHandle,
-    AddrInfo, Endpoint as Endpoint, NodeId,
+    AddrInfo, Endpoint, NodeId,
 };
 use pkarr::{url::Url, PkarrClient, PublicKey, SignedPacket};
 
