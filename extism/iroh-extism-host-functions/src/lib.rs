@@ -43,7 +43,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     }
     let client = ctx.iroh.client();
     let buf = ctx.rt.block_on(async move {
-        let mut stream = client.blobs.download_with_opts(hash, iroh::client::blobs::DownloadOptions {
+        let mut stream = client.blobs().download_with_opts(hash, iroh::client::blobs::DownloadOptions {
             format,
             nodes: vec![node_addr],
             mode: iroh::client::blobs::DownloadMode::Queued,
@@ -51,7 +51,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
         }).await?;
         while stream.next().await.is_some() {}
 
-        let buffer = client.blobs.read(hash).await?.read_to_bytes().await?;
+        let buffer = client.blobs().read(hash).await?.read_to_bytes().await?;
         anyhow::Ok(buffer.to_vec())
     })?;
 
