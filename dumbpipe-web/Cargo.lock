@@ -755,9 +755,9 @@ dependencies = [
 
 [[package]]
 name = "dumbpipe"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f4683603b7e6ec66fb4974050a47589240bf9593d9078e08146185329ea67fe"
+checksum = "cd30823594308fb959759c07df00996342bd3260ff4c4f1b3ef919cfcbdbd260"
 dependencies = [
  "anyhow",
  "clap",
@@ -1622,9 +1622,9 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "iroh-base"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1be0b442ed44d20905cf77c673169906c883e05c829e3fb303b131e925139fc"
+checksum = "c13afc5b57e7204f74df49d1ce73c67d0e9d2a1b588a2985247af52c047ca964"
 dependencies = [
  "aead",
  "anyhow",
@@ -1663,9 +1663,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd54b9cf342b2618efc8d3ff6cdcd083fa5a2cf6cc78bb473bd32e228eabb40e"
+checksum = "e767734a4d6b92e0ad0c74afd38240b82a37bdfeb0bb3141245c2a707efa4097"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -1684,9 +1684,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a744000e6c5704479eeb4751eb23b9b8e7e56a0fc484beb8831694fc93e378f"
+checksum = "76677befbb2d205510c9c18f5509157cb8d84cb345420e595f6612c9a1a6f88c"
 dependencies = [
  "aead",
  "anyhow",
@@ -1955,9 +1955,9 @@ dependencies = [
 
 [[package]]
 name = "netdev"
-version = "0.25.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb353f5a5a852d5cc779c1c80bec0bd14a696ef832f3a761cb10091802c37109"
+checksum = "e12d9f49b8d4b9d7f97525ce65f6527079e549e8b2f010f15b921764e73d4baa"
 dependencies = [
  "dlopen2",
  "libc",
