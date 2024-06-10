@@ -6,3 +6,18 @@ target/
 
 /target
 Cargo.lock
+
+## iOS
+## User settings
+xcuserdata/
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xccheckout
+
+# Swift Package Manager
+/.build
+
+# CocoaPods
+Pods/
