@@ -21,7 +21,7 @@ humantime = "2.1.0"
 iroh-net = { workspace = true }
 iroh-blobs = { workspace = true }
 iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", default-features = false }
-mainline = { version = "1.0.0", features = ["async"] }
+mainline = { version = "2.0.0", features = ["async"] }
 pkarr = { version = "1.0.1", features = ["async"] }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"] }
 iroh-quinn = "0.10.5"

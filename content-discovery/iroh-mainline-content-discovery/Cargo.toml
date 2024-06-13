@@ -21,17 +21,16 @@ hex = "0.4.3"
 # Optional features for the client functionality
 tracing = { version = "0.1", optional = true }
 iroh-quinn = { version = "0.10.5", optional = true }
-iroh-pkarr-node-discovery = { path = "../../iroh-pkarr-node-discovery", optional = true }
-mainline = { version = "1.0.0", optional = true }
+mainline = { version = "2.0.0", optional = true, features = ["async"] }
 anyhow = { version = "1", features = ["backtrace"], optional = true }
 postcard = { version = "1", default-features = false, features = ["alloc", "use-std"], optional = true }
 futures = { version = "0.3.25", optional = true }
-rcgen = { version = "0.12.0", optional = true }
-rustls = { version = "0.21", optional = true }
+rcgen = { version = "0.13.1", optional = true }
+rustls = { version = "0.23", optional = true }
 genawaiter = { version = "0.99.1", features = ["futures03"], optional = true }
 tokio = { version = "1.36.0", optional = true }
 flume = "0.11.0"
 
 [features]
-client = ["iroh-pkarr-node-discovery", "mainline", "iroh-quinn", "tracing", "anyhow", "rcgen", "genawaiter", "rustls", "futures", "postcard", "tokio"]
+client = ["mainline", "iroh-quinn", "tracing", "anyhow", "rcgen", "genawaiter", "rustls", "futures", "postcard", "tokio"]
 default = ["client"]

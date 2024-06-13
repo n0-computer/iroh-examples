@@ -12,7 +12,7 @@ iroh-net = { workspace = true }
 iroh-blobs = { workspace = true }
 iroh-base = { workspace = true }
 iroh-mainline-content-discovery = { path = "../iroh-mainline-content-discovery" }
-mainline = { version = "1.0.0" }
+mainline = { version = "2.0.0" }
 anyhow = { version = "1", features = ["backtrace"] }
 futures = { version = "0.3.25" }
 clap = { version = "4", features = ["derive"] }
