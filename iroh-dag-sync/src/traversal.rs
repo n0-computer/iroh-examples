@@ -1,15 +1,34 @@
 use anyhow::Context;
-use futures_lite::{Future, Stream};
-use genawaiter::rc::{Co, Gen};
+use futures_lite::Future;
 use redb::ReadableTable;
 use libipld::{
-    cbor::DagCborCodec, codec::Codec, raw::RawCodec, Cid
+    cbor::DagCborCodec, codec::Codec, Cid
 };
 
 use crate::tables::ReadableTables;
 
 pub trait Traversal {
     fn next(&mut self) -> impl Future<Output = anyhow::Result<Option<Cid>>>;
+}
+
+pub struct Single<T> {
+    cid: Option<Cid>,
+    pub tables: T,
+}
+
+impl<T> Single<T> {
+    pub fn new(tables: T, cid: Cid) -> Self {
+        Self {
+            cid: Some(cid),
+            tables,
+        }
+    }
+}
+
+impl<T> Traversal for Single<T> {
+    async fn next(&mut self) -> anyhow::Result<Option<Cid>> {
+        Ok(self.cid.take())
+    }
 }
 
 pub struct FullTraversal<T> {

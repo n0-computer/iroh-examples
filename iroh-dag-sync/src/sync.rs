@@ -4,6 +4,7 @@ use futures_lite::StreamExt;
 use iroh_blobs::{get::request, protocol::{RangeSpec}, provider::send_blob, store::{fs::Store, Store as _}, BlobFormat, Hash, IROH_BLOCK_SIZE};
 use iroh_io::{TokioStreamReader, TokioStreamWriter};
 use iroh_net::endpoint::{Connecting, RecvStream, SendStream};
+use iroh_quinn::ReadExactError;
 use libipld::{multihash::{MultihashDigest}, Cid, Multihash};
 use redb::ReadableTable;
 use tokio::io::AsyncReadExt;
@@ -36,9 +37,7 @@ pub async fn handle_sync_request(send: SendStream, request: SyncRequest, tables:
                 let hash = tables.hash_to_blake3().get((cid.hash().code(), cid.hash().digest()))?
                     .context("corresponding blake3 hash not found")?
                     .value();
-                let header = (MiniCid::from(cid), hash);
-                let header = to_framed::<Header>(&header)?;
-                send.0.write_all(&header).await?;
+                send.0.write_all(hash.as_bytes().as_slice()).await?;
                 send_blob::<iroh_blobs::store::fs::Store, _>(&blobs, hash, &RangeSpec::all(), &mut send).await?;
             }
             send.0.finish().await?;
@@ -52,15 +51,22 @@ type Header = (MiniCid, Hash);
 pub async fn handle_sync_response<'a>(root: Cid, recv: RecvStream, tables: &mut Tables<'a>, store: &Store) -> anyhow::Result<()> {
     let mut reader = TokioStreamReader(recv);
     let mut traversal = FullTraversal::new(tables, root);
-    while let Some((_cid, hash)) = read_framed::<Header>(&mut reader.0).await? {
+    let mut buffer = [0u8; 32];
+    loop {
+        match reader.0.read_exact(&mut buffer).await {
+            Ok(_) => {}
+            Err(ReadExactError::FinishedEarly) => break,
+            Err(ReadExactError::ReadError(e)) => return Err(e.into()),
+        }
         let Some(cid) = traversal.next().await? else {
             break;
         };
+        let blake3_hash = Hash::from(buffer);
         let cid = Cid::try_from(cid)?;
         let size = reader.0.read_u64_le().await?;
         let outboard = EmptyOutboard {
             tree: BaoTree::new(size, IROH_BLOCK_SIZE),
-            root: hash.into(),
+            root: blake3_hash.into(),
         };
         let mut buffer = Vec::new();
         bao_tree::io::fsm::decode_ranges(&mut reader, ChunkRanges::all(), &mut buffer, outboard).await?;
@@ -69,9 +75,8 @@ pub async fn handle_sync_response<'a>(root: Cid, recv: RecvStream, tables: &mut 
         if &actual != cid.hash() {
             anyhow::bail!("hash mismatch");
         }
-        println!("{:?} {} {}", cid, hash, size);
+        println!("got data {} {}", cid, buffer.len());
         insert_data_and_links(traversal.tables, store, cid, buffer).await?;
-        // store.import_bytes(buffer.into(), BlobFormat::Raw).await?;
     }
     Ok(())
 }

@@ -21,3 +21,4 @@ iroh-io = "0.6.0"
 tokio-util = { version = "0.7.11", features = ["rt"] }
 bao-tree = "0.13.0"
 genawaiter = "0.99.1"
+iroh-quinn = "0.10.5"
