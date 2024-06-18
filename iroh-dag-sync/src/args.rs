@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use iroh_net::NodeId;
 
 #[derive(Debug, Parser)]
 pub struct Args {
@@ -12,6 +13,8 @@ pub struct Args {
 pub enum SubCommand {
     Import(ImportArgs),
     Traverse(TraverseArgs),
+    Node(NodeArgs),
+    Sync(SyncArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -30,8 +33,24 @@ pub struct TraverseArgs {
 }
 
 #[derive(Debug, Parser)]
-struct NetArgs {
+pub struct NodeArgs {
+    #[clap(flatten)]
+    pub net: NetArgs,
+}
+
+#[derive(Debug, Parser)]
+pub struct NetArgs {
     /// The port to listen on.
-    #[clap(long)]
+    #[clap(long, help = "The port to listen on")]
     pub iroh_port: Option<u16>,
+}
+
+#[derive(Debug, Parser)]
+pub struct SyncArgs {
+    #[clap(flatten)]
+    pub net: NetArgs,
+    #[clap(long, help = "The root cid to sync")]
+    pub cid: String,
+    #[clap(long, help = "The node to sync from")]
+    pub from: NodeId,
 }

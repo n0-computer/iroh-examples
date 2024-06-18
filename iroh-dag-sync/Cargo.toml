@@ -17,3 +17,7 @@ tokio = { version = "1.38.0", features = ["full"] }
 postcard = "1.0.8"
 serde = "1.0.203"
 futures-lite = "2.3.0"
+iroh-io = "0.6.0"
+tokio-util = { version = "0.7.11", features = ["rt"] }
+bao-tree = "0.13.0"
+genawaiter = "0.99.1"
