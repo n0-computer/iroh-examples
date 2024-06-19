@@ -1,8 +1,11 @@
 use std::str::FromStr;
 
-use iroh_blobs::{store::{fs::Store, Store as _}, BlobFormat};
+use iroh_blobs::{
+    store::{fs::Store, Store as _},
+    BlobFormat,
+};
 use iroh_net::{key::SecretKey, Endpoint};
-use libipld::{cbor::DagCborCodec, Cid, codec::Codec};
+use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
@@ -43,7 +46,9 @@ pub fn to_framed<S: Serialize>(s: &S) -> anyhow::Result<Vec<u8>> {
 /// Deserialize a serializable object with a varint length prefix.
 ///
 /// Note that this relies on that the minimum size of the content is more than 8 bytes.
-pub async fn read_framed<S: DeserializeOwned>(mut reader: impl AsyncRead + Unpin) -> anyhow::Result<Option<S>> {
+pub async fn read_framed<S: DeserializeOwned>(
+    mut reader: impl AsyncRead + Unpin,
+) -> anyhow::Result<Option<S>> {
     let mut header = [0u8; 9];
     match reader.read_exact(&mut header).await {
         Ok(_) => {}
@@ -58,7 +63,12 @@ pub async fn read_framed<S: DeserializeOwned>(mut reader: impl AsyncRead + Unpin
     Ok(Some(data))
 }
 
-pub async fn insert_data_and_links<'tx>(tables: &mut Tables<'tx>, store: &Store, cid: Cid, data: Vec<u8>) -> anyhow::Result<()> {
+pub async fn insert_data_and_links<'tx>(
+    tables: &mut Tables<'tx>,
+    store: &Store,
+    cid: Cid,
+    data: Vec<u8>,
+) -> anyhow::Result<()> {
     let block = libipld::block::Block::<libipld::DefaultParams>::new(cid, data)?;
     let mut links = Vec::new();
     block.references(&mut links)?;

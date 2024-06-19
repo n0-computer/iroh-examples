@@ -1,19 +1,34 @@
 use anyhow::Context;
 use bao_tree::{io::outboard::EmptyOutboard, BaoTree, ChunkRanges};
 use futures_lite::StreamExt;
-use iroh_blobs::{get::request, protocol::{RangeSpec}, provider::send_blob, store::{fs::Store, Store as _}, BlobFormat, Hash, IROH_BLOCK_SIZE};
+use iroh_blobs::{
+    get::request,
+    protocol::RangeSpec,
+    provider::send_blob,
+    store::{fs::Store, Store as _},
+    BlobFormat, Hash, IROH_BLOCK_SIZE,
+};
 use iroh_io::{TokioStreamReader, TokioStreamWriter};
 use iroh_net::endpoint::{Connecting, RecvStream, SendStream};
 use iroh_quinn::ReadExactError;
-use libipld::{multihash::{MultihashDigest}, Cid, Multihash};
+use libipld::{multihash::MultihashDigest, Cid, Multihash};
 use redb::ReadableTable;
 use tokio::io::AsyncReadExt;
 
-use crate::{protocol::{MiniCid, Request, SyncRequest}, tables::{ReadableTables, Tables}, traversal::{FullTraversal, Traversal}, util::{insert_data_and_links, read_framed, to_framed}};
- 
+use crate::{
+    protocol::{MiniCid, Request, SyncRequest},
+    tables::{ReadableTables, Tables},
+    traversal::{FullTraversal, Traversal},
+    util::{insert_data_and_links, read_framed, to_framed},
+};
+
 const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 16;
 
-pub async fn handle_request(connecting: Connecting, tables: &impl ReadableTables, blobs: &Store) -> anyhow::Result<()> {
+pub async fn handle_request(
+    connecting: Connecting,
+    tables: &impl ReadableTables,
+    blobs: &Store,
+) -> anyhow::Result<()> {
     let connection = connecting.await?;
     let (send, mut recv) = connection.accept_bi().await?;
     let request = recv.read_to_end(MAX_REQUEST_SIZE).await?;
@@ -26,7 +41,12 @@ pub async fn handle_request(connecting: Connecting, tables: &impl ReadableTables
     Ok(())
 }
 
-pub async fn handle_sync_request(send: SendStream, request: SyncRequest, tables: &impl ReadableTables, blobs: &Store) -> anyhow::Result<()> {
+pub async fn handle_sync_request(
+    send: SendStream,
+    request: SyncRequest,
+    tables: &impl ReadableTables,
+    blobs: &Store,
+) -> anyhow::Result<()> {
     let root_hash: Multihash = Multihash::wrap(request.root.hash_format, &request.root.hash)?;
     let root = Cid::new_v1(request.root.data_format, root_hash);
     let mut send = TokioStreamWriter(send);
@@ -34,11 +54,19 @@ pub async fn handle_sync_request(send: SendStream, request: SyncRequest, tables:
         _ => {
             let mut traversal = FullTraversal::new(tables, root);
             while let Some(cid) = traversal.next().await? {
-                let hash = tables.hash_to_blake3().get((cid.hash().code(), cid.hash().digest()))?
+                let hash = tables
+                    .hash_to_blake3()
+                    .get((cid.hash().code(), cid.hash().digest()))?
                     .context("corresponding blake3 hash not found")?
                     .value();
                 send.0.write_all(hash.as_bytes().as_slice()).await?;
-                send_blob::<iroh_blobs::store::fs::Store, _>(&blobs, hash, &RangeSpec::all(), &mut send).await?;
+                send_blob::<iroh_blobs::store::fs::Store, _>(
+                    &blobs,
+                    hash,
+                    &RangeSpec::all(),
+                    &mut send,
+                )
+                .await?;
             }
             send.0.finish().await?;
         }
@@ -48,7 +76,12 @@ pub async fn handle_sync_request(send: SendStream, request: SyncRequest, tables:
 
 type Header = (MiniCid, Hash);
 
-pub async fn handle_sync_response<'a>(root: Cid, recv: RecvStream, tables: &mut Tables<'a>, store: &Store) -> anyhow::Result<()> {
+pub async fn handle_sync_response<'a>(
+    root: Cid,
+    recv: RecvStream,
+    tables: &mut Tables<'a>,
+    store: &Store,
+) -> anyhow::Result<()> {
     let mut reader = TokioStreamReader(recv);
     let mut traversal = FullTraversal::new(tables, root);
     let mut buffer = [0u8; 32];
@@ -69,7 +102,8 @@ pub async fn handle_sync_response<'a>(root: Cid, recv: RecvStream, tables: &mut 
             root: blake3_hash.into(),
         };
         let mut buffer = Vec::new();
-        bao_tree::io::fsm::decode_ranges(&mut reader, ChunkRanges::all(), &mut buffer, outboard).await?;
+        bao_tree::io::fsm::decode_ranges(&mut reader, ChunkRanges::all(), &mut buffer, outboard)
+            .await?;
         let hasher = libipld::multihash::Code::try_from(cid.hash().code())?;
         let actual = hasher.digest(&buffer);
         if &actual != cid.hash() {

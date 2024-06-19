@@ -32,7 +32,10 @@ impl TryFrom<MiniCid> for Cid {
     type Error = anyhow::Error;
 
     fn try_from(value: MiniCid) -> Result<Self, Self::Error> {
-        Ok(Cid::new_v1(value.data_format, Multihash::wrap(value.hash_format, &value.hash)?))
+        Ok(Cid::new_v1(
+            value.data_format,
+            Multihash::wrap(value.hash_format, &value.hash)?,
+        ))
     }
 }
 

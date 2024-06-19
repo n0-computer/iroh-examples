@@ -26,10 +26,10 @@ use util::wait_for_relay;
 
 mod args;
 mod protocol;
-mod tables;
-mod util;
 mod sync;
+mod tables;
 mod traversal;
+mod util;
 
 use args::Args;
 
