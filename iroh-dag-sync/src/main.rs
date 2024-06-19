@@ -1,27 +1,21 @@
-use std::pin::Pin;
 use std::str::FromStr;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
+use anyhow::Context;
 use clap::Parser;
-use futures_lite::{future, Future, StreamExt};
-use iroh_blobs::Hash;
+use futures_lite::StreamExt;
+use iroh_blobs::store::{Map, MapEntry};
 use iroh_blobs::{store::Store, BlobFormat};
 use iroh_car::CarReader;
 use iroh_net::discovery::{dns::DnsDiscovery, pkarr_publish::PkarrPublisher, ConcurrentDiscovery};
 use iroh_net::ticket::NodeTicket;
 use iroh_net::NodeAddr;
-use libipld::{
-    block,
-    cbor::{DagCbor, DagCborCodec},
-    codec::{Codec, Encode},
-    Cid, DefaultParams,
-};
-use redb::TableDefinition;
-use sync::{handle_request, handle_sync_request, handle_sync_response};
-use tables::{ReadOnlyTables, Tables};
+use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
+use libipld::{Ipld, IpldCodec};
+use sync::{handle_request, handle_sync_response};
+use tables::{ReadOnlyTables, ReadableTables, Tables};
 use tokio_util::task::LocalPoolHandle;
-use traversal::{FullTraversal, Traversal};
+use traversal::{get_traversal, Traversal};
 use util::wait_for_relay;
 
 mod args;
@@ -59,8 +53,6 @@ fn init_mapping_db(db: &redb::Database) -> anyhow::Result<()> {
     Ok(())
 }
 
-type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
@@ -78,12 +70,14 @@ async fn main() -> anyhow::Result<()> {
             let reader = CarReader::new(file).await?;
             let stream = reader.stream().enumerate();
             tokio::pin!(stream);
+            let mut first = None;
             while let Some((i, block)) = stream.next().await {
                 let (cid, data) = block?;
-                let block = block::Block::<DefaultParams>::new(cid, data)?;
+                if first.is_none() {
+                    first = Some(cid);
+                }
                 let mut links = Vec::new();
-                block.references(&mut links)?;
-                let (cid, data) = block.into_inner();
+                IpldCodec::try_from(cid.codec())?.references::<Ipld, _>(&data, &mut links)?;
                 let tag = store.import_bytes(data.into(), BlobFormat::Raw).await?;
                 let hash = tag.hash();
                 if !links.is_empty() {
@@ -100,27 +94,17 @@ async fn main() -> anyhow::Result<()> {
             drop(tables);
             tx.commit()?;
             store.sync().await?;
+            if let Some(first) = first {
+                println!("root: {}", first);
+            }
         }
         args::SubCommand::Traverse(args) => {
-            let cid = Cid::from_str(&args.cid)?;
+            let cid = args.cid;
             let tx = mapping_store.begin_read()?;
             let tables = tables::ReadOnlyTables::new(&tx)?;
-            match &args.method {
-                _ => {
-                    let mut traversal = FullTraversal::new(&tables, cid);
-                    let mut first = None;
-                    while let Some(cid) = traversal.next().await? {
-                        if first.is_none() {
-                            first = Some(cid);
-                        }
-                        println!("{}", cid);
-                    }
-
-                    if let Some(first) = first {
-                        println!("root: {}", first);
-                    }
-                }
-            }
+            let method = args.method.unwrap_or("full".to_owned());
+            let traversal = get_traversal(cid, method.as_str(), &tables)?;
+            print_traversal(traversal, &store).await?;
         }
         args::SubCommand::Node(args) => {
             let endpoint = create_endpoint(args.net.iroh_port).await?;
@@ -150,6 +134,8 @@ async fn main() -> anyhow::Result<()> {
         args::SubCommand::Sync(args) => {
             let endpoint = create_endpoint(args.net.iroh_port).await?;
             wait_for_relay(&endpoint).await?;
+            let traversal = args.traversal.unwrap_or("full".to_owned());
+            let inline = args.inline.unwrap_or("always".to_owned());
             let tx = mapping_store.begin_write()?;
             let mut tables = Tables::new(&tx)?;
             let store = store.clone();
@@ -159,18 +145,48 @@ async fn main() -> anyhow::Result<()> {
             let cid = Cid::from_str(&args.cid)?;
             let request = protocol::Request::Sync(protocol::SyncRequest {
                 root: protocol::MiniCid::from(cid),
-                method: "full".to_string(),
-                args: Vec::new(),
+                traversal: traversal.clone(),
+                inline,
             });
             let request = postcard::to_allocvec(&request)?;
             let (mut send, recv) = connection.open_bi().await?;
             send.write_all(&request).await?;
             send.finish().await?;
-            handle_sync_response(cid, recv, &mut tables, &store).await?;
+            handle_sync_response(cid, recv, &mut tables, &store, &traversal).await?;
             drop(tables);
             tx.commit()?;
         }
     }
 
+    Ok(())
+}
+
+async fn print_traversal<T>(
+    traversal: T,
+    store: &iroh_blobs::store::fs::Store,
+) -> anyhow::Result<()>
+where
+    T: Traversal,
+    T::Db: ReadableTables,
+{
+    let mut traversal = traversal;
+    let mut first = None;
+    let mut n = 0;
+    while let Some(cid) = traversal.next().await? {
+        if first.is_none() {
+            first = Some(cid);
+        }
+        let blake3_hash = traversal
+            .db_mut()
+            .blake3_hash(cid.hash())?
+            .context("blake3 hash not found")?;
+        let data = store.get(&blake3_hash).await?.context("data not found")?;
+        println!("{} {:x} {} {}", cid, cid.codec(), data.size().value(), n);
+        n += 1;
+    }
+
+    if let Some(first) = first {
+        println!("root: {}", first);
+    }
     Ok(())
 }

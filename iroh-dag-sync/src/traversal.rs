@@ -1,7 +1,7 @@
-use anyhow::Context;
+use std::pin::Pin;
+
 use futures_lite::Future;
-use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
-use redb::ReadableTable;
+use libipld::Cid;
 
 use crate::tables::ReadableTables;
 
@@ -16,7 +16,7 @@ pub trait Traversal {
 
     fn db_mut(&mut self) -> &mut Self::Db;
 
-    fn filter<F>(self, f: F) -> Filtered<Self, F>
+    fn filter<F: Fn(&Cid) -> bool>(self, f: F) -> Filtered<Self, F>
     where
         Self: Sized,
     {
@@ -24,6 +24,46 @@ pub trait Traversal {
             inner: self,
             filter: f,
         }
+    }
+
+    fn boxed<'a>(self) -> BoxedTraversal<'a, Self::Db>
+    where
+        Self: Sized + Unpin + 'a,
+    {
+        BoxedTraversal(Box::pin(BoxableTraversalImpl { inner: self }))
+    }
+}
+
+pub struct BoxedTraversal<'a, D>(Pin<Box<dyn BoxableTraversal<D> + Unpin + 'a>>);
+
+impl<'a, D> Traversal for BoxedTraversal<'a, D> {
+    type Db = D;
+
+    async fn next(&mut self) -> anyhow::Result<Option<Cid>> {
+        self.0.next().await
+    }
+
+    fn db_mut(&mut self) -> &mut D {
+        self.0.db_mut()
+    }
+}
+
+struct BoxableTraversalImpl<D, T: Traversal<Db = D>> {
+    inner: T,
+}
+
+trait BoxableTraversal<D> {
+    fn next(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<Cid>>> + '_>>;
+    fn db_mut(&mut self) -> &mut D;
+}
+
+impl<D, T: Traversal<Db = D>> BoxableTraversal<D> for BoxableTraversalImpl<D, T> {
+    fn next(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<Cid>>> + '_>> {
+        Box::pin(self.inner.next())
+    }
+
+    fn db_mut(&mut self) -> &mut D {
+        self.inner.db_mut()
     }
 }
 
@@ -49,18 +89,18 @@ impl<T: Traversal, F: Fn(&Cid) -> bool> Traversal for Filtered<T, F> {
     }
 }
 
-pub struct Single<T> {
+pub struct SingleTraversal<T> {
     cid: Option<Cid>,
     db: T,
 }
 
-impl<D> Single<D> {
+impl<D> SingleTraversal<D> {
     pub fn new(db: D, cid: Cid) -> Self {
         Self { cid: Some(cid), db }
     }
 }
 
-impl<D> Traversal for Single<D> {
+impl<D> Traversal for SingleTraversal<D> {
     type Db = D;
 
     async fn next(&mut self) -> anyhow::Result<Option<Cid>> {
@@ -103,15 +143,7 @@ impl<D: ReadableTables> Traversal for FullTraversal<D> {
                     // no need to traverse raw nodes
                     continue;
                 }
-                let hash = self
-                    .db
-                    .hash_to_blake3()
-                    .get((cid.hash().code(), cid.hash().digest()))?
-                    .context("blake3 hash not found")?;
-                let links = self.db.data_to_links().get((cid.codec(), hash.value()))?;
-                if let Some(links) = links {
-                    let links = links.value();
-                    let links: Vec<Cid> = DagCborCodec.decode(&links)?;
+                if let Some(links) = self.db.links(&cid)? {
                     for link in links.into_iter().rev() {
                         self.stack.push(link);
                     }
@@ -134,4 +166,19 @@ impl<D: ReadableTables> Traversal for FullTraversal<D> {
     fn db_mut(&mut self) -> &mut D {
         &mut self.db
     }
+}
+
+pub fn get_traversal<'a, D: ReadableTables + Unpin + 'a>(
+    cid: Cid,
+    traversal: &str,
+    db: D,
+) -> anyhow::Result<BoxedTraversal<'a, D>> {
+    Ok(match traversal {
+        "full" => FullTraversal::new(db, cid).boxed(),
+        "full_no_raw" => FullTraversal::new(db, cid)
+            .filter(|cid| cid.codec() != 0x55)
+            .boxed(),
+        "single" => SingleTraversal::new(db, cid).boxed(),
+        _ => anyhow::bail!("Unknown traversal method: {}", traversal),
+    })
 }

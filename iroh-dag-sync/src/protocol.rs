@@ -1,6 +1,7 @@
 use iroh_blobs::Hash;
 use libipld::{Cid, Multihash};
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncRead;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -50,15 +51,41 @@ pub struct SyncRequest {
     /// the root cid to sync
     pub root: MiniCid,
     /// walk method. must be one of the registered ones
-    pub method: String,
-    /// arguments to the walk method, postcard encoded
-    pub args: Vec<u8>,
+    pub traversal: String,
+    /// which data to send inline
+    pub inline: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SyncResponseHeader {
-    /// cid of the block
-    pub cid: MiniCid,
-    /// corresponding blake3 hash
-    pub blake3_hash: Hash,
+pub enum SyncResponseHeader {
+    Hash(Hash),
+    Data(Hash),
+}
+
+impl SyncResponseHeader {
+    pub fn as_bytes(&self) -> [u8; 33] {
+        let mut slice = [0u8; 33];
+        let res = postcard::to_slice(self, &mut slice).unwrap();
+        assert!(res.len() == slice.len());
+        slice
+    }
+
+    pub async fn from_stream(mut stream: impl AsyncRead + Unpin) -> anyhow::Result<Option<Self>> {
+        use tokio::io::AsyncReadExt;
+        let mut buf = [0u8; 33];
+        match stream.read_exact(&mut buf).await {
+            Ok(_) => Ok(Some(postcard::from_bytes(&buf)?)),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum DataMode {
+    /// no data is included
+    None = 0,
+    /// data is included
+    Inline = 1,
 }
