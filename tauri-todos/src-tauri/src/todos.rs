@@ -1,10 +1,10 @@
-use std::str::FromStr;
 use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::{Stream, StreamExt};
-use iroh::client::{MemIroh as Iroh, MemDoc as Doc};
-use iroh::client::docs::{LiveEvent, ShareMode, Entry};
+use iroh::client::docs::{Entry, LiveEvent, ShareMode};
+use iroh::client::{MemDoc as Doc, MemIroh as Iroh};
 use iroh::docs::{AuthorId, DocTicket};
+use std::str::FromStr;
 // use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
 
@@ -61,13 +61,13 @@ pub struct Todos {
 
 impl Todos {
     pub async fn new(ticket: Option<String>, node: Iroh) -> anyhow::Result<Self> {
-        let author = node.authors.create().await?;
+        let author = node.authors().create().await?;
 
         let doc = match ticket {
-            None => node.docs.create().await?,
+            None => node.docs().create().await?,
             Some(ticket) => {
                 let ticket = DocTicket::from_str(&ticket)?;
-                node.docs.import(ticket).await?
+                node.docs().import(ticket).await?
             }
         };
 
@@ -172,7 +172,7 @@ impl Todos {
 
     async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
         let id = String::from_utf8(entry.key().to_owned()).context("invalid key")?;
-        match self.node.blobs.read_to_bytes(entry.content_hash()).await {
+        match self.node.blobs().read_to_bytes(entry.content_hash()).await {
             Ok(b) => Todo::from_bytes(b),
             Err(_) => Ok(Todo::missing_todo(id)),
         }
