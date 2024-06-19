@@ -182,3 +182,12 @@ pub fn get_traversal<'a, D: ReadableTables + Unpin + 'a>(
         _ => anyhow::bail!("Unknown traversal method: {}", traversal),
     })
 }
+
+pub fn get_inline(inline: &str) -> anyhow::Result<Box<dyn Fn(&Cid) -> bool>> {
+    Ok(match inline {
+        "always" => Box::new(|_| true),
+        "never" => Box::new(|_| false),
+        "no_raw" => Box::new(|cid| cid.codec() != 0x55),
+        _ => anyhow::bail!("Unknown inline method: {}", inline),
+    })
+}

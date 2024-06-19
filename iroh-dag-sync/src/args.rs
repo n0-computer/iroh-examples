@@ -13,7 +13,7 @@ pub struct Args {
 #[derive(Debug, Parser)]
 pub enum SubCommand {
     Import(ImportArgs),
-    Traverse(TraverseArgs),
+    Export(ExportArgs),
     Node(NodeArgs),
     Sync(SyncArgs),
 }
@@ -25,12 +25,15 @@ pub struct ImportArgs {
 }
 
 #[derive(Debug, Parser)]
-pub struct TraverseArgs {
+pub struct ExportArgs {
     #[clap(help = "The root cid to traverse")]
     pub cid: Cid,
 
     #[clap(long, help = "Traversal method to use, full if omitted")]
     pub method: Option<String>,
+
+    #[clap(long, help = "The path to the CAR file to export to")]
+    pub target: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]

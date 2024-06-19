@@ -14,7 +14,7 @@ use tokio::io::AsyncReadExt;
 use crate::{
     protocol::{Request, SyncRequest, SyncResponseHeader},
     tables::{ReadableTables, Tables},
-    traversal::{get_traversal, Traversal},
+    traversal::{get_inline, get_traversal, Traversal},
 };
 
 const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 16;
@@ -45,7 +45,8 @@ pub async fn handle_sync_request(
     let root_hash: Multihash = Multihash::wrap(request.root.hash_format, &request.root.hash)?;
     let root = Cid::new_v1(request.root.data_format, root_hash);
     let traversal = get_traversal(root, request.traversal.as_str(), tables)?;
-    write_sync_response(send, traversal, blobs, |_| true).await?;
+    let inline = get_inline(request.inline.as_str())?;
+    write_sync_response(send, traversal, blobs, inline).await?;
     Ok(())
 }
 
@@ -105,8 +106,9 @@ pub async fn handle_sync_response<'a>(
         };
         println!("{} {:?}", cid, header);
         let blake3_hash = match header {
-            SyncResponseHeader::Hash(_) => {
+            SyncResponseHeader::Hash(blake3_hash) => {
                 // todo: get the data via another request
+                println!("just got hash mapping {} {}", cid, blake3_hash);
                 continue;
             }
             SyncResponseHeader::Data(hash) => hash,

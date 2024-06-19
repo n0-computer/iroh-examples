@@ -7,13 +7,16 @@ use futures_lite::StreamExt;
 use iroh_blobs::store::{Map, MapEntry};
 use iroh_blobs::{store::Store, BlobFormat};
 use iroh_car::CarReader;
+use iroh_io::AsyncSliceReaderExt;
 use iroh_net::discovery::{dns::DnsDiscovery, pkarr_publish::PkarrPublisher, ConcurrentDiscovery};
 use iroh_net::ticket::NodeTicket;
 use iroh_net::NodeAddr;
 use libipld::{cbor::DagCborCodec, codec::Codec, Cid};
-use libipld::{Ipld, IpldCodec};
+use libipld::{DagCbor, Ipld, IpldCodec};
+use serde::Serialize;
 use sync::{handle_request, handle_sync_response};
 use tables::{ReadOnlyTables, ReadableTables, Tables};
+use tokio::io::AsyncWriteExt;
 use tokio_util::task::LocalPoolHandle;
 use traversal::{get_traversal, Traversal};
 use util::wait_for_relay;
@@ -98,13 +101,19 @@ async fn main() -> anyhow::Result<()> {
                 println!("root: {}", first);
             }
         }
-        args::SubCommand::Traverse(args) => {
+        args::SubCommand::Export(args) => {
             let cid = args.cid;
             let tx = mapping_store.begin_read()?;
             let tables = tables::ReadOnlyTables::new(&tx)?;
             let method = args.method.unwrap_or("full".to_owned());
             let traversal = get_traversal(cid, method.as_str(), &tables)?;
-            print_traversal(traversal, &store).await?;
+            match args.target {
+                Some(target) => {
+                    let file = tokio::fs::File::create(target).await?;
+                    export_traversal(cid, traversal, &store, file).await?
+                }
+                None => print_traversal(traversal, &store).await?,
+            }
         }
         args::SubCommand::Node(args) => {
             let endpoint = create_endpoint(args.net.iroh_port).await?;
@@ -188,5 +197,65 @@ where
     if let Some(first) = first {
         println!("root: {}", first);
     }
+    Ok(())
+}
+
+async fn export_traversal<T>(
+    root: Cid,
+    traversal: T,
+    store: &iroh_blobs::store::fs::Store,
+    mut file: tokio::fs::File,
+) -> anyhow::Result<()>
+where
+    T: Traversal,
+    T::Db: ReadableTables,
+{
+    #[derive(DagCbor)]
+    struct CarFileHeader {
+        version: u64, 
+        roots: Vec<Cid>,
+    }
+
+    #[derive(Serialize)]
+    struct RawCidHeader {
+        version: u64,
+        codec: u64,
+        hash: u64,
+        digest_len: u64,
+    }
+
+    impl RawCidHeader {
+        fn from_cid(cid: &Cid) -> Self {
+            Self {
+                version: 1,
+                codec: cid.codec(),
+                hash: cid.hash().code(),
+                digest_len: cid.hash().digest().len() as u64,
+            }
+        }
+    }
+    
+    let header = CarFileHeader {
+        version: 1, 
+        roots: vec![root],
+    };
+    let header_bytes = DagCborCodec.encode(&header)?;
+    file.write_all(&postcard::to_allocvec(&(header_bytes.len() as u64))?).await?;
+    file.write_all(&header_bytes).await?;
+    let mut traversal = traversal;
+    while let Some(cid) = traversal.next().await? {
+        let blake3_hash = traversal
+            .db_mut()
+            .blake3_hash(cid.hash())?
+            .context("blake3 hash not found")?;
+        let handle = store.get(&blake3_hash).await?.context("data not found")?;
+        let data = handle.data_reader().read_to_end().await?;
+        let mut block_bytes = postcard::to_extend(&RawCidHeader::from_cid(&cid), Vec::new())?;
+        block_bytes.extend_from_slice(&cid.hash().digest()); // hash
+        block_bytes.extend_from_slice(&data);
+        file.write_all(&postcard::to_allocvec(&(block_bytes.len() as u64))?).await?;
+        file.write_all(&block_bytes).await?;
+    }
+    file.sync_all().await?;
     Ok(())
 }
