@@ -121,7 +121,7 @@ async fn query_dht(args: QueryDhtArgs) -> anyhow::Result<()> {
         args.udp_port.unwrap_or_default(),
     ));
     let discovery = UdpDiscovery::new(bind_addr).await?;
-    let dht = mainline::Dht::default();
+    let dht = mainline::Dht::client()?;
     let q = Query {
         content: args.content.hash_and_format(),
         flags: QueryFlags {

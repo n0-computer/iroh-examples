@@ -746,7 +746,7 @@ impl Tracker {
             options.announce_data_path.display()
         );
         let db = redb::Database::create(&options.announce_data_path)?;
-        let dht = Arc::new(mainline::Dht::default().as_async());
+        let dht = Arc::new(mainline::Dht::client()?.as_async());
         let tpc = tokio_util::task::LocalPoolHandle::new(1);
         let (tx, rx) = flume::unbounded();
         let actor = Actor {
@@ -823,16 +823,7 @@ impl Tracker {
                 let res = dht.announce_peer(info_hash, Some(udp_port)).await;
                 match res {
                     Ok(sqm) => {
-                        let stored_at = sqm.stored_at();
-                        tracing::debug!(
-                            "announced {} as {} on {} nodes",
-                            content,
-                            sqm.target(),
-                            stored_at.len()
-                        );
-                        for item in stored_at {
-                            tracing::trace!("stored at {} {}", item.id, item.address);
-                        }
+                        tracing::trace!("announced: {:?}", sqm);
                     }
                     Err(cause) => {
                         tracing::warn!("error announcing: {}", cause);

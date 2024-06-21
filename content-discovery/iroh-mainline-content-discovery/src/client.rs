@@ -15,8 +15,10 @@ use futures::{
     FutureExt, Stream, StreamExt,
 };
 use iroh_blobs::HashAndFormat;
-use iroh_net::{Endpoint, NodeId};
-use iroh_pkarr_node_discovery::PkarrNodeDiscovery;
+use iroh_net::{
+    discovery::{dns::DnsDiscovery, pkarr_publish::PkarrPublisher, Discovery},
+    Endpoint, NodeId,
+};
 
 use crate::protocol::{
     AnnounceKind, Query, QueryResponse, Request, Response, SignedAnnounce, ALPN, REQUEST_SIZE_LIMIT,
@@ -55,17 +57,19 @@ pub fn to_infohash(haf: HashAndFormat) -> mainline::Id {
 }
 
 fn unique_tracker_addrs(
-    mut response: mainline::Response<mainline::GetPeerResponse>,
+    mut response: flume::IntoIter<Vec<SocketAddr>>,
 ) -> impl Stream<Item = SocketAddr> {
     Gen::new(|co| async move {
         let mut found = HashSet::new();
-        while let Some(response) = response.next_async().await {
+        for response in response {
             tracing::info!("got get_peers response: {:?}", response);
-            let tracker = response.peer;
-            if !found.insert(tracker) {
-                continue;
+            for response in response {
+                let tracker = response;
+                if !found.insert(tracker) {
+                    break;
+                }
+                co.yield_(tracker).await;
             }
-            co.yield_(tracker).await;
         }
     })
 }
@@ -133,9 +137,9 @@ pub fn query_dht(
     args: Query,
     query_parallelism: usize,
 ) -> impl Stream<Item = anyhow::Result<SignedAnnounce>> {
-    let dht = dht.as_async();
+    // let dht = dht.as_async();
     let info_hash = to_infohash(args.content);
-    let response: mainline::Response<mainline::GetPeerResponse> = dht.get_peers(info_hash);
+    let response = dht.get_peers(info_hash).unwrap();
     let unique_tracker_addrs = unique_tracker_addrs(response);
     unique_tracker_addrs
         .map(move |addr| {
@@ -161,7 +165,12 @@ pub fn announce_dht(
     content: BTreeSet<HashAndFormat>,
     port: u16,
     announce_parallelism: usize,
-) -> impl Stream<Item = (HashAndFormat, mainline::Result<mainline::StoreQueryMetdata>)> {
+) -> impl Stream<
+    Item = (
+        HashAndFormat,
+        mainline::Result<mainline::Id, mainline::Error>,
+    ),
+> {
     let dht = dht.as_async();
     futures::stream::iter(content)
         .map(move |content| {
@@ -218,16 +227,14 @@ async fn create_endpoint(
     port: u16,
     publish: bool,
 ) -> anyhow::Result<Endpoint> {
-    let mainline_discovery = if publish {
-        PkarrNodeDiscovery::builder()
-            .secret_key(key.clone())
-            .build()?
+    let mainline_discovery: Box<dyn Discovery> = if publish {
+        Box::new(PkarrPublisher::n0_dns(key.clone()))
     } else {
-        PkarrNodeDiscovery::default()
+        Box::new(DnsDiscovery::n0_dns())
     };
     iroh_net::Endpoint::builder()
         .secret_key(key)
-        .discovery(Box::new(mainline_discovery))
+        .discovery(mainline_discovery)
         .alpns(vec![ALPN.to_vec()])
         .bind(port)
         .await
@@ -390,9 +397,11 @@ impl UdpDiscovery {
             // delay before querying the DHT
             tokio::time::sleep(Duration::from_millis(50)).await;
             let info_hash = to_infohash(args.content);
-            let mut addrs = dht.get_peers(info_hash);
-            while let Some(addr) = addrs.next_async().await {
-                this.add_tracker(addr.peer).await.ok();
+            let mut addrs = dht.get_peers(info_hash).unwrap();
+            while let Some(addrs) = addrs.next().await {
+                for addr in addrs {
+                    this.add_tracker(addr).await.ok();
+                }
             }
             future::pending::<SignedAnnounce>().await
         }
