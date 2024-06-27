@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
         let alpn = conn.alpn().await?;
         let conn = conn.await?;
 
-        ensure!(&alpn == ALPN, "invalid alpn");
+        ensure!(alpn == ALPN, "invalid alpn");
 
         let (mut send, mut recv) = conn.accept_bi().await?;
 
