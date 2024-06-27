@@ -27,7 +27,7 @@ impl Peer {
             .bind(DEFAULT_PORT)
             .await?;
 
-        let addr = ep.my_addr().await?;
+        let addr = ep.node_addr().await?;
         println!(
             "Running \nNode Id: {}\n{}",
             addr.node_id,
@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
         let alpn = conn.alpn().await?;
         let conn = conn.await?;
 
-        ensure!(alpn.as_bytes() == ALPN, "invalid alpn");
+        ensure!(alpn == ALPN, "invalid alpn");
 
         let (mut send, mut recv) = conn.accept_bi().await?;
 
