@@ -760,8 +760,9 @@ dependencies = [
 
 [[package]]
 name = "dumbpipe"
-version = "0.10.0"
-source = "git+https://github.com/n0-computer/dumbpipe?branch=iroh-0-19#38fcfdd0e5eed7ce40d4349e14d3ed24787aedd8"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5df625c620692f919272d6746753781204e4da5f9bf532e74d6cdd779e14e098"
 dependencies = [
  "anyhow",
  "clap",

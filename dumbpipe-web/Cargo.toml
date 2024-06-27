@@ -10,7 +10,7 @@ license = "Apache-2.0/MIT"
 anyhow = "1.0.75"
 bytes = "1.5.0"
 clap = { version = "4.4.11", features = ["derive"] }
-dumbpipe = { git = "https://github.com/n0-computer/dumbpipe", branch = "iroh-0-19" }
+dumbpipe = "0.11"
 http = "1.0.0"
 http-body-util = "0.1.0"
 hyper = { version = "1.0.1", features = ["full"] }
