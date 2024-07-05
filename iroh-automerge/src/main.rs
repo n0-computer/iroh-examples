@@ -15,8 +15,6 @@ mod protocol;
 struct Cli {
     #[clap(long)]
     remote_id: Option<iroh::net::NodeId>,
-    #[clap(long)]
-    remote_relay: Option<url::Url>,
 }
 
 #[tokio::main]
@@ -42,7 +40,10 @@ async fn main() -> Result<()> {
 
     println!("Running\nNode Id: {}", addr.node_id,);
 
+    // we distinguish the roles in protocol based on if the --remote-id CLI argument is present
     if let Some(remote_id) = opts.remote_id {
+        // on the provider side:
+
         // Put some data in the document to sync
         let mut doc = automerge.fork_doc();
         let mut t = doc.transaction();
@@ -52,12 +53,8 @@ async fn main() -> Result<()> {
         t.commit();
         automerge.merge_doc(&mut doc)?;
 
-        let mut node_addr = iroh::net::NodeAddr::new(remote_id);
-
-        if let Some(remote_relay) = opts.remote_relay {
-            node_addr = node_addr.with_relay_url(remote_relay.into());
-        }
-
+        // connect to the other node
+        let node_addr = iroh::net::NodeAddr::new(remote_id);
         let conn = iroh
             .endpoint()
             .connect(node_addr, IrohAutomergeProtocol::ALPN)
@@ -66,6 +63,8 @@ async fn main() -> Result<()> {
         // initiate a sync session over an iroh-net direct connection
         automerge.initiate_sync(conn).await?;
     } else {
+        // on the receiver side:
+
         // wait for the first sync to finish
         let doc = sync_finished.recv().await.unwrap();
         println!("State");

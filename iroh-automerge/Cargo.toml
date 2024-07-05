@@ -12,4 +12,3 @@ postcard = "1.0.8"
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-url = "2.5.0"

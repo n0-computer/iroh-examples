@@ -1953,7 +1953,6 @@ dependencies = [
  "serde",
  "tokio",
  "tracing-subscriber",
- "url",
 ]
 
 [[package]]
