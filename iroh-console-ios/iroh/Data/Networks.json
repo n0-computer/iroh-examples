@@ -1,0 +1,29 @@
+[
+  {
+      "network_id": "6e182172-95b8-4a0f-9e4e-f8f881eea7fd",
+      "created_by": "667ebcea-2d5a-402f-a15c-046134467a52",
+      "created_at": "2023-06-13T19:32:37.628630Z",
+      "updated_at": "2023-06-13T19:32:37.628630Z",
+      "pretty_name": "Default Iroh Network",
+      "name": "default",
+      "anchor_url": "https://default.iroh.network"
+  },
+  {
+    "network_id": "778fbd90-4497-4f81-98be-2dab68ae6acb",
+    "created_by": "667ebcea-2d5a-402f-a15c-046134467a52",
+    "created_at": "2023-06-13T19:32:37.628630Z",
+    "updated_at": "2023-06-13T19:32:37.628630Z",
+    "pretty_name": "bananas",
+    "name": "bananas",
+    "anchor_url": "https://bananas.iroh.network"
+  },
+  {
+    "network_id": "fc4e626c-787e-4cdf-8e29-d18375f0492b",
+    "created_by": "667ebcea-2d5a-402f-a15c-046134467a52",
+    "created_at": "2023-06-15T12:36:13.081136Z",
+    "updated_at": "2023-06-15T12:36:13.081136Z",
+    "pretty_name": "rust memes only",
+    "name": "rust-memes-only",
+    "anchor_url": "https://rust-memes-only.iroh.network"
+  }
+]
