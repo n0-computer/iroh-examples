@@ -46,13 +46,13 @@ async fn main() -> Result<()> {
         // on the provider side:
 
         // Put some data in the document to sync
-        let mut doc = automerge.fork_doc();
+        let mut doc = automerge.fork_doc().await;
         let mut t = doc.transaction();
         for i in 0..5 {
             t.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
         }
         t.commit();
-        automerge.merge_doc(&mut doc)?;
+        automerge.merge_doc(&mut doc).await?;
 
         // connect to the other node
         let node_addr = iroh::net::NodeAddr::new(remote_id);

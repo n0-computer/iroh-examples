@@ -1,8 +1,4 @@
-use std::{
-    future::Future,
-    pin::Pin,
-    sync::{Arc, Mutex},
-};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::Result;
 use automerge::{
@@ -14,7 +10,7 @@ use iroh::{
     node::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
@@ -38,13 +34,13 @@ impl IrohAutomergeProtocol {
         })
     }
 
-    pub fn fork_doc(&self) -> Automerge {
-        let automerge = self.inner.lock().expect("lock poisoned");
+    pub async fn fork_doc(&self) -> Automerge {
+        let automerge = self.inner.lock().await;
         automerge.fork()
     }
 
-    pub fn merge_doc(&self, doc: &mut Automerge) -> Result<()> {
-        let mut automerge = self.inner.lock().expect("lock poisoned");
+    pub async fn merge_doc(&self, doc: &mut Automerge) -> Result<()> {
+        let mut automerge = self.inner.lock().await;
         automerge.merge(doc)?;
         Ok(())
     }
@@ -74,7 +70,7 @@ impl IrohAutomergeProtocol {
     ) -> Result<()> {
         let (mut send, mut recv) = conn.open_bi().await?;
 
-        let mut doc = self.fork_doc();
+        let mut doc = self.fork_doc().await;
         let mut sync_state = sync::State::new();
 
         let mut is_local_done = false;
@@ -96,7 +92,7 @@ impl IrohAutomergeProtocol {
             if let Protocol::SyncMessage(sync_msg) = msg {
                 let sync_msg = sync::Message::decode(&sync_msg)?;
                 doc.receive_sync_message(&mut sync_state, sync_msg)?;
-                self.merge_doc(&mut doc)?;
+                self.merge_doc(&mut doc).await?;
             }
 
             if is_remote_done && is_local_done {
@@ -116,7 +112,7 @@ impl IrohAutomergeProtocol {
     ) -> Result<()> {
         let (mut send, mut recv) = conn.await?.accept_bi().await?;
 
-        let mut doc = self.fork_doc();
+        let mut doc = self.fork_doc().await;
         let mut sync_state = sync::State::new();
 
         let mut is_local_done = false;
@@ -128,7 +124,7 @@ impl IrohAutomergeProtocol {
             if let Protocol::SyncMessage(sync_msg) = msg {
                 let sync_msg = sync::Message::decode(&sync_msg)?;
                 doc.receive_sync_message(&mut sync_state, sync_msg)?;
-                self.merge_doc(&mut doc)?;
+                self.merge_doc(&mut doc).await?;
             }
 
             let msg = match doc.generate_sync_message(&mut sync_state) {
@@ -161,7 +157,7 @@ impl ProtocolHandler for IrohAutomergeProtocol {
         Box::pin(async move {
             Arc::clone(&self).respond_sync(conn).await?;
 
-            self.sync_finished.send(self.fork_doc()).await?;
+            self.sync_finished.send(self.fork_doc().await).await?;
 
             Ok(())
         })
