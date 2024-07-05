@@ -14,12 +14,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
-    inner: Mutex<AutomergeState>,
-}
-
-#[derive(Debug)]
-pub struct AutomergeState {
-    commit: AutoCommit,
+    inner: Mutex<AutoCommit>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,18 +28,18 @@ impl IrohAutomergeProtocol {
 
     pub fn new(commit: AutoCommit) -> Arc<Self> {
         Arc::new(Self {
-            inner: Mutex::new(AutomergeState { commit }),
+            inner: Mutex::new(commit),
         })
     }
 
     pub fn fork_state(&self) -> AutoCommit {
         let mut guard = self.inner.lock().expect("lock poisoned");
-        guard.commit.fork()
+        guard.fork()
     }
 
     pub fn merge_state(&self, mut commit: AutoCommit) -> Result<()> {
         let mut guard = self.inner.lock().expect("lock poisoned");
-        guard.commit.merge(&mut commit)?;
+        guard.merge(&mut commit)?;
         Ok(())
     }
 
