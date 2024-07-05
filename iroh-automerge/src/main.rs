@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use automerge::{transaction::Transactable, AutoCommit};
+use automerge::{transaction::Transactable, Automerge};
 use clap::Parser;
 use iroh::node::{Node, ProtocolHandler};
 
@@ -22,7 +22,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let opts = Cli::parse();
 
-    let automerge = IrohAutomergeProtocol::new(AutoCommit::new());
+    let automerge = IrohAutomergeProtocol::new(Automerge::new());
     let iroh = Node::memory()
         .build()
         .await?
@@ -39,11 +39,13 @@ async fn main() -> Result<()> {
 
     if let Some(remote_id) = opts.remote_id {
         // Put some data in the document to sync
-        let mut am = automerge.fork_state();
+        let mut doc = automerge.fork_doc();
+        let mut t = doc.transaction();
         for i in 0..5 {
-            am.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
+            t.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
         }
-        automerge.merge_state(am)?;
+        t.commit();
+        automerge.merge_doc(doc)?;
 
         let mut node_addr = iroh::net::NodeAddr::new(remote_id);
 
