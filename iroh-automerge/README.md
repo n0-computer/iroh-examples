@@ -15,7 +15,7 @@ https://euw1-1.derp.iroh.network./
 
 ```sh
 # Second Terminal
-> cargo run -- --remote-id t4xj3pbb2fzkmphnu5npfznpir62i5zxacbgywf22ev5w4sjelma --remote-derper 'https://euw1-1.derp.iroh.network./'`
+> cargo run -- --remote-id t4xj3pbb2fzkmphnu5npfznpir62i5zxacbgywf22ev5w4sjelma --remote-relay 'https://euw1-1.derp.iroh.network./'`
 Running
 Node Id: dhdgta6lsyya2ms66cndoxbkoiv3kgkmu4dfe2awzeqh6hsfmwlq
 https://euw1-1.derp.iroh.network./
