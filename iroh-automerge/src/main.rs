@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use automerge::{transaction::Transactable, Automerge};
+use automerge::{transaction::Transactable, Automerge, ReadDoc};
 use clap::Parser;
 use iroh::node::{Node, ProtocolHandler};
 
 use protocol::IrohAutomergeProtocol;
+use tokio::sync::mpsc;
 
 mod protocol;
 
@@ -20,9 +21,13 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let opts = Cli::parse();
 
-    let automerge = IrohAutomergeProtocol::new(Automerge::new());
+    // We set up a channel so we can subscribe to sync events from the automerge protocol
+    let (sync_sender, mut sync_finished) = mpsc::channel(10);
+    let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
     let iroh = Node::memory()
         .build()
         .await?
@@ -61,10 +66,18 @@ async fn main() -> Result<()> {
         // initiate a sync session over an iroh-net direct connection
         automerge.initiate_sync(conn).await?;
     } else {
-        // Simply wait until iroh is cancelled.
-        // `IrohAutomergeProtocol` will print the current state when a sync session is finished.
-        iroh.cancel_token().cancelled().await;
+        // wait for the first sync to finish
+        let doc = sync_finished.recv().await.unwrap();
+        println!("State");
+        let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
+        for key in keys {
+            let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
+            println!("{} => {}", key, value);
+        }
     }
+
+    // finally shut down
+    iroh.shutdown().await?;
 
     Ok(())
 }

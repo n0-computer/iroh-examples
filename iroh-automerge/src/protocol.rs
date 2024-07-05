@@ -7,17 +7,19 @@ use std::{
 use anyhow::Result;
 use automerge::{
     sync::{self, SyncDoc},
-    Automerge, ReadDoc,
+    Automerge,
 };
 use iroh::{
     net::endpoint::{RecvStream, SendStream},
     node::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
     inner: Mutex<Automerge>,
+    sync_finished: mpsc::Sender<Automerge>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,9 +31,10 @@ enum Protocol {
 impl IrohAutomergeProtocol {
     pub const ALPN: &'static [u8] = b"iroh/automerge/1";
 
-    pub fn new(doc: Automerge) -> Arc<Self> {
+    pub fn new(doc: Automerge, sync_finished: mpsc::Sender<Automerge>) -> Arc<Self> {
         Arc::new(Self {
             inner: Mutex::new(doc),
+            sync_finished,
         })
     }
 
@@ -158,13 +161,7 @@ impl ProtocolHandler for IrohAutomergeProtocol {
         Box::pin(async move {
             Arc::clone(&self).respond_sync(conn).await?;
 
-            let doc = self.fork_doc();
-            println!("State");
-            let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
-            for key in keys {
-                let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
-                println!("{} => {}", key, value);
-            }
+            self.sync_finished.send(self.fork_doc()).await?;
 
             Ok(())
         })
