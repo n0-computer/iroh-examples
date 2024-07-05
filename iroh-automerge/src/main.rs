@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
             t.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
         }
         t.commit();
-        automerge.merge_doc(doc)?;
+        automerge.merge_doc(&mut doc)?;
 
         let mut node_addr = iroh::net::NodeAddr::new(remote_id);
 
