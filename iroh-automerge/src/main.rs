@@ -38,9 +38,10 @@ impl IrohAutomergeProtocol {
         guard.commit.fork()
     }
 
-    pub fn merge_state(&self, mut commit: AutoCommit) {
+    pub fn merge_state(&self, mut commit: AutoCommit) -> Result<()> {
         let mut guard = self.inner.lock().expect("lock poisoned");
-        guard.commit.merge(&mut commit);
+        guard.commit.merge(&mut commit)?;
+        Ok(())
     }
 
     pub async fn initiate_sync(
@@ -93,7 +94,7 @@ impl IrohAutomergeProtocol {
         send.finish().await?;
 
         drop(sync);
-        self.merge_state(commit);
+        self.merge_state(commit)?;
 
         Ok(())
     }
@@ -148,7 +149,7 @@ impl IrohAutomergeProtocol {
         send.finish().await?;
 
         drop(sync);
-        self.merge_state(commit);
+        self.merge_state(commit)?;
 
         let commit = self.fork_state();
         println!("State");
