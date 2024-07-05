@@ -10,18 +10,15 @@ use automerge::{
     Automerge, ReadDoc,
 };
 use iroh::node::ProtocolHandler;
-use serde::{Deserialize, Serialize};
+use quinn::{ReadError, ReadExactError, RecvStream, SendStream, VarInt};
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
     inner: Mutex<Automerge>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum Protocol {
-    SyncMessage(Vec<u8>),
-    Done,
-}
+const CLOSE_CODE_DONE: VarInt = VarInt::from_u32(42);
+const CLOSE_MSG_DONE: &[u8] = b"automerge sync protocol finished";
 
 impl IrohAutomergeProtocol {
     pub const ALPN: &'static [u8] = b"iroh/automerge/1";
@@ -37,10 +34,40 @@ impl IrohAutomergeProtocol {
         guard.fork()
     }
 
-    pub fn merge_doc(&self, mut doc: Automerge) -> Result<()> {
+    pub fn merge_doc(&self, doc: &mut Automerge) -> Result<()> {
         let mut guard = self.inner.lock().expect("lock poisoned");
-        guard.merge(&mut doc)?;
+        guard.merge(doc)?;
         Ok(())
+    }
+
+    async fn send_msg(msg: automerge::sync::Message, send: &mut SendStream) -> Result<()> {
+        let encoded = msg.encode();
+        send.write_all(&(encoded.len() as u64).to_le_bytes())
+            .await?;
+        send.write_all(&encoded).await?;
+        Ok(())
+    }
+
+    async fn receive_msg(recv: &mut RecvStream) -> Result<Option<automerge::sync::Message>> {
+        let mut incoming_len = [0u8; 8];
+        println!("Waiting for msg");
+        match recv.read_exact(&mut incoming_len).await {
+            Ok(()) => {}
+            Err(ReadExactError::ReadError(ReadError::Reset(_))) => {
+                // we're done
+                return Ok(None);
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
+        let len = u64::from_le_bytes(incoming_len);
+
+        let mut buffer = vec![0u8; len as usize];
+        recv.read_exact(&mut buffer).await?;
+        let msg = automerge::sync::Message::decode(&buffer)?;
+        println!("Okay, got the msg");
+        Ok(Some(msg))
     }
 
     pub async fn initiate_sync(
@@ -52,109 +79,57 @@ impl IrohAutomergeProtocol {
         let mut doc = self.fork_doc();
         let mut sync_state = sync::State::new();
 
-        let mut is_local_done = false;
         loop {
-            let msg = match doc.generate_sync_message(&mut sync_state) {
-                Some(msg) => Protocol::SyncMessage(msg.encode()),
-                None => Protocol::Done,
+            let Some(msg) = doc.generate_sync_message(&mut sync_state) else {
+                // we're done.
+                send.finish().await?;
+                conn.close(CLOSE_CODE_DONE, CLOSE_MSG_DONE);
+                println!("Sent close");
+                return Ok(());
             };
 
-            if !is_local_done {
-                let encoded = postcard::to_stdvec(&msg)?;
-                send.write_all(&(encoded.len() as u64).to_le_bytes())
-                    .await?;
-                send.write_all(&encoded).await?;
-                is_local_done = matches!(msg, Protocol::Done);
-            }
+            Self::send_msg(msg, &mut send).await?;
 
-            let mut incoming_len = [0u8; 8];
-            recv.read_exact(&mut incoming_len).await?;
-            let len = u64::from_le_bytes(incoming_len);
-
-            let mut buffer = vec![0u8; len as usize];
-            recv.read_exact(&mut buffer).await?;
-            let msg: Protocol = postcard::from_bytes(&buffer)?;
-
-            let is_remote_done = matches!(msg, Protocol::Done);
+            let Some(msg) = Self::receive_msg(&mut recv).await? else {
+                // we're done
+                return Ok(());
+            };
 
             // process incoming message
-            if let Protocol::SyncMessage(sync_msg) = msg {
-                let sync_msg = sync::Message::decode(&sync_msg)?;
-                doc.receive_sync_message(&mut sync_state, sync_msg)?;
-            }
-
-            if is_remote_done && is_local_done {
-                // both sides are done
-                break;
-            }
+            doc.receive_sync_message(&mut sync_state, msg)?;
+            self.merge_doc(&mut doc)?;
         }
-
-        send.finish().await?;
-
-        self.merge_doc(doc)?;
-
-        Ok(())
     }
 
     pub async fn respond_sync(
         self: Arc<Self>,
         conn: iroh::net::endpoint::Connecting,
     ) -> Result<()> {
-        let (mut send, mut recv) = conn.await?.accept_bi().await?;
+        let conn = conn.await?;
+        let (mut send, mut recv) = conn.accept_bi().await?;
 
         let mut doc = self.fork_doc();
         let mut sync_state = sync::State::new();
 
-        let mut is_local_done = false;
         loop {
-            let mut incoming_len = [0u8; 8];
-            recv.read_exact(&mut incoming_len).await?;
-            let len = u64::from_le_bytes(incoming_len);
-
-            let mut buffer = vec![0u8; len as usize];
-            recv.read_exact(&mut buffer).await?;
-            let msg: Protocol = postcard::from_bytes(&buffer)?;
-
-            let is_remote_done = matches!(msg, Protocol::Done);
-
-            // process incoming message
-            if let Protocol::SyncMessage(sync_msg) = msg {
-                let sync_msg = sync::Message::decode(&sync_msg)?;
-                doc.receive_sync_message(&mut sync_state, sync_msg)?;
-            }
-
-            let msg = match doc.generate_sync_message(&mut sync_state) {
-                Some(msg) => Protocol::SyncMessage(msg.encode()),
-                None => Protocol::Done,
+            let Some(msg) = Self::receive_msg(&mut recv).await? else {
+                // we're done
+                return Ok(());
             };
 
-            if !is_local_done {
-                let encoded = postcard::to_stdvec(&msg)?;
-                send.write_all(&(encoded.len() as u64).to_le_bytes())
-                    .await?;
-                send.write_all(&encoded).await?;
-                is_local_done = matches!(msg, Protocol::Done);
-            }
+            // process incoming message
+            doc.receive_sync_message(&mut sync_state, msg)?;
+            self.merge_doc(&mut doc)?;
 
-            if is_remote_done && is_local_done {
-                // both sides are done
-                break;
-            }
+            let Some(msg) = doc.generate_sync_message(&mut sync_state) else {
+                send.finish().await?;
+                conn.close(CLOSE_CODE_DONE, CLOSE_MSG_DONE);
+                println!("Sent close");
+                return Ok(());
+            };
+
+            Self::send_msg(msg, &mut send).await?;
         }
-
-        send.finish().await?;
-
-        self.merge_doc(doc)?;
-
-        let doc = self.fork_doc();
-        println!("State");
-        let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
-        for key in keys {
-            let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
-            println!("{} => {}", key, value);
-        }
-
-        Ok(())
     }
 }
 
@@ -163,6 +138,16 @@ impl ProtocolHandler for IrohAutomergeProtocol {
         self: Arc<Self>,
         conn: iroh::net::endpoint::Connecting,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
-        Box::pin(self.respond_sync(conn))
+        Box::pin(async move {
+            Arc::clone(&self).respond_sync(conn).await?;
+            let doc = self.fork_doc();
+            println!("State");
+            let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
+            for key in keys {
+                let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
+                println!("{} => {}", key, value);
+            }
+            Ok(())
+        })
     }
 }
