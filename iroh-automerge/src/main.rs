@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
         .spawn()
         .await?;
 
-    let addr = iroh.my_addr().await?;
+    let addr = iroh.node_addr().await?;
 
     println!("Running\nNode Id: {}", addr.node_id,);
 
