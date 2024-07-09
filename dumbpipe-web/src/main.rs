@@ -11,8 +11,8 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
-use iroh_net::key::SecretKey;
-use iroh_net::{AddrInfo, Endpoint, NodeAddr};
+use iroh::net::key::SecretKey;
+use iroh::net::{AddrInfo, Endpoint, NodeAddr};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -101,11 +101,11 @@ fn bad_request(text: &'static str) -> anyhow::Result<Response<BoxBody<Bytes, hyp
 
 fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
     // first try to parse as a node id
-    if let Ok(node_id) = iroh_net::NodeId::from_str(subdomain) {
+    if let Ok(node_id) = iroh::net::NodeId::from_str(subdomain) {
         return Ok(NodeAddr {
             node_id,
             info: AddrInfo {
-                relay_url: Some("https://euw1-1.derp.iroh.network".parse().unwrap()),
+                relay_url: None, // Use discovery
                 direct_addresses: Default::default(),
             },
         });
