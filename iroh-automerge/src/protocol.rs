@@ -45,6 +45,11 @@ impl IrohAutomergeProtocol {
         Ok(())
     }
 
+    pub async fn replace_doc(&self, doc: Automerge) {
+        let mut automerge = self.inner.lock().await;
+        *automerge = doc;
+    }
+
     async fn send_msg(msg: Protocol, send: &mut SendStream) -> Result<()> {
         let encoded = postcard::to_stdvec(&msg)?;
         send.write_all(&(encoded.len() as u64).to_le_bytes())
@@ -76,7 +81,10 @@ impl IrohAutomergeProtocol {
             tracing::debug!("Sync round");
             let msg = match doc.generate_sync_message(&mut sync_state) {
                 Some(msg) => Protocol::SyncMessage(msg.encode()),
-                None => Protocol::Done,
+                None => {
+                    tracing::debug!("Local is done");
+                    Protocol::Done
+                }
             };
 
             if !is_local_done {
@@ -84,8 +92,19 @@ impl IrohAutomergeProtocol {
                 Self::send_msg(msg, &mut send).await?;
             }
 
-            let msg = Self::recv_msg(&mut recv).await?;
+            let msg = match Self::recv_msg(&mut recv).await {
+                Ok(msg) => msg,
+                Err(e) if is_local_done => {
+                    tracing::debug!("Couldn't send but local is done already ({e})");
+                    break;
+                }
+                Err(e) => return Err(e),
+            };
             let is_remote_done = matches!(msg, Protocol::Done);
+
+            if is_remote_done {
+                tracing::debug!("Remote is done");
+            }
 
             // process incoming message
             if let Protocol::SyncMessage(sync_msg) = msg {
@@ -95,6 +114,7 @@ impl IrohAutomergeProtocol {
             }
 
             if is_remote_done && is_local_done {
+                tracing::debug!("Both sides are done");
                 // both sides are done
                 break;
             }
@@ -122,8 +142,19 @@ impl IrohAutomergeProtocol {
             let mut is_local_done = false;
             loop {
                 tracing::debug!("Sync round");
-                let msg = Self::recv_msg(&mut recv).await?;
+                let msg = match Self::recv_msg(&mut recv).await {
+                    Ok(msg) => msg,
+                    Err(e) if is_local_done => {
+                        tracing::debug!("Couldn't send but local is done already ({e})");
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                };
                 let is_remote_done = matches!(msg, Protocol::Done);
+
+                if is_remote_done {
+                    tracing::debug!("Remote is done");
+                }
 
                 // process incoming message
                 if let Protocol::SyncMessage(sync_msg) = msg {
@@ -134,7 +165,10 @@ impl IrohAutomergeProtocol {
 
                 let msg = match doc.generate_sync_message(&mut sync_state) {
                     Some(msg) => Protocol::SyncMessage(msg.encode()),
-                    None => Protocol::Done,
+                    None => {
+                        tracing::debug!("Local is done");
+                        Protocol::Done
+                    }
                 };
 
                 if !is_local_done {
@@ -143,12 +177,16 @@ impl IrohAutomergeProtocol {
                 }
 
                 if is_remote_done && is_local_done {
+                    tracing::debug!("Both sides are done");
                     // both sides are done
                     break;
                 }
             }
 
             send.finish().await?;
+
+            self.sync_finished.send_async(self.fork_doc().await).await?;
+
             tracing::debug!("Finished responding to sync");
         }
     }
@@ -159,12 +197,6 @@ impl ProtocolHandler for IrohAutomergeProtocol {
         self: Arc<Self>,
         conn: iroh::net::endpoint::Connecting,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
-        Box::pin(async move {
-            Arc::clone(&self).respond_sync(conn).await?;
-
-            self.sync_finished.send_async(self.fork_doc().await).await?;
-
-            Ok(())
-        })
+        Box::pin(self.respond_sync(conn))
     }
 }

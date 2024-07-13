@@ -113,9 +113,9 @@ pub fn run_textarea_tui(
                     // TODO
                 }
             }
-        } else if !receive_am.is_empty() {
-            let mut doc_new = receive_am.recv_timeout(Duration::from_millis(16))?;
-            doc.merge(&mut doc_new)?;
+        } else if let Ok(mut new_doc) = receive_am.recv_timeout(Duration::from_millis(8)) {
+            tracing::debug!("Got remote automerge update. merging in");
+            doc.merge(&mut new_doc)?;
         }
     }
 

@@ -25,11 +25,13 @@ async fn main() -> Result<()> {
     if opts.remote_id.is_none() {
         tracing_subscriber::fmt()
             .with_writer(std::fs::File::create("server.log")?)
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .init();
         tracing::info!("server mode");
     } else {
         tracing_subscriber::fmt()
             .with_writer(std::fs::File::create("client.log")?)
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .init();
         tracing::info!("client mode");
     }
@@ -51,11 +53,16 @@ async fn main() -> Result<()> {
         .await?;
 
     let conn = if let Some(remote_id) = opts.remote_id {
-        Some(
-            iroh.endpoint()
-                .connect_by_node_id(remote_id, IrohAutomergeProtocol::ALPN)
-                .await?,
-        )
+        let conn = iroh
+            .endpoint()
+            .connect_by_node_id(remote_id, IrohAutomergeProtocol::ALPN)
+            .await?;
+
+        automerge.initiate_sync(&conn).await?;
+
+        doc = automerge.fork_doc().await;
+
+        Some(conn)
     } else {
         let addr = iroh.node_addr().await?;
 
@@ -68,15 +75,15 @@ async fn main() -> Result<()> {
             .await?
             .unwrap();
 
+        let mut tx = doc.transaction();
+        let ta = &tx.put_object(automerge::ROOT, "textarea", ObjType::Text)?;
+        tx.update_text(ta, "Hello!|")?;
+        tx.commit();
+
+        automerge.merge_doc(&mut doc).await?;
+
         None
     };
-
-    let mut tx = doc.transaction();
-    let ta = &tx.put_object(automerge::ROOT, "textarea", ObjType::Text)?;
-    tx.update_text(ta, "Hello!|")?;
-    tx.commit();
-
-    automerge.merge_doc(&mut doc).await?;
 
     let (send_am, am_updates) = flume::bounded(100);
 
@@ -85,7 +92,9 @@ async fn main() -> Result<()> {
         async move {
             while let Ok(mut update) = am_updates.recv_async().await {
                 automerge.merge_doc(&mut update).await?;
+                tracing::debug!(?update, "Received local automerge update");
                 if let Some(conn) = conn.as_ref() {
+                    tracing::debug!("Sending automerge update to remote");
                     automerge.initiate_sync(conn).await?;
                 }
             }
