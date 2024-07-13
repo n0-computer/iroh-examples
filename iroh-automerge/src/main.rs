@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use automerge::{transaction::Transactable, Automerge, ReadDoc};
+use automerge::{transaction::Transactable, Automerge, ObjType};
 use clap::Parser;
 use iroh::node::{Node, ProtocolHandler};
 
 use protocol::IrohAutomergeProtocol;
-use tokio::sync::mpsc;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 mod protocol;
+mod tui;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -19,13 +20,25 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let opts = Cli::parse();
 
+    if opts.remote_id.is_none() {
+        tracing_subscriber::fmt()
+            .with_writer(std::fs::File::create("server.log")?)
+            .init();
+        tracing::info!("server mode");
+    } else {
+        tracing_subscriber::fmt()
+            .with_writer(std::fs::File::create("client.log")?)
+            .init();
+        tracing::info!("client mode");
+    }
+
+    let mut doc = Automerge::new();
+
     // We set up a channel so we can subscribe to sync events from the automerge protocol
-    let (sync_sender, mut sync_finished) = mpsc::channel(10);
-    let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
+    let (sync_sender, sync_finished) = flume::bounded(100);
+    let automerge = IrohAutomergeProtocol::new(doc.clone(), sync_sender);
     let iroh = Node::memory()
         .disable_docs()
         .build()
@@ -37,44 +50,50 @@ async fn main() -> Result<()> {
         .spawn()
         .await?;
 
-    let addr = iroh.node_addr().await?;
-
-    println!("Running\nNode Id: {}", addr.node_id,);
-
-    // we distinguish the roles in protocol based on if the --remote-id CLI argument is present
-    if let Some(remote_id) = opts.remote_id {
-        // on the provider side:
-
-        // Put some data in the document to sync
-        let mut doc = automerge.fork_doc().await;
-        let mut t = doc.transaction();
-        for i in 0..5 {
-            t.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
-        }
-        t.commit();
-        automerge.merge_doc(&mut doc).await?;
-
-        // connect to the other node
-        let node_addr = iroh::net::NodeAddr::new(remote_id);
-        let conn = iroh
-            .endpoint()
-            .connect(node_addr, IrohAutomergeProtocol::ALPN)
-            .await?;
-
-        // initiate a sync session over an iroh-net direct connection
-        automerge.initiate_sync(conn).await?;
+    let conn = if let Some(remote_id) = opts.remote_id {
+        Some(
+            iroh.endpoint()
+                .connect_by_node_id(remote_id, IrohAutomergeProtocol::ALPN)
+                .await?,
+        )
     } else {
-        // on the receiver side:
+        let addr = iroh.node_addr().await?;
 
-        // wait for the first sync to finish
-        let doc = sync_finished.recv().await.unwrap();
-        println!("State");
-        let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
-        for key in keys {
-            let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
-            println!("{} => {}", key, value);
+        println!("This is your node id: {}", addr.node_id);
+        println!("Press <Enter> after copying this ID to go to the editor.");
+
+        BufReader::new(tokio::io::stdin())
+            .lines()
+            .next_line()
+            .await?
+            .unwrap();
+
+        None
+    };
+
+    let mut tx = doc.transaction();
+    let ta = &tx.put_object(automerge::ROOT, "textarea", ObjType::Text)?;
+    tx.update_text(ta, "Hello!|")?;
+    tx.commit();
+
+    automerge.merge_doc(&mut doc).await?;
+
+    let (send_am, am_updates) = flume::bounded(100);
+
+    tokio::spawn({
+        let automerge = automerge.clone();
+        async move {
+            while let Ok(mut update) = am_updates.recv_async().await {
+                automerge.merge_doc(&mut update).await?;
+                if let Some(conn) = conn.as_ref() {
+                    automerge.initiate_sync(conn).await?;
+                }
+            }
+            anyhow::Ok(())
         }
-    }
+    });
+
+    tui::run_textarea_tui(doc, sync_finished, send_am)?;
 
     // finally shut down
     iroh.shutdown().await?;

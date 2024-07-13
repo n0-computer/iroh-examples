@@ -3,12 +3,20 @@ name = "iroh-automerge"
 version = "0.1.0"
 edition = "2021"
 
+# [[bin]]
+# name = "tui"
+
 [dependencies]
 anyhow = "1.0.80"
 automerge = "0.5.7"
 clap = { version = "4.5.1", features = ["derive"] }
+crossterm = "0.27.0"
+flume = "0.11.0"
 iroh = "0.20.0"
 postcard = "1.0.8"
+ratatui = "0.27.0"
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["full"] }
+tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tui-textarea = "0.5.1"
