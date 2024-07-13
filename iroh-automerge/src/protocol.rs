@@ -77,6 +77,7 @@ impl IrohAutomergeProtocol {
         let mut sync_state = sync::State::new();
 
         let mut is_local_done = false;
+        let mut is_remote_done = false;
         loop {
             tracing::debug!("Sync round");
             let msg = match doc.generate_sync_message(&mut sync_state) {
@@ -100,9 +101,8 @@ impl IrohAutomergeProtocol {
                 }
                 Err(e) => return Err(e),
             };
-            let is_remote_done = matches!(msg, Protocol::Done);
-
-            if is_remote_done {
+            if matches!(msg, Protocol::Done) {
+                is_remote_done = true;
                 tracing::debug!("Remote is done");
             }
 
@@ -140,6 +140,7 @@ impl IrohAutomergeProtocol {
             let mut sync_state = sync::State::new();
 
             let mut is_local_done = false;
+            let mut is_remote_done = false;
             loop {
                 tracing::debug!("Sync round");
                 let msg = match Self::recv_msg(&mut recv).await {
@@ -150,9 +151,8 @@ impl IrohAutomergeProtocol {
                     }
                     Err(e) => return Err(e),
                 };
-                let is_remote_done = matches!(msg, Protocol::Done);
-
-                if is_remote_done {
+                if matches!(msg, Protocol::Done) {
+                    is_remote_done = true;
                     tracing::debug!("Remote is done");
                 }
 
