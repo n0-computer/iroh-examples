@@ -13,12 +13,14 @@ description = "A discovery mechanism for iroh-net that uses the bittorrent mainl
 
 [dependencies]
 anyhow = "1.0.79"
+derive_more = { version = "1.0.0-beta.6", features = ["debug", "display", "from", "try_into", "from_str"] }
 futures-lite = "2.3.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
-iroh-net = "0.19"
-pkarr = { version = "1.0.1", features = ["async"] }
+iroh-net = { version = "0.20" }
+pkarr = { version = "2.0", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"
+url = "2.5.2"
 
 [dev-dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
