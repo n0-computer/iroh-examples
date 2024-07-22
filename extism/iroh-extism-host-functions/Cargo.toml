@@ -8,6 +8,6 @@ anyhow = "1.0.79"
 dirs-next = "2.0.0"
 extism = "1.0.0"
 futures = "0.3.29"
-iroh = "0.20.0"
+iroh = { git = "https://github.com/n0-computer/iroh", rev = "b4506b2c4a288434ea55c36607f8fd839d58bf10"}
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec", "io-util", "io", "time"] }
