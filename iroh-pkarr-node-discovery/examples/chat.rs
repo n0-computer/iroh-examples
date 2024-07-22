@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 use clap::Parser;
 use iroh_net::{endpoint::get_remote_node_id, Endpoint, NodeId};
-use pkarr::url::Url;
+use url::Url;
 
 const CHAT_ALPN: &[u8] = b"pkarr-discovery-demo-chat";
 
@@ -72,7 +72,7 @@ async fn chat_server(args: Args) -> anyhow::Result<()> {
         .discovery(Box::new(discovery))
         .bind(0)
         .await?;
-    let zid = pkarr::PublicKey::try_from(*node_id.as_bytes())?.to_z32();
+    let zid = pkarr::PublicKey::try_from(node_id.as_bytes())?.to_z32();
     println!("Listening on {}", node_id);
     println!("pkarr z32: {}", zid);
     println!("see https://app.pkarr.org/?pk={}", zid);
@@ -110,7 +110,7 @@ async fn chat_client(args: Args) -> anyhow::Result<()> {
         .await?;
     println!("We are {} and connecting to {}", node_id, remote_node_id);
     let connection = endpoint
-        .connect_by_node_id(&remote_node_id, CHAT_ALPN)
+        .connect_by_node_id(remote_node_id, CHAT_ALPN)
         .await?;
     println!("connected to {}", remote_node_id);
     let (mut writer, mut reader) = connection.open_bi().await?;

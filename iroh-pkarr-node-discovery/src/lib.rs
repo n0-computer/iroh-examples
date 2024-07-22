@@ -13,7 +13,7 @@ use std::{
 
 use futures_lite::StreamExt;
 use genawaiter::sync::{Co, Gen};
-use iroh::net::{
+use iroh_net::{
     discovery::{
         pkarr::{DEFAULT_PKARR_TTL, N0_DNS_PKARR_RELAY_PROD},
         Discovery, DiscoveryItem,
@@ -297,41 +297,28 @@ impl PkarrNodeDiscovery {
             return;
         };
         tracing::info!("resolving {} from DHT", pkarr_public_key.to_z32());
-        let mut response = match self.0.pkarr.resolve(&pkarr_public_key).await {
+        let response = match self.0.pkarr.resolve(&pkarr_public_key).await {
             Ok(r) => r,
             Err(e) => {
                 co.yield_(Err(e.into())).await;
                 return;
             }
         };
-        let mut highest_timestamp = 0u64;
-        while let Some(next) = response.next_async().await {
-            match SignedPacket::try_from(next.item) {
-                Ok(signed_packet) => {
-                    let timestamp = *signed_packet.timestamp();
-                    if timestamp < highest_timestamp {
-                        tracing::debug!("skipping outdated signed packet");
-                        continue;
-                    }
-                    highest_timestamp = timestamp;
-                    if let Ok(node_info) = NodeInfo::from_pkarr_signed_packet(&signed_packet) {
-                        let addr_info = node_info.into();
-                        tracing::debug!("discovered node info from DHT {:?}", addr_info);
-                        co.yield_(Ok(DiscoveryItem {
-                            provenance: "mainline",
-                            last_updated: None,
-                            addr_info,
-                        }))
-                        .await;
-                    } else {
-                        tracing::debug!("failed to parse signed packet as node info");
-                    }
-                }
-                Err(e) => {
-                    tracing::debug!("failed to parse signed packet: {}", e);
-                    co.yield_(Err(e.into())).await;
-                }
-            }
+        let Some(signed_packet) = response else {
+            tracing::debug!("no signed packet found in DHT");
+            return;
+        };
+        if let Ok(node_info) = NodeInfo::from_pkarr_signed_packet(&signed_packet) {
+            let addr_info = node_info.into();
+            tracing::info!("discovered node info from DHT {:?}", addr_info);
+            co.yield_(Ok(DiscoveryItem {
+                provenance: "mainline",
+                last_updated: None,
+                addr_info,
+            }))
+            .await;
+        } else {
+            tracing::debug!("failed to parse signed packet as node info");
         }
     }
 
