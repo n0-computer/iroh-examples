@@ -194,7 +194,7 @@ impl PkarrNodeDiscovery {
     /// Periodically publish the node address to the DHT and relay.
     async fn publish_loop(self, keypair: SecretKey, signed_packet: SignedPacket) {
         let this = self;
-        let _z32 = pkarr::PublicKey::try_from(keypair.public().as_bytes())
+        let z32 = pkarr::PublicKey::try_from(keypair.public().as_bytes())
             .expect("valid public key")
             .to_z32();
         // initial delay. If the task gets aborted before this delay is over,
@@ -206,15 +206,8 @@ impl PkarrNodeDiscovery {
                 if this.0.dht {
                     let res = this.0.pkarr.publish(&signed_packet).await;
                     match res {
-                        Ok(_info) => {
-                            // tracing::debug!(
-                            //     "pkarr publish success. published under {} to {} nodes",
-                            //     z32,
-                            //     info.stored_at().len()
-                            // );
-                            // for node in info.stored_at() {
-                            //     tracing::trace!("stored address: {:?}", node);
-                            // }
+                        Ok(()) => {
+                            tracing::debug!("pkarr publish success. published under {z32}",);
                         }
                         Err(e) => {
                             // we could do a smaller delay here, but in general DHT publish
