@@ -2,7 +2,7 @@ use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::{Stream, StreamExt};
 use iroh::client::docs::{Entry, LiveEvent, ShareMode};
-use iroh::client::{MemDoc as Doc, MemIroh as Iroh};
+use iroh::client::{docs::Doc, Iroh};
 use iroh::docs::{AuthorId, DocTicket};
 use std::str::FromStr;
 // use iroh::ticket::DocTicket;

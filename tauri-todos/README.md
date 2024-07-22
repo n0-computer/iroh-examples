@@ -17,6 +17,7 @@ Requirement:
 
 - Rust
 - NodeJS
+- webkit2gtk
 
 install dependencies:
 
