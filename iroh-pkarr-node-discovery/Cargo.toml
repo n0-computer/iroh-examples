@@ -1,6 +1,6 @@
 [package]
 name = "iroh-pkarr-node-discovery"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 authors = ["Rüdiger Klaehn <rklaehn@protonmail.com>", "n0 team"]
 keywords = ["network", "p2p"]
@@ -16,7 +16,7 @@ anyhow = "1.0.79"
 derive_more = { version = "1.0.0-beta.6", features = ["debug", "display", "from", "try_into", "from_str"] }
 futures-lite = "2.3.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
-iroh-net = { git = "https://github.com/n0-computer/iroh", rev = "b4506b2c4a288434ea55c36607f8fd839d58bf10"}
+iroh-net = "0.21"
 pkarr = { version = "2.0", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"
