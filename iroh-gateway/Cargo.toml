@@ -9,7 +9,7 @@ tokio = { version = "1", features = ["full"] }
 headers = { version = "0.4" }
 hyper = "1"
 bytes = "1.1"
-iroh = { git = "https://github.com/n0-computer/iroh", rev = "b4506b2c4a288434ea55c36607f8fd839d58bf10"}
+iroh = "0.21"
 range-collections = "0.4.5"
 anyhow = "1.0.75"
 flume = "0.11.0"
