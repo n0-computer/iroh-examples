@@ -16,7 +16,7 @@ anyhow = "1.0.79"
 derive_more = { version = "1.0.0-beta.6", features = ["debug", "display", "from", "try_into", "from_str"] }
 futures-lite = "2.3.0"
 genawaiter = { version = "0.99.1", features = ["futures03"] }
-iroh-net = { version = "0.20" }
+iroh-net = { git = "https://github.com/n0-computer/iroh", rev = "b4506b2c4a288434ea55c36607f8fd839d58bf10"}
 pkarr = { version = "2.0", features = ["async"] }
 tokio = "1.35.1"
 tracing = "0.1.40"
