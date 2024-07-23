@@ -10,12 +10,12 @@ license = "Apache-2.0/MIT"
 anyhow = "1.0.75"
 bytes = "1.5.0"
 clap = { version = "4.4.11", features = ["derive"] }
-dumbpipe = { git = "https://github.com/n0-computer/dumbpipe", rev = "ef23a6687a8bd1b28e831e35e223e4a3657b00e4"}
+dumbpipe = "0.13"
 http = "1.0.0"
 http-body-util = "0.1.0"
 hyper = { version = "1.0.1", features = ["full"] }
 hyper-util = { version = "0.1.1", features = ["full"] }
-iroh = { git = "https://github.com/n0-computer/iroh", rev = "b4506b2c4a288434ea55c36607f8fd839d58bf10"}
+iroh = "0.21"
 iroh-quinn = "0.10.5"
 tokio = { version = "1.34.0", features = ["full"] }
 tracing = "0.1.40"
