@@ -6,9 +6,9 @@ mod todos;
 
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
-use iroh::client::MemIroh as Iroh;
 use iroh::client::docs::LiveEvent;
-use iroh::docs::{ContentStatus};
+use iroh::client::Iroh;
+use iroh::docs::ContentStatus;
 use tauri::Manager;
 use tokio::sync::Mutex;
 
