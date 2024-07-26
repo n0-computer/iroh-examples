@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
         async move {
             while let Ok(mut update) = am_updates.recv_async().await {
                 automerge.merge_doc(&mut update).await?;
-                tracing::debug!(?update, "Received local automerge update");
+                tracing::debug!("Received local automerge update");
                 if let Some(conn) = conn.as_ref() {
                     tracing::debug!("Sending automerge update to remote");
                     automerge.initiate_sync(conn).await?;

@@ -50,77 +50,25 @@ impl IrohAutomergeProtocol {
         *automerge = doc;
     }
 
-    async fn send_msg(msg: Protocol, send: &mut SendStream) -> Result<()> {
-        let encoded = postcard::to_stdvec(&msg)?;
-        send.write_all(&(encoded.len() as u64).to_le_bytes())
-            .await?;
-        send.write_all(&encoded).await?;
-        Ok(())
-    }
-
-    async fn recv_msg(recv: &mut RecvStream) -> Result<Protocol> {
-        let mut incoming_len = [0u8; 8];
-        recv.read_exact(&mut incoming_len).await?;
-        let len = u64::from_le_bytes(incoming_len);
-
-        let mut buffer = vec![0u8; len as usize];
-        recv.read_exact(&mut buffer).await?;
-        let msg: Protocol = postcard::from_bytes(&buffer)?;
-        Ok(msg)
-    }
-
     pub async fn initiate_sync(&self, conn: &iroh::net::endpoint::Connection) -> Result<()> {
         tracing::debug!("Opening syncing stream");
-        let (mut send, mut recv) = conn.open_bi().await?;
-
-        let mut doc = self.fork_doc().await;
-        let mut sync_state = sync::State::new();
-
-        let mut is_local_done = false;
-        let mut is_remote_done = false;
+        let bi_stream = conn.open_bi().await?;
+        let mut session = SyncSession::new(bi_stream, self.fork_doc().await);
         loop {
-            tracing::debug!("Sync round");
-            let msg = match doc.generate_sync_message(&mut sync_state) {
-                Some(msg) => Protocol::SyncMessage(msg.encode()),
-                None => {
-                    tracing::debug!("Local is done");
-                    Protocol::Done
-                }
-            };
+            tracing::debug!("initiator round");
+            session.send_step().await?;
+            tracing::debug!("initiator receive");
+            session.recv_step().await?;
 
-            if !is_local_done {
-                is_local_done = matches!(msg, Protocol::Done);
-                Self::send_msg(msg, &mut send).await?;
-            }
-
-            let msg = match Self::recv_msg(&mut recv).await {
-                Ok(msg) => msg,
-                Err(e) if is_local_done => {
-                    tracing::debug!("Couldn't send but local is done already ({e})");
-                    break;
-                }
-                Err(e) => return Err(e),
-            };
-            if matches!(msg, Protocol::Done) {
-                is_remote_done = true;
-                tracing::debug!("Remote is done");
-            }
-
-            // process incoming message
-            if let Protocol::SyncMessage(sync_msg) = msg {
-                let sync_msg = sync::Message::decode(&sync_msg)?;
-                doc.receive_sync_message(&mut sync_state, sync_msg)?;
-                self.merge_doc(&mut doc).await?;
-            }
-
-            if is_remote_done && is_local_done {
+            if session.is_done() {
                 tracing::debug!("Both sides are done");
-                // both sides are done
                 break;
             }
         }
 
-        send.finish().await?;
+        let mut synced = session.finish().await?;
+        self.merge_doc(&mut synced).await?;
+
         tracing::debug!("Finished initiated sync");
 
         Ok(())
@@ -133,57 +81,24 @@ impl IrohAutomergeProtocol {
         let conn = conn.await?;
         tracing::debug!("Accepted sync connection");
         loop {
-            let (mut send, mut recv) = conn.accept_bi().await?;
+            let bi_stream = conn.accept_bi().await?;
             tracing::debug!("Accepted sync stream");
+            let mut session = SyncSession::new(bi_stream, self.fork_doc().await);
 
-            let mut doc = self.fork_doc().await;
-            let mut sync_state = sync::State::new();
-
-            let mut is_local_done = false;
-            let mut is_remote_done = false;
             loop {
-                tracing::debug!("Sync round");
-                let msg = match Self::recv_msg(&mut recv).await {
-                    Ok(msg) => msg,
-                    Err(e) if is_local_done => {
-                        tracing::debug!("Couldn't send but local is done already ({e})");
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                };
-                if matches!(msg, Protocol::Done) {
-                    is_remote_done = true;
-                    tracing::debug!("Remote is done");
-                }
+                tracing::debug!("responder round");
+                session.recv_step().await?;
+                tracing::debug!("responder send");
+                session.send_step().await?;
 
-                // process incoming message
-                if let Protocol::SyncMessage(sync_msg) = msg {
-                    let sync_msg = sync::Message::decode(&sync_msg)?;
-                    doc.receive_sync_message(&mut sync_state, sync_msg)?;
-                    self.merge_doc(&mut doc).await?;
-                }
-
-                let msg = match doc.generate_sync_message(&mut sync_state) {
-                    Some(msg) => Protocol::SyncMessage(msg.encode()),
-                    None => {
-                        tracing::debug!("Local is done");
-                        Protocol::Done
-                    }
-                };
-
-                if !is_local_done {
-                    is_local_done = matches!(msg, Protocol::Done);
-                    Self::send_msg(msg, &mut send).await?;
-                }
-
-                if is_remote_done && is_local_done {
+                if session.is_done() {
                     tracing::debug!("Both sides are done");
-                    // both sides are done
                     break;
                 }
             }
 
-            send.finish().await?;
+            let mut synced = session.finish().await?;
+            self.merge_doc(&mut synced).await?;
 
             self.sync_finished.send_async(self.fork_doc().await).await?;
 
@@ -198,5 +113,100 @@ impl ProtocolHandler for IrohAutomergeProtocol {
         conn: iroh::net::endpoint::Connecting,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
         Box::pin(self.respond_sync(conn))
+    }
+}
+
+struct SyncSession {
+    doc: Automerge,
+    state: sync::State,
+    local_done: bool,
+    remote_done: bool,
+    send: SendStream,
+    recv: RecvStream,
+}
+
+impl SyncSession {
+    fn new((send, recv): (SendStream, RecvStream), doc: Automerge) -> Self {
+        Self {
+            doc,
+            state: sync::State::new(),
+            local_done: false,
+            remote_done: false,
+            send,
+            recv,
+        }
+    }
+
+    fn is_done(&self) -> bool {
+        self.local_done && self.remote_done
+    }
+
+    async fn send_step(&mut self) -> Result<()> {
+        let msg = match self.doc.generate_sync_message(&mut self.state) {
+            Some(msg) => Protocol::SyncMessage(msg.encode()),
+            None => {
+                tracing::debug!("Local is done");
+                Protocol::Done
+            }
+        };
+
+        if !self.local_done {
+            self.local_done = matches!(msg, Protocol::Done);
+            self.send_msg(msg).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn recv_step(&mut self) -> Result<()> {
+        let msg = match self.recv_msg().await {
+            Ok(msg) => msg,
+            Err(e) if self.local_done => {
+                tracing::debug!("Couldn't receive but local is done already, so assuming remote is finished, too ({e})");
+                self.remote_done = true;
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
+
+        if matches!(msg, Protocol::Done) {
+            self.remote_done = true;
+            tracing::debug!("Remote is done");
+        }
+
+        // process incoming message
+        if let Protocol::SyncMessage(sync_msg) = msg {
+            let sync_msg = sync::Message::decode(&sync_msg)?;
+            self.doc.receive_sync_message(&mut self.state, sync_msg)?;
+        }
+
+        Ok(())
+    }
+
+    async fn send_msg(&mut self, msg: Protocol) -> Result<()> {
+        let encoded = postcard::to_stdvec(&msg)?;
+        self.send
+            .write_all(&(encoded.len() as u64).to_le_bytes())
+            .await?;
+        self.send.write_all(&encoded).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        Ok(())
+    }
+
+    async fn recv_msg(&mut self) -> Result<Protocol> {
+        let mut incoming_len = [0u8; 8];
+        self.recv.read_exact(&mut incoming_len).await?;
+        let len = u64::from_le_bytes(incoming_len);
+
+        let mut buffer = vec![0u8; len as usize];
+        self.recv.read_exact(&mut buffer).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        let msg: Protocol = postcard::from_bytes(&buffer)?;
+        Ok(msg)
+    }
+
+    async fn finish(mut self) -> Result<Automerge> {
+        self.send.finish().await?;
+        Ok(self.doc)
     }
 }
