@@ -18,6 +18,7 @@ pub fn run_textarea_tui(
     receive_am: Receiver<Automerge>,
     send_am: Sender<Automerge>,
 ) -> Result<()> {
+    initialize_panic_handler();
     in_crossterm_alt_screen(move || {
         let stdout = io::stdout();
         let backend = CrosstermBackend::new(stdout.lock());
@@ -124,7 +125,7 @@ pub fn run_textarea_tui(
 }
 
 fn cursor_2d(string: &String, cursor_idx: usize) -> (usize, usize) {
-    let (before_cursor, _) = string.split_at(cursor_idx);
+    let before_cursor: String = string.chars().take(cursor_idx).collect();
     let row = before_cursor.chars().filter(|c| *c == '\n').count();
     let col = before_cursor.lines().skip(row).next().map_or(0, str::len);
     (row, col)
@@ -151,4 +152,20 @@ fn in_crossterm_alt_screen<T>(f: impl FnOnce() -> Result<T> + std::panic::Unwind
         Ok(result) => result,
         Err(e) => std::panic::resume_unwind(e),
     }
+}
+
+pub fn initialize_panic_handler() {
+    std::panic::set_hook(Box::new(|panic_info| {
+        disable_raw_mode().ok(); // ignore failures
+        crossterm::execute!(
+            io::stdout().lock(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )
+        .ok(); // ignore failures
+        better_panic::Settings::auto()
+            .most_recent_first(false)
+            .lineno_suffix(true)
+            .create_panic_handler()(panic_info);
+    }));
 }

@@ -10,12 +10,18 @@ use iroh::{
     node::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, task::JoinSet};
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
-    inner: Mutex<Automerge>,
+    inner: Mutex<Inner>,
     sync_finished: flume::Sender<Automerge>,
+}
+
+#[derive(Debug)]
+struct Inner {
+    doc: Automerge,
+    connections: Vec<Arc<iroh::net::endpoint::Connection>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,25 +35,60 @@ impl IrohAutomergeProtocol {
 
     pub fn new(doc: Automerge, sync_finished: flume::Sender<Automerge>) -> Arc<Self> {
         Arc::new(Self {
-            inner: Mutex::new(doc),
+            inner: Mutex::new(Inner {
+                doc,
+                connections: Vec::new(),
+            }),
             sync_finished,
         })
     }
 
     pub async fn fork_doc(&self) -> Automerge {
-        let automerge = self.inner.lock().await;
-        automerge.fork()
+        let inner = self.inner.lock().await;
+        inner.doc.fork()
     }
 
     pub async fn merge_doc(&self, doc: &mut Automerge) -> Result<()> {
-        let mut automerge = self.inner.lock().await;
-        automerge.merge(doc)?;
+        let mut inner = self.inner.lock().await;
+        inner.doc.merge(doc)?;
         Ok(())
     }
 
     pub async fn replace_doc(&self, doc: Automerge) {
-        let mut automerge = self.inner.lock().await;
-        *automerge = doc;
+        let mut inner = self.inner.lock().await;
+        inner.doc = doc;
+    }
+
+    pub async fn add_connection(&self, conn: Arc<iroh::net::endpoint::Connection>) -> Result<()> {
+        tracing::debug!("Adding a new live connection");
+        let incoming_node_id = iroh::net::endpoint::get_remote_node_id(&conn)?;
+        let mut inner = self.inner.lock().await;
+        inner.connections.retain(|conn| {
+            conn.close_reason().is_none() // only retain open connections
+                && iroh::net::endpoint::get_remote_node_id(&conn) // and remove existing equivalent connections
+                    .map_or(false, |node_id| node_id != incoming_node_id)
+        });
+        inner.connections.push(conn);
+        Ok(())
+    }
+
+    async fn get_connections(&self) -> Vec<Arc<iroh::net::endpoint::Connection>> {
+        let inner = self.inner.lock().await;
+        inner.connections.clone()
+    }
+
+    pub async fn sync_with_connected(self: &Arc<Self>) -> Result<JoinSet<Result<()>>> {
+        tracing::debug!("Syncing with all connected nodes");
+        let connections = self.get_connections().await;
+        let mut join_set = JoinSet::new();
+        for conn in connections {
+            tracing::debug!("Initiating a task to sync with one connected node");
+            join_set.spawn({
+                let this = Arc::clone(&self);
+                async move { this.initiate_sync(&conn).await }
+            });
+        }
+        Ok(join_set)
     }
 
     pub async fn initiate_sync(&self, conn: &iroh::net::endpoint::Connection) -> Result<()> {
@@ -78,8 +119,9 @@ impl IrohAutomergeProtocol {
         self: Arc<Self>,
         conn: iroh::net::endpoint::Connecting,
     ) -> Result<()> {
-        let conn = conn.await?;
+        let conn = Arc::new(conn.await?);
         tracing::debug!("Accepted sync connection");
+        self.add_connection(conn.clone()).await?;
         loop {
             let bi_stream = conn.accept_bi().await?;
             tracing::debug!("Accepted sync stream");
@@ -189,7 +231,6 @@ impl SyncSession {
             .write_all(&(encoded.len() as u64).to_le_bytes())
             .await?;
         self.send.write_all(&encoded).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         Ok(())
     }
 
@@ -200,7 +241,6 @@ impl SyncSession {
 
         let mut buffer = vec![0u8; len as usize];
         self.recv.read_exact(&mut buffer).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         let msg: Protocol = postcard::from_bytes(&buffer)?;
         Ok(msg)
     }

@@ -6,7 +6,10 @@ use clap::Parser;
 use iroh::node::{Node, ProtocolHandler};
 
 use protocol::IrohAutomergeProtocol;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    task::JoinSet,
+};
 
 mod protocol;
 mod tui;
@@ -52,17 +55,19 @@ async fn main() -> Result<()> {
         .spawn()
         .await?;
 
-    let conn = if let Some(remote_id) = opts.remote_id {
+    if let Some(remote_id) = opts.remote_id {
         let conn = iroh
             .endpoint()
             .connect_by_node_id(remote_id, IrohAutomergeProtocol::ALPN)
             .await?;
 
-        automerge.initiate_sync(&conn).await?;
+        automerge.add_connection(Arc::new(conn)).await?;
+        let mut syncs = automerge.sync_with_connected().await?;
+        while let Some(result) = syncs.join_next().await {
+            tracing::debug!("Finished sync {result:?}");
+        }
 
         doc = automerge.fork_doc().await;
-
-        Some(conn)
     } else {
         let addr = iroh.node_addr().await?;
 
@@ -81,22 +86,19 @@ async fn main() -> Result<()> {
         tx.commit();
 
         automerge.merge_doc(&mut doc).await?;
-
-        None
     };
 
     let (send_am, am_updates) = flume::bounded(100);
 
-    tokio::spawn({
+    let updates_task = tokio::spawn({
         let automerge = automerge.clone();
         async move {
+            let mut _guard_syncs: Option<JoinSet<Result<()>>> = None;
             while let Ok(mut update) = am_updates.recv_async().await {
                 automerge.merge_doc(&mut update).await?;
                 tracing::debug!("Received local automerge update");
-                if let Some(conn) = conn.as_ref() {
-                    tracing::debug!("Sending automerge update to remote");
-                    automerge.initiate_sync(conn).await?;
-                }
+                // Syncs kicked off from the previous update are dropped, thus aborted here
+                _guard_syncs = Some(automerge.sync_with_connected().await?);
             }
             anyhow::Ok(())
         }
@@ -105,6 +107,7 @@ async fn main() -> Result<()> {
     tui::run_textarea_tui(doc, sync_finished, send_am)?;
 
     // finally shut down
+    updates_task.abort();
     iroh.shutdown().await?;
 
     Ok(())
