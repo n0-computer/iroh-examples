@@ -1,58 +1,40 @@
-[2m2024-08-05T08:25:57.014660Z[0m [32m INFO[0m [2miroh_automerge[0m[2m:[0m server mode
-[2m2024-08-05T08:26:04.957306Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync connection
-[2m2024-08-05T08:26:04.957455Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Adding a new live connection
-[2m2024-08-05T08:26:04.968834Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync stream
-[2m2024-08-05T08:26:04.968933Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
-[2m2024-08-05T08:26:04.969031Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
-[2m2024-08-05T08:26:04.969434Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
-[2m2024-08-05T08:26:04.971370Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
-[2m2024-08-05T08:26:04.971694Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
-[2m2024-08-05T08:26:04.971737Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
-[2m2024-08-05T08:26:04.972553Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Remote is done
-[2m2024-08-05T08:26:04.972573Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
-[2m2024-08-05T08:26:04.972638Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
-[2m2024-08-05T08:26:04.972653Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Both sides are done
-[2m2024-08-05T08:26:04.973261Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Finished responding to sync
-[2m2024-08-05T08:26:04.973264Z[0m [34mDEBUG[0m [2miroh_automerge::tui[0m[2m:[0m Got remote automerge update. merging in
-[2m2024-08-05T08:26:07.882977Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:07.883045Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:07.883070Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:07.883173Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:07.883255Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:07.883397Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.032274Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.032344Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.032371Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.032479Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.032592Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.032786Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.240041Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.240116Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.240140Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.240298Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.240614Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.240749Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.351038Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.351100Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.351158Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.351323Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.351575Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.351709Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.421792Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.422003Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.422022Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.422092Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.422234Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.422362Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.521401Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.521463Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.521486Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.521569Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.521722Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.521853Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:08.618831Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
-[2m2024-08-05T08:26:08.618896Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:08.618918Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:08.619025Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:08.619137Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:08.619303Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
+[2m2024-08-05T08:56:34.991233Z[0m [32m INFO[0m [2miroh_automerge[0m[2m:[0m server mode
+[2m2024-08-05T08:56:40.547901Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync connection
+[2m2024-08-05T08:56:40.548014Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Adding a new live connection
+[2m2024-08-05T08:56:40.560351Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync stream
+[2m2024-08-05T08:56:40.560494Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
+[2m2024-08-05T08:56:40.560658Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
+[2m2024-08-05T08:56:40.561011Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
+[2m2024-08-05T08:56:40.562762Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Remote is done
+[2m2024-08-05T08:56:40.562787Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
+[2m2024-08-05T08:56:40.562842Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
+[2m2024-08-05T08:56:40.562873Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Both sides are done
+[2m2024-08-05T08:56:40.562884Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m FINISHING
+[2m2024-08-05T08:56:40.563622Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Finished responding to sync
+[2m2024-08-05T08:56:40.659015Z[0m [34mDEBUG[0m [2miroh_automerge::tui[0m[2m:[0m Got remote automerge update. merging in
+[2m2024-08-05T08:56:45.422726Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync connection
+[2m2024-08-05T08:56:45.422869Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Adding a new live connection
+[2m2024-08-05T08:56:45.443718Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Accepted sync stream
+[2m2024-08-05T08:56:45.443856Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
+[2m2024-08-05T08:56:45.443964Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
+[2m2024-08-05T08:56:45.444367Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
+[2m2024-08-05T08:56:45.449134Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
+[2m2024-08-05T08:56:45.449263Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
+[2m2024-08-05T08:56:45.449305Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder round
+[2m2024-08-05T08:56:45.450074Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Remote is done
+[2m2024-08-05T08:56:45.450092Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m responder send
+[2m2024-08-05T08:56:45.450144Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
+[2m2024-08-05T08:56:45.450167Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Both sides are done
+[2m2024-08-05T08:56:45.450178Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m FINISHING
+[2m2024-08-05T08:56:45.450772Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Finished responding to sync
+[2m2024-08-05T08:56:45.450782Z[0m [34mDEBUG[0m [2miroh_automerge::tui[0m[2m:[0m Got remote automerge update. merging in
+[2m2024-08-05T08:56:48.916026Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Received local automerge update
+[2m2024-08-05T08:56:48.916321Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
+[2m2024-08-05T08:56:48.916345Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
+[2m2024-08-05T08:56:48.916382Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
+[2m2024-08-05T08:56:48.916439Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
+[2m2024-08-05T08:56:48.916451Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
+[2m2024-08-05T08:56:48.916500Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
+[2m2024-08-05T08:56:48.916545Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
+[2m2024-08-05T08:56:48.916620Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
+[2m2024-08-05T08:56:48.916624Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive

@@ -14,12 +14,12 @@ use tokio::{sync::Mutex, task::JoinSet};
 
 #[derive(Debug)]
 pub struct IrohAutomergeProtocol {
-    inner: Mutex<Inner>,
+    state: Mutex<State>,
     sync_finished: flume::Sender<Automerge>,
 }
 
 #[derive(Debug)]
-struct Inner {
+struct State {
     doc: Automerge,
     connections: Vec<Arc<iroh::net::endpoint::Connection>>,
 }
@@ -35,7 +35,7 @@ impl IrohAutomergeProtocol {
 
     pub fn new(doc: Automerge, sync_finished: flume::Sender<Automerge>) -> Arc<Self> {
         Arc::new(Self {
-            inner: Mutex::new(Inner {
+            state: Mutex::new(State {
                 doc,
                 connections: Vec::new(),
             }),
@@ -44,25 +44,25 @@ impl IrohAutomergeProtocol {
     }
 
     pub async fn fork_doc(&self) -> Automerge {
-        let inner = self.inner.lock().await;
+        let inner = self.state.lock().await;
         inner.doc.fork()
     }
 
     pub async fn merge_doc(&self, doc: &mut Automerge) -> Result<()> {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.state.lock().await;
         inner.doc.merge(doc)?;
         Ok(())
     }
 
     pub async fn replace_doc(&self, doc: Automerge) {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.state.lock().await;
         inner.doc = doc;
     }
 
     pub async fn add_connection(&self, conn: Arc<iroh::net::endpoint::Connection>) -> Result<()> {
         tracing::debug!("Adding a new live connection");
         let incoming_node_id = iroh::net::endpoint::get_remote_node_id(&conn)?;
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.state.lock().await;
         inner.connections.retain(|conn| {
             conn.close_reason().is_none() // only retain open connections
                 && iroh::net::endpoint::get_remote_node_id(&conn) // and remove existing equivalent connections
@@ -73,7 +73,7 @@ impl IrohAutomergeProtocol {
     }
 
     async fn get_connections(&self) -> Vec<Arc<iroh::net::endpoint::Connection>> {
-        let inner = self.inner.lock().await;
+        let inner = self.state.lock().await;
         inner.connections.clone()
     }
 
@@ -236,17 +236,32 @@ impl SyncSession {
 
     async fn recv_msg(&mut self) -> Result<Protocol> {
         let mut incoming_len = [0u8; 8];
-        self.recv.read_exact(&mut incoming_len).await?;
+        read_exact(&mut self.recv, &mut incoming_len).await?;
         let len = u64::from_le_bytes(incoming_len);
 
         let mut buffer = vec![0u8; len as usize];
-        self.recv.read_exact(&mut buffer).await?;
+        read_exact(&mut self.recv, &mut buffer).await?;
         let msg: Protocol = postcard::from_bytes(&buffer)?;
         Ok(msg)
     }
 
     async fn finish(mut self) -> Result<Automerge> {
+        tracing::debug!("FINISHING");
         self.send.finish().await?;
         Ok(self.doc)
     }
+}
+
+async fn read_exact(stream: &mut RecvStream, buf: &mut [u8]) -> Result<()> {
+    let mut total_bytes_read = 0;
+    while let Some(bytes_read) = stream.read(&mut buf[total_bytes_read..]).await? {
+        total_bytes_read += bytes_read;
+        if total_bytes_read >= buf.len() {
+            break;
+        }
+    }
+    if total_bytes_read != buf.len() {
+        anyhow::bail!("Stream finished early");
+    }
+    Ok(())
 }

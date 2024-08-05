@@ -1,17 +1,18 @@
-[2m2024-08-05T08:26:04.299141Z[0m [32m INFO[0m [2miroh_automerge[0m[2m:[0m client mode
-[2m2024-08-05T08:26:04.921860Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Adding a new live connection
-[2m2024-08-05T08:26:04.933900Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
-[2m2024-08-05T08:26:04.933952Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
-[2m2024-08-05T08:26:04.934069Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
-[2m2024-08-05T08:26:04.934201Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:04.934452Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:04.970781Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:04.970908Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:04.972095Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Remote is done
-[2m2024-08-05T08:26:04.972122Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
-[2m2024-08-05T08:26:04.972200Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
-[2m2024-08-05T08:26:04.972235Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
-[2m2024-08-05T08:26:04.972956Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Couldn't receive but local is done already, so assuming remote is finished, too (stream finished early)
-[2m2024-08-05T08:26:04.972998Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Both sides are done
-[2m2024-08-05T08:26:04.973917Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Finished initiated sync
-[2m2024-08-05T08:26:04.974220Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Finished sync Ok(Ok(()))
+[2m2024-08-05T08:56:45.038353Z[0m [32m INFO[0m [2miroh_automerge[0m[2m:[0m client mode
+[2m2024-08-05T08:56:45.390001Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Adding a new live connection
+[2m2024-08-05T08:56:45.399951Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Syncing with all connected nodes
+[2m2024-08-05T08:56:45.400019Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Initiating a task to sync with one connected node
+[2m2024-08-05T08:56:45.400128Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Opening syncing stream
+[2m2024-08-05T08:56:45.400261Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
+[2m2024-08-05T08:56:45.400484Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
+[2m2024-08-05T08:56:45.448402Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
+[2m2024-08-05T08:56:45.448534Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
+[2m2024-08-05T08:56:45.449675Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Remote is done
+[2m2024-08-05T08:56:45.449705Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator round
+[2m2024-08-05T08:56:45.449755Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Local is done
+[2m2024-08-05T08:56:45.449780Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m initiator receive
+[2m2024-08-05T08:56:45.450462Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Couldn't receive but local is done already, so assuming remote is finished, too (Stream finished early)
+[2m2024-08-05T08:56:45.450496Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Both sides are done
+[2m2024-08-05T08:56:45.450515Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m FINISHING
+[2m2024-08-05T08:56:45.451304Z[0m [34mDEBUG[0m [2miroh_automerge::protocol[0m[2m:[0m Finished initiated sync
+[2m2024-08-05T08:56:45.451429Z[0m [34mDEBUG[0m [2miroh_automerge[0m[2m:[0m Finished sync Ok(Ok(()))
