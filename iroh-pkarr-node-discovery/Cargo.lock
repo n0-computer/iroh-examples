@@ -1791,7 +1791,7 @@ dependencies = [
 
 [[package]]
 name = "iroh-pkarr-node-discovery"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4715,3 +4715,8 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+
+[[patch.unused]]
+name = "iroh"
+version = "0.22.0"
+source = "git+https://github.com/n0-computer/iroh?branch=main#217ac06b2128af9721ed6780a6bb2f0092a46ace"

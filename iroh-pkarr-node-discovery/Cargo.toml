@@ -28,3 +28,6 @@ hex = "0.4.3"
 postcard = "1.0.8"
 proptest = "1.4.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh", branch = "main" }
