@@ -19,12 +19,20 @@ type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
+    let iroh_data_dir = std::env::var("IROH_DATA_DIR")
+        .ok()
+        .map(std::path::PathBuf::from);
+
     // get the applicaiton data root, join with "iroh_data" to get the data root for the iroh node
-    let data_root = handle
-        .path_resolver()
-        .app_data_dir()
-        .ok_or_else(|| anyhow!("can't get application data directory"))?
-        .join("iroh_data");
+    let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
+        anyhow::Ok(
+            handle
+                .path_resolver()
+                .app_data_dir()
+                .ok_or_else(|| anyhow!("can't get application data directory"))?
+                .join("iroh_data"),
+        )
+    })?;
 
     // create the iroh node
     let node = iroh::node::Node::persistent(data_root)
