@@ -98,7 +98,7 @@ impl ProtocolHandler for CapExchangeProtocol {
 
             let ticket = (self.get_ticket)().await?;
             send.write_all(&ticket.to_bytes()).await?;
-            send.finish().await?;
+            send.finish()?;
 
             let close = conn.closed().await;
             println!("conn closed: {close:?}");
@@ -125,10 +125,10 @@ impl Todos {
                     .await?;
                 let (mut send, mut recv) = conn.open_bi().await?;
                 send.write_all(node.net().node_id().await?.as_ref()).await?;
-                send.finish().await?;
+                send.finish()?;
                 let ticket_bytes = recv.read_to_end(1024 * 10).await?;
                 let ticket = DocTicket::from_bytes(&ticket_bytes)?;
-                conn.close(0u32.into(), b"bye!");
+                conn.close(0u32.into(), b"thanks for the ticket!");
                 node.docs().import(ticket).await?
             }
         };

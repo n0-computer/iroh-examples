@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Todos with Iroh"
 license = "MIT OR Apache-2.0"
 authors = ["dignifiedquire <me@dignifiedquire.com>", "n0 team"]
-repository = "https://github.com/n0-computer/iroh-example-todos"
+repository = "https://github.com/n0-computer/iroh-examples"
 default-run = "app"
 edition = "2021"
 rust-version = "1.65"
@@ -18,12 +18,13 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.6.1", features = ["api-all"] }
 tokio = { version = "1" }
-iroh = "0.23"
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "willow" }
 bytes = "1"
-num_cpus = { version = "1.15.0" }
 tokio-util = { version = "0.7" }
 futures-lite = "2.3.0"
 derive_more = "=1.0.0-beta.7"
+postcard = "1.0.10"
+data-encoding = "2.6.0"
 
 [features]
 # by default Tauri runs in production mode
@@ -32,3 +33,11 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[patch.crates-io]
+# willow-data-model = { path = "../willow-rs/data-model" }
+# willow-encoding = { path = "../willow-rs/encoding" }
+# meadowcap = { path = "../willow-rs/meadowcap" }
+willow-data-model = { git = "https://github.com/n0-computer/willow-rs.git", branch = "main" }
+willow-encoding = { git = "https://github.com/n0-computer/willow-rs.git", branch = "main" }
+meadowcap = { git = "https://github.com/n0-computer/willow-rs.git", branch = "main" }
