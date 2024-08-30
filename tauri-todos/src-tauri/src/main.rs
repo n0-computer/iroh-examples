@@ -6,9 +6,7 @@ mod todos;
 
 use anyhow::Result;
 use futures_lite::StreamExt;
-use iroh::client::docs::LiveEvent;
 use iroh::client::Iroh;
-use iroh::docs::ContentStatus;
 use tauri::Manager;
 use todos::CapExchangeProtocol;
 use tokio::sync::Mutex;
@@ -94,7 +92,7 @@ impl AppState {
     ) -> Result<()> {
         let mut events = todos.doc_subscribe().await?;
         let events_handle = tokio::spawn(async move {
-            while let Some(Ok(event)) = events.next().await {
+            while let Some(Ok(_event)) = events.next().await {
                 app_handle.emit_all("update-all", ()).ok();
                 // match event {
                 //     LiveEvent::InsertRemote { content_status, .. } => {

@@ -8,7 +8,7 @@ use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
 use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
-use iroh::spaces::interest::RestrictArea;
+use iroh::spaces::interest::{AreaOfInterestSelector, RestrictArea};
 use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Path};
 use iroh::spaces::proto::grouping::{Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
@@ -16,6 +16,7 @@ use iroh::spaces::proto::meadowcap::AccessMode;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::task::JoinHandle;
 
 /// Todo in a list of todos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,73 +66,7 @@ pub struct Todos {
     node: Iroh,
     space: Space,
     user: UserId,
-}
-
-type GetTicketFn = Arc<dyn Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static>;
-
-#[derive(derive_more::Debug)]
-pub struct CapExchangeProtocol {
-    #[debug(skip)]
-    get_ticket: GetTicketFn,
-}
-
-impl CapExchangeProtocol {
-    pub const ALPN: &'static [u8] = b"iroh-tauri-todos/cap-request/0";
-
-    pub fn new(
-        get_ticket: impl Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static,
-    ) -> Arc<Self> {
-        Arc::new(Self {
-            get_ticket: Arc::new(get_ticket),
-        })
-    }
-
-    pub async fn request(
-        endpoint: &iroh::net::Endpoint,
-        node_addr: NodeAddr,
-        user: UserId,
-    ) -> Result<SpaceTicket> {
-        let conn = endpoint
-            .connect(node_addr, CapExchangeProtocol::ALPN)
-            .await?;
-        let (mut send, mut recv) = conn.open_bi().await?;
-        send.write_all(user.as_bytes()).await?;
-        send.finish()?;
-        let ticket_bytes = recv.read_to_end(1024 * 10).await?;
-        let ticket: SpaceTicket = postcard::from_bytes(&ticket_bytes)?;
-        conn.close(0u32.into(), b"thanks for the ticket!");
-        Ok(ticket)
-    }
-
-    pub async fn respond(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Result<()> {
-        let conn = conn.await?;
-
-        let (mut send, mut recv) = conn.accept_bi().await?;
-
-        let bytes: [u8; 32] = recv
-            .read_to_end(1000)
-            .await?
-            .try_into()
-            .map_err(|v: Vec<u8>| anyhow::anyhow!("Expected 32 bytes, but got {}", v.len()))?;
-        let user_id = UserId::from(bytes);
-        println!("Got incoming cap request from {user_id}");
-
-        let ticket = (self.get_ticket)(user_id).await?;
-        let ticket_bytes = postcard::to_allocvec(&ticket)?;
-        send.write_all(&ticket_bytes).await?;
-        send.finish()?;
-
-        let close = conn.closed().await;
-        println!("conn closed: {close:?}");
-
-        Ok(())
-    }
-}
-
-impl ProtocolHandler for CapExchangeProtocol {
-    fn accept(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Boxed<Result<()>> {
-        Box::pin(self.respond(conn))
-    }
+    _sync: Option<JoinHandle<Result<()>>>,
 }
 
 impl Todos {
@@ -142,19 +77,38 @@ impl Todos {
     ) -> anyhow::Result<Self> {
         let user = node.spaces().create_user().await?;
 
-        let space = match node_ticket {
-            None => node.spaces().create(NamespaceKind::Owned, user).await?,
+        let (space, sync) = match node_ticket {
+            None => (
+                node.spaces().create(NamespaceKind::Owned, user).await?,
+                None,
+            ),
             Some(node_ticket) => {
                 let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
+                let node_id = node_addr.node_id;
                 let ticket = CapExchangeProtocol::request(&endpoint, node_addr, user).await?;
                 let (space, sync) = node.spaces().import_and_sync(ticket).await?;
                 let completion = sync.complete_all().await;
                 println!("Completed sync: {completion:#?}");
-                space
+                let mut sync = space
+                    .sync_continuously(node_id, AreaOfInterestSelector::Widest)
+                    .await?;
+                let handle = tokio::spawn(async move {
+                    while let Some(ev) = sync.next().await {
+                        println!("Got sync event: {ev:?}");
+                    }
+
+                    anyhow::Ok(())
+                });
+                (space, Some(handle))
             }
         };
 
-        Ok(Todos { node, user, space })
+        Ok(Todos {
+            node,
+            user,
+            space,
+            _sync: sync,
+        })
     }
 
     pub async fn ticket(&self) -> Result<String> {
@@ -278,5 +232,72 @@ impl Todos {
         Ok(Path::new_singleton(
             Component::new(key.as_ref()).ok_or_else(|| anyhow::anyhow!("invalid component"))?,
         )?)
+    }
+}
+
+type GetTicketFn = Arc<dyn Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static>;
+
+#[derive(derive_more::Debug)]
+pub struct CapExchangeProtocol {
+    #[debug(skip)]
+    get_ticket: GetTicketFn,
+}
+
+impl CapExchangeProtocol {
+    pub const ALPN: &'static [u8] = b"iroh-tauri-todos/cap-request/0";
+
+    pub fn new(
+        get_ticket: impl Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            get_ticket: Arc::new(get_ticket),
+        })
+    }
+
+    pub async fn request(
+        endpoint: &iroh::net::Endpoint,
+        node_addr: NodeAddr,
+        user: UserId,
+    ) -> Result<SpaceTicket> {
+        let conn = endpoint
+            .connect(node_addr, CapExchangeProtocol::ALPN)
+            .await?;
+        let (mut send, mut recv) = conn.open_bi().await?;
+        send.write_all(user.as_bytes()).await?;
+        send.finish()?;
+        let ticket_bytes = recv.read_to_end(1024 * 10).await?;
+        let ticket: SpaceTicket = postcard::from_bytes(&ticket_bytes)?;
+        conn.close(0u32.into(), b"thanks for the ticket!");
+        Ok(ticket)
+    }
+
+    pub async fn respond(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Result<()> {
+        let conn = conn.await?;
+
+        let (mut send, mut recv) = conn.accept_bi().await?;
+
+        let bytes: [u8; 32] = recv
+            .read_to_end(1000)
+            .await?
+            .try_into()
+            .map_err(|v: Vec<u8>| anyhow::anyhow!("Expected 32 bytes, but got {}", v.len()))?;
+        let user_id = UserId::from(bytes);
+        println!("Got incoming cap request from {user_id}");
+
+        let ticket = (self.get_ticket)(user_id).await?;
+        let ticket_bytes = postcard::to_allocvec(&ticket)?;
+        send.write_all(&ticket_bytes).await?;
+        send.finish()?;
+
+        let close = conn.closed().await;
+        println!("conn closed: {close:?}");
+
+        Ok(())
+    }
+}
+
+impl ProtocolHandler for CapExchangeProtocol {
+    fn accept(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Boxed<Result<()>> {
+        Box::pin(self.respond(conn))
     }
 }
