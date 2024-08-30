@@ -1,10 +1,16 @@
 use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
+use futures_lite::future::Boxed;
 use futures_lite::{Stream, StreamExt};
+use iroh::base::ticket::Ticket;
 use iroh::client::docs::{Entry, LiveEvent, ShareMode};
 use iroh::client::{docs::Doc, Iroh};
 use iroh::docs::{AuthorId, DocTicket};
+use iroh::net::ticket::NodeTicket;
+use iroh::net::NodeId;
+use iroh::node::ProtocolHandler;
 use std::str::FromStr;
+use std::sync::Arc;
 // use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
 
@@ -55,34 +61,87 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 pub struct Todos {
     node: Iroh,
     doc: Doc,
-    ticket: DocTicket,
     author: AuthorId,
 }
 
+type GetTicketFn = Arc<dyn Fn() -> Boxed<Result<DocTicket>> + Send + Sync + 'static>;
+
+#[derive(derive_more::Debug)]
+pub struct CapExchangeProtocol {
+    #[debug(skip)]
+    get_ticket: GetTicketFn,
+}
+
+impl CapExchangeProtocol {
+    pub const ALPN: &'static [u8] = b"iroh-tauri-todos/cap-request/0";
+
+    pub fn new(
+        get_ticket: impl Fn() -> Boxed<Result<DocTicket>> + Send + Sync + 'static,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            get_ticket: Arc::new(get_ticket),
+        })
+    }
+}
+
+impl ProtocolHandler for CapExchangeProtocol {
+    fn accept(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Boxed<Result<()>> {
+        Box::pin(async move {
+            let conn = conn.await?;
+
+            let (mut send, mut recv) = conn.accept_bi().await?;
+
+            let node_id = NodeId::from_bytes(&recv.read_to_end(1000).await?.try_into().map_err(
+                |v: Vec<u8>| anyhow::anyhow!("Expected 32 bytes, but got {}", v.len()),
+            )?)?;
+            println!("Got incoming cap request from {node_id}");
+
+            let ticket = (self.get_ticket)().await?;
+            send.write_all(&ticket.to_bytes()).await?;
+            send.finish().await?;
+
+            let close = conn.closed().await;
+            println!("conn closed: {close:?}");
+
+            Ok(())
+        })
+    }
+}
+
 impl Todos {
-    pub async fn new(ticket: Option<String>, node: Iroh) -> anyhow::Result<Self> {
+    pub async fn new(
+        ticket: Option<String>,
+        node: Iroh,
+        endpoint: iroh::net::Endpoint,
+    ) -> anyhow::Result<Self> {
         let author = node.authors().create().await?;
 
         let doc = match ticket {
             None => node.docs().create().await?,
-            Some(ticket) => {
-                let ticket = DocTicket::from_str(&ticket)?;
+            Some(node_ticket) => {
+                let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
+                let conn = endpoint
+                    .connect(node_addr, CapExchangeProtocol::ALPN)
+                    .await?;
+                let (mut send, mut recv) = conn.open_bi().await?;
+                send.write_all(node.net().node_id().await?.as_ref()).await?;
+                send.finish().await?;
+                let ticket_bytes = recv.read_to_end(1024 * 10).await?;
+                let ticket = DocTicket::from_bytes(&ticket_bytes)?;
+                conn.close(0u32.into(), b"bye!");
                 node.docs().import(ticket).await?
             }
         };
 
-        let ticket = doc.share(ShareMode::Write, Default::default()).await?;
-
-        Ok(Todos {
-            node,
-            author,
-            doc,
-            ticket,
-        })
+        Ok(Todos { node, author, doc })
     }
 
-    pub fn ticket(&self) -> String {
-        self.ticket.to_string()
+    pub async fn ticket(&self) -> Result<String> {
+        Ok(NodeTicket::new(self.node.net().node_addr().await?)?.to_string())
+    }
+
+    pub async fn share_ticket(&self) -> Result<DocTicket> {
+        self.doc.share(ShareMode::Write, Default::default()).await
     }
 
     pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<LiveEvent>>> {

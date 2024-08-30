@@ -111,6 +111,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "derive_more 1.0.0-beta.7",
  "futures-lite 2.3.0",
  "iroh",
  "num_cpus",

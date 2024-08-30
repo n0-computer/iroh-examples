@@ -10,6 +10,7 @@ use iroh::client::docs::LiveEvent;
 use iroh::client::Iroh;
 use iroh::docs::ContentStatus;
 use tauri::Manager;
+use todos::CapExchangeProtocol;
 use tokio::sync::Mutex;
 
 use self::todos::{Todo, Todos};
@@ -37,6 +38,28 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
     // create the iroh node
     let node = iroh::node::Node::persistent(data_root)
         .await?
+        .build()
+        .await?
+        .accept(
+            CapExchangeProtocol::ALPN,
+            CapExchangeProtocol::new({
+                let handle = handle.clone();
+                move || {
+                    Box::pin({
+                        let handle = handle.clone();
+                        async move {
+                            let state: tauri::State<'_, AppState> =
+                                handle.try_state().ok_or(anyhow::anyhow!("Missing state"))?;
+                            let Some((todos, _)) = &mut *state.todos.lock().await else {
+                                anyhow::bail!("Not initialized");
+                            };
+                            let ticket = todos.share_ticket().await?;
+                            Ok(ticket)
+                        }
+                    })
+                }
+            }),
+        )
         .spawn()
         .await?;
     handle.manage(AppState::new(node));
@@ -48,6 +71,7 @@ struct AppState {
     todos: Mutex<Option<(Todos, tokio::task::JoinHandle<()>)>>,
     iroh: IrohNode,
 }
+
 impl AppState {
     fn new(iroh: IrohNode) -> Self {
         AppState {
@@ -58,6 +82,10 @@ impl AppState {
 
     fn iroh(&self) -> Iroh {
         self.iroh.client().clone()
+    }
+
+    fn endpoint(&self) -> iroh::net::Endpoint {
+        self.iroh.endpoint().clone()
     }
 
     async fn init_todos<R: tauri::Runtime>(
@@ -140,7 +168,7 @@ async fn new_list(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(None, state.iroh())
+    let todos = Todos::new(None, state.iroh(), state.endpoint())
         .await
         .map_err(|e| e.to_string())?;
 
@@ -178,20 +206,20 @@ async fn update_todo(todo: Todo, state: tauri::State<'_, AppState>) -> Result<()
 
 #[tauri::command]
 async fn toggle_done(id: String, state: tauri::State<'_, AppState>) -> Result<bool, String> {
-    if let Some((todos, _)) = &mut *state.todos.lock().await {
-        todos.toggle_done(id).await.map_err(|e| e.to_string())?;
-        return Ok(true);
-    }
-    Err("not initialized".to_string())
+    let Some((todos, _)) = &mut *state.todos.lock().await else {
+        return Err("not initialized".to_string());
+    };
+    todos.toggle_done(id).await.map_err(|e| e.to_string())?;
+    Ok(true)
 }
 
 #[tauri::command]
 async fn delete(id: String, state: tauri::State<'_, AppState>) -> Result<bool, String> {
-    if let Some((todos, _)) = &mut *state.todos.lock().await {
-        todos.delete(id).await.map_err(|e| e.to_string())?;
-        return Ok(true);
-    }
-    Err("not initialized".to_string())
+    let Some((todos, _)) = &mut *state.todos.lock().await else {
+        return Err("not initialized".to_string());
+    };
+    todos.delete(id).await.map_err(|e| e.to_string())?;
+    Ok(true)
 }
 
 #[tauri::command]
@@ -200,7 +228,7 @@ async fn set_ticket(
     ticket: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(Some(ticket), state.iroh())
+    let todos = Todos::new(Some(ticket), state.iroh(), state.endpoint())
         .await
         .map_err(|e| e.to_string())?;
 
@@ -214,8 +242,8 @@ async fn set_ticket(
 
 #[tauri::command]
 async fn get_ticket(state: tauri::State<'_, AppState>) -> Result<String, String> {
-    if let Some((todos, _)) = &mut *state.todos.lock().await {
-        return Ok(todos.ticket());
-    }
-    Err("not initialized".to_string())
+    let Some((todos, _)) = &mut *state.todos.lock().await else {
+        return Err("not initialized".to_string());
+    };
+    todos.ticket().await.map_err(|e| e.to_string())
 }

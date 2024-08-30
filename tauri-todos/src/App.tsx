@@ -23,12 +23,12 @@ function App() {
     console.log("create list");
     invoke('new_list').then(() => {
       console.log("in new_list and then");
-       getTodos(); 
-       setShowOpenList(false);
+      getTodos();
+      setShowOpenList(false);
     })
   }
 
-  function joinList(ticket:string) {
+  function joinList(ticket: string) {
     console.log("join list");
     setTicket(ticket);
     getTodos();
