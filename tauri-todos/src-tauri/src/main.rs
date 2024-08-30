@@ -4,7 +4,7 @@
 )]
 mod todos;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use futures_lite::StreamExt;
 use iroh::client::docs::LiveEvent;
 use iroh::client::Iroh;
@@ -16,35 +16,34 @@ use tokio::sync::Mutex;
 use self::todos::{Todo, Todos};
 
 // this example uses a persistend iroh node stored in the application data directory
-type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
+type IrohNode = iroh::node::Node<iroh::blobs::store::mem::Store>;
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
-    let iroh_data_dir = std::env::var("IROH_DATA_DIR")
-        .ok()
-        .map(std::path::PathBuf::from);
+    // let iroh_data_dir = std::env::var("IROH_DATA_DIR")
+    //     .ok()
+    //     .map(std::path::PathBuf::from);
 
-    // get the applicaiton data root, join with "iroh_data" to get the data root for the iroh node
-    let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
-        anyhow::Ok(
-            handle
-                .path_resolver()
-                .app_data_dir()
-                .ok_or_else(|| anyhow!("can't get application data directory"))?
-                .join("iroh_data"),
-        )
-    })?;
+    // // get the applicaiton data root, join with "iroh_data" to get the data root for the iroh node
+    // let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
+    //     anyhow::Ok(
+    //         handle
+    //             .path_resolver()
+    //             .app_data_dir()
+    //             .ok_or_else(|| anyhow::anyhow!("can't get application data directory"))?
+    //             .join("iroh_data"),
+    //     )
+    // })?;
 
     // create the iroh node
-    let node = iroh::node::Node::persistent(data_root)
-        .await?
+    let node = iroh::node::Node::memory()
         .build()
         .await?
         .accept(
             CapExchangeProtocol::ALPN,
             CapExchangeProtocol::new({
                 let handle = handle.clone();
-                move || {
+                move |user_id| {
                     Box::pin({
                         let handle = handle.clone();
                         async move {
@@ -53,7 +52,7 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
                             let Some((todos, _)) = &mut *state.todos.lock().await else {
                                 anyhow::bail!("Not initialized");
                             };
-                            let ticket = todos.share_ticket().await?;
+                            let ticket = todos.share_ticket(user_id).await?;
                             Ok(ticket)
                         }
                     })
@@ -96,18 +95,19 @@ impl AppState {
         let mut events = todos.doc_subscribe().await?;
         let events_handle = tokio::spawn(async move {
             while let Some(Ok(event)) = events.next().await {
-                match event {
-                    LiveEvent::InsertRemote { content_status, .. } => {
-                        // Only update if the we already have the content. Likely to happen when a remote user toggles "done".
-                        if content_status == ContentStatus::Complete {
-                            app_handle.emit_all("update-all", ()).ok();
-                        }
-                    }
-                    LiveEvent::InsertLocal { .. } | LiveEvent::ContentReady { .. } => {
-                        app_handle.emit_all("update-all", ()).ok();
-                    }
-                    _ => {}
-                }
+                app_handle.emit_all("update-all", ()).ok();
+                // match event {
+                //     LiveEvent::InsertRemote { content_status, .. } => {
+                //         // Only update if the we already have the content. Likely to happen when a remote user toggles "done".
+                //         if content_status == ContentStatus::Complete {
+                //             app_handle.emit_all("update-all", ()).ok();
+                //         }
+                //     }
+                //     LiveEvent::InsertLocal { .. } | LiveEvent::ContentReady { .. } => {
+                //         app_handle.emit_all("update-all", ()).ok();
+                //     }
+                //     _ => {}
+                // }
             }
         });
 

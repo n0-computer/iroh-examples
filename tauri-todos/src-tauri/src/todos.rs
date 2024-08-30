@@ -2,17 +2,19 @@ use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::future::Boxed;
 use futures_lite::{Stream, StreamExt};
-use iroh::base::ticket::Ticket;
-use iroh::client::docs::{Entry, LiveEvent, ShareMode};
-use iroh::client::{docs::Doc, Iroh};
-use iroh::docs::{AuthorId, DocTicket};
+use iroh::client::docs::LiveEvent;
+use iroh::client::spaces::{EntryForm, Space, SpaceTicket};
+use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
-use iroh::net::NodeId;
 use iroh::node::ProtocolHandler;
+use iroh::spaces::interest::RestrictArea;
+use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Path};
+use iroh::spaces::proto::grouping::{Range, Range3d};
+use iroh::spaces::proto::keys::{NamespaceKind, UserId};
+use iroh::spaces::proto::meadowcap::AccessMode;
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
-// use iroh::ticket::DocTicket;
-use serde::{Deserialize, Serialize};
 
 /// Todo in a list of todos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -60,11 +62,11 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
     node: Iroh,
-    doc: Doc,
-    author: AuthorId,
+    space: Space,
+    user: UserId,
 }
 
-type GetTicketFn = Arc<dyn Fn() -> Boxed<Result<DocTicket>> + Send + Sync + 'static>;
+type GetTicketFn = Arc<dyn Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static>;
 
 #[derive(derive_more::Debug)]
 pub struct CapExchangeProtocol {
@@ -76,7 +78,7 @@ impl CapExchangeProtocol {
     pub const ALPN: &'static [u8] = b"iroh-tauri-todos/cap-request/0";
 
     pub fn new(
-        get_ticket: impl Fn() -> Boxed<Result<DocTicket>> + Send + Sync + 'static,
+        get_ticket: impl Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static,
     ) -> Arc<Self> {
         Arc::new(Self {
             get_ticket: Arc::new(get_ticket),
@@ -91,13 +93,17 @@ impl ProtocolHandler for CapExchangeProtocol {
 
             let (mut send, mut recv) = conn.accept_bi().await?;
 
-            let node_id = NodeId::from_bytes(&recv.read_to_end(1000).await?.try_into().map_err(
-                |v: Vec<u8>| anyhow::anyhow!("Expected 32 bytes, but got {}", v.len()),
-            )?)?;
-            println!("Got incoming cap request from {node_id}");
+            let bytes: [u8; 32] = recv
+                .read_to_end(1000)
+                .await?
+                .try_into()
+                .map_err(|v: Vec<u8>| anyhow::anyhow!("Expected 32 bytes, but got {}", v.len()))?;
+            let user_id = UserId::from(bytes);
+            println!("Got incoming cap request from {user_id}");
 
-            let ticket = (self.get_ticket)().await?;
-            send.write_all(&ticket.to_bytes()).await?;
+            let ticket = (self.get_ticket)(user_id).await?;
+            let ticket_bytes = postcard::to_allocvec(&ticket)?;
+            send.write_all(&ticket_bytes).await?;
             send.finish()?;
 
             let close = conn.closed().await;
@@ -110,42 +116,51 @@ impl ProtocolHandler for CapExchangeProtocol {
 
 impl Todos {
     pub async fn new(
-        ticket: Option<String>,
+        node_ticket: Option<String>,
         node: Iroh,
         endpoint: iroh::net::Endpoint,
     ) -> anyhow::Result<Self> {
-        let author = node.authors().create().await?;
+        let user = node.spaces().create_user().await?;
 
-        let doc = match ticket {
-            None => node.docs().create().await?,
+        let space = match node_ticket {
+            None => node.spaces().create(NamespaceKind::Owned, user).await?,
             Some(node_ticket) => {
                 let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
                 let conn = endpoint
                     .connect(node_addr, CapExchangeProtocol::ALPN)
                     .await?;
                 let (mut send, mut recv) = conn.open_bi().await?;
-                send.write_all(node.net().node_id().await?.as_ref()).await?;
+                send.write_all(user.as_bytes()).await?;
                 send.finish()?;
                 let ticket_bytes = recv.read_to_end(1024 * 10).await?;
-                let ticket = DocTicket::from_bytes(&ticket_bytes)?;
+                let ticket: SpaceTicket = postcard::from_bytes(&ticket_bytes)?;
                 conn.close(0u32.into(), b"thanks for the ticket!");
-                node.docs().import(ticket).await?
+                let (space, sync) = node.spaces().import_and_sync(ticket).await?;
+                let completion = sync.complete_all().await;
+                println!("Completed sync: {completion:#?}");
+                space
             }
         };
 
-        Ok(Todos { node, author, doc })
+        Ok(Todos { node, user, space })
     }
 
     pub async fn ticket(&self) -> Result<String> {
         Ok(NodeTicket::new(self.node.net().node_addr().await?)?.to_string())
     }
 
-    pub async fn share_ticket(&self) -> Result<DocTicket> {
-        self.doc.share(ShareMode::Write, Default::default()).await
+    pub async fn share_ticket(&self, user: UserId) -> Result<SpaceTicket> {
+        self.space
+            .share(user, AccessMode::Write, RestrictArea::None)
+            .await
     }
 
     pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<LiveEvent>>> {
-        self.doc.subscribe().await
+        // self.doc.subscribe().await
+        // TODO: We need a working .subscribe() fn
+        let interval = tokio::time::interval(std::time::Duration::from_millis(100));
+        let intervals = tokio_stream::wrappers::IntervalStream::new(interval);
+        Ok(intervals.map(|_| Ok(LiveEvent::PendingContentReady)))
     }
 
     pub async fn add(&mut self, id: String, label: String) -> anyhow::Result<()> {
@@ -188,10 +203,7 @@ impl Todos {
     }
 
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
-        let mut entries = self
-            .doc
-            .get_many(iroh::docs::store::Query::single_latest_per_key())
-            .await?;
+        let mut entries = self.space.get_many(Range3d::new_full()).await?;
 
         let mut todos = Vec::new();
         while let Some(entry) = entries.next().await {
@@ -206,8 +218,11 @@ impl Todos {
     }
 
     async fn insert_bytes(&self, key: impl AsRef<[u8]>, content: Bytes) -> anyhow::Result<()> {
-        self.doc
-            .set_bytes(self.author, key.as_ref().to_vec(), content)
+        self.space
+            .insert_bytes(
+                EntryForm::new(self.user, Self::to_willow_path(key)?),
+                content,
+            )
             .await?;
         Ok(())
     }
@@ -219,8 +234,12 @@ impl Todos {
 
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
         let entry = self
-            .doc
-            .get_many(iroh::docs::store::Query::single_latest_per_key().key_exact(id))
+            .space
+            .get_many(Range3d::new(
+                Range::full(),
+                Range::new_open(Self::to_willow_path(&id)?),
+                Range::full(),
+            ))
             .await?
             .next()
             .await
@@ -229,11 +248,23 @@ impl Todos {
         self.todo_from_entry(&entry).await
     }
 
-    async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
-        let id = String::from_utf8(entry.key().to_owned()).context("invalid key")?;
-        match self.node.blobs().read_to_bytes(entry.content_hash()).await {
+    async fn todo_from_entry(&self, entry: &AuthorisedEntry) -> anyhow::Result<Todo> {
+        let entry = entry.entry();
+        let key_component = entry
+            .path()
+            .get_component(0)
+            .ok_or_else(|| anyhow::anyhow!("path component missing"))?;
+        let id = String::from_utf8(key_component.to_vec()).context("invalid key")?;
+        let digest = entry.payload_digest();
+        match self.node.blobs().read_to_bytes(digest.0).await {
             Ok(b) => Todo::from_bytes(b),
             Err(_) => Ok(Todo::missing_todo(id)),
         }
+    }
+
+    fn to_willow_path(key: impl AsRef<[u8]>) -> anyhow::Result<Path> {
+        Ok(Path::new_singleton(
+            Component::new(key.as_ref()).ok_or_else(|| anyhow::anyhow!("invalid component"))?,
+        )?)
     }
 }
