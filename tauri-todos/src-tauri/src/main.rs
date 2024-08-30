@@ -24,7 +24,7 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
     //     .ok()
     //     .map(std::path::PathBuf::from);
 
-    // // get the applicaiton data root, join with "iroh_data" to get the data root for the iroh node
+    // // get the application data root, join with "iroh_data" to get the data root for the iroh node
     // let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
     //     anyhow::Ok(
     //         handle
