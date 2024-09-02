@@ -10,16 +10,13 @@ license = "Apache-2.0/MIT"
 anyhow = "1.0.75"
 bytes = "1.5.0"
 clap = { version = "4.4.11", features = ["derive"] }
-dumbpipe = "0.15"
+dumbpipe = "0.16"
 http = "1.0.0"
 http-body-util = "0.1.0"
 hyper = { version = "1.0.1", features = ["full"] }
 hyper-util = { version = "0.1.1", features = ["full"] }
-iroh = "0.23"
+iroh = "0.24"
 iroh-quinn = "0.11.3"
 tokio = { version = "1.34.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-
-[patch.crates-io]
-iroh = { git = "https://github.com/n0-computer/iroh", branch = "main" }
