@@ -101,7 +101,7 @@ impl IrohAutomergeProtocol {
             }
         }
 
-        send.finish().await?;
+        send.finish()?;
 
         Ok(())
     }
@@ -143,7 +143,7 @@ impl IrohAutomergeProtocol {
             }
         }
 
-        send.finish().await?;
+        send.finish()?;
 
         Ok(())
     }

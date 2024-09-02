@@ -19,7 +19,7 @@ clap = { version = "4.4.7", features = ["derive"] }
 mime_classifier = "0.0.1"
 derive_more = { version = "1.0.0-beta.1", features = ["debug"] }
 mime = "0.3.17"
-iroh-quinn = "0.10.5"
+iroh-quinn = "0.11.3"
 url = "2.4.1"
 futures = "0.3.29"
 lru = "0.12.1"
@@ -31,3 +31,6 @@ hyper-util = "0.1.3"
 rustls-pemfile = "1.0.2"
 tower-service = "0.3.2"
 mime_guess = "2.0.4"
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh", branch = "main" }
