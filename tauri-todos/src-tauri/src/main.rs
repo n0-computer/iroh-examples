@@ -92,27 +92,18 @@ impl AppState {
     ) -> Result<()> {
         let mut events = todos.doc_subscribe().await?;
         let events_handle = tokio::spawn(async move {
-            while let Some(Ok(_event)) = events.next().await {
+            while let Some(Ok(event)) = events.next().await {
+                println!("Got an event {event:?}");
                 app_handle.emit_all("update-all", ()).ok();
-                // match event {
-                //     LiveEvent::InsertRemote { content_status, .. } => {
-                //         // Only update if the we already have the content. Likely to happen when a remote user toggles "done".
-                //         if content_status == ContentStatus::Complete {
-                //             app_handle.emit_all("update-all", ()).ok();
-                //         }
-                //     }
-                //     LiveEvent::InsertLocal { .. } | LiveEvent::ContentReady { .. } => {
-                //         app_handle.emit_all("update-all", ()).ok();
-                //     }
-                //     _ => {}
-                // }
             }
         });
 
         let mut t = self.todos.lock().await;
         if let Some((_t, handle)) = t.take() {
+            println!("Aborting existing state");
             handle.abort();
         }
+        println!("Initializing state");
         *t = Some((todos, events_handle));
 
         Ok(())
@@ -120,6 +111,8 @@ impl AppState {
 }
 
 fn main() {
+    tracing_subscriber::fmt::init();
+
     tauri::Builder::default()
         .setup(|app| {
             let handle = app.handle();
@@ -146,7 +139,7 @@ fn main() {
             toggle_done,
             update_todo,
             delete,
-            set_ticket,
+            join_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -221,7 +214,7 @@ async fn delete(id: String, state: tauri::State<'_, AppState>) -> Result<bool, S
 }
 
 #[tauri::command]
-async fn set_ticket(
+async fn join_list(
     app_handle: tauri::AppHandle,
     ticket: String,
     state: tauri::State<'_, AppState>,

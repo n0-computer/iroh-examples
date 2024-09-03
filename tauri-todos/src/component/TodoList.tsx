@@ -20,6 +20,9 @@ const TodoList: React.FC<{ todos: Todo[] }> = ({ todos }) => {
         console.log("get ticket");
         console.log(res);
         setTicket(res)
+    }).catch(err => {
+      console.log("get ticket err");
+      console.log(err);
     })
   }, [])
 

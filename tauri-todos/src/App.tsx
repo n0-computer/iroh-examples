@@ -15,40 +15,36 @@ function App() {
   useEffect(() => {
     listen('update-all', (event) => {
       console.log("updating", event)
-      getTodos() 
+      getTodos()
     })
   }, [])
 
-  function createList() {
+  async function createList() {
     console.log("create list");
-    invoke('new_list').then(() => {
-      console.log("in new_list and then");
-      getTodos();
-      setShowOpenList(false);
-    })
+    await invoke('new_list')
+    console.log("in new_list and then")
+    await getTodos()
+    setShowOpenList(false)
   }
 
-  function joinList(ticket: string) {
+  async function joinList(ticket: string) {
     console.log("join list");
-    setTicket(ticket);
-    getTodos();
+    await joinListInv(ticket);
+    await getTodos();
     setShowOpenList(false);
   }
 
-  function setTicket(ticket: string) {
+  async function joinListInv(ticket: string) {
     // this is the effect for the modal
     // otherwise just get-todos
-    invoke<Todo[]>('set_ticket', {ticket}).then((res) => {
-      getTodos()
-    })
+    await invoke<Todo[]>('join_list', { ticket })
+    await getTodos()
   }
 
-  function getTodos() {
-    invoke<Todo[]>('get_todos').then((res) => {
-      setAllTodos(res)
-    }).then(()=> {
-      setShowOpenList(false)
-    })
+  async function getTodos() {
+    const res = await invoke<Todo[]>('get_todos')
+    setAllTodos(res)
+    setShowOpenList(false)
   }
 
   return (

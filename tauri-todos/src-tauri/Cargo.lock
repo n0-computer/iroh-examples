@@ -123,6 +123,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7377,9 +7378,9 @@ dependencies = [
 
 [[package]]
 name = "ufotofu"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c773ca845a07603d8ebe7292a3cefa20bf41305ce91246332c7fc1e3029eecaa"
+checksum = "530b5dd047cf0fbc98b5138a17419d9f914de9b98971b6ac8a1b9e2050b711ef"
 dependencies = [
  "either",
  "ufotofu_queues",

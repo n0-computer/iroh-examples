@@ -2,7 +2,6 @@ use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::future::Boxed;
 use futures_lite::{Stream, StreamExt};
-use iroh::client::docs::LiveEvent;
 use iroh::client::spaces::{EntryForm, Space, SpaceTicket};
 use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
@@ -10,13 +9,14 @@ use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
 use iroh::spaces::interest::{AreaOfInterestSelector, RestrictArea};
 use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Path};
-use iroh::spaces::proto::grouping::{Range, Range3d};
+use iroh::spaces::proto::grouping::{Area, Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
 use iroh::spaces::proto::meadowcap::AccessMode;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::task::JoinHandle;
+use tokio::task::JoinSet;
+use tokio_stream::wrappers::IntervalStream;
 
 /// Todo in a list of todos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,12 +61,15 @@ impl Todo {
 const MAX_TODO_SIZE: usize = 2 * 1024;
 const MAX_LABEL_LEN: usize = 2 * 1000;
 
+#[derive(Debug, Clone)]
+pub struct StoreEvent;
+
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
     node: Iroh,
     space: Space,
     user: UserId,
-    _sync: Option<JoinHandle<Result<()>>>,
+    tasks: JoinSet<Result<()>>,
 }
 
 impl Todos {
@@ -77,29 +80,29 @@ impl Todos {
     ) -> anyhow::Result<Self> {
         let user = node.spaces().create_user().await?;
 
-        let (space, sync) = match node_ticket {
+        let (space, tasks) = match node_ticket {
             None => (
                 node.spaces().create(NamespaceKind::Owned, user).await?,
-                None,
+                JoinSet::new(),
             ),
             Some(node_ticket) => {
                 let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
                 let node_id = node_addr.node_id;
                 let ticket = CapExchangeProtocol::request(&endpoint, node_addr, user).await?;
+                println!("Importing & Syncing");
                 let (space, sync) = node.spaces().import_and_sync(ticket).await?;
-                let completion = sync.complete_all().await;
-                println!("Completed sync: {completion:#?}");
+                sync.complete_all().await;
+                let mut tasks = JoinSet::new();
                 let mut sync = space
                     .sync_continuously(node_id, AreaOfInterestSelector::Widest)
                     .await?;
-                let handle = tokio::spawn(async move {
+                tasks.spawn(async move {
                     while let Some(ev) = sync.next().await {
-                        println!("Got sync event: {ev:?}");
+                        println!("=== SYNC EVENT === {ev:?}");
                     }
-
                     anyhow::Ok(())
                 });
-                (space, Some(handle))
+                (space, tasks)
             }
         };
 
@@ -107,7 +110,7 @@ impl Todos {
             node,
             user,
             space,
-            _sync: sync,
+            tasks,
         })
     }
 
@@ -117,16 +120,23 @@ impl Todos {
 
     pub async fn share_ticket(&self, user: UserId) -> Result<SpaceTicket> {
         self.space
-            .share(user, AccessMode::Write, RestrictArea::None)
+            .share(
+                user,
+                AccessMode::Write,
+                RestrictArea::Restrict(Area::new_subspace(user)),
+            )
             .await
     }
 
-    pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<LiveEvent>>> {
-        // self.doc.subscribe().await
-        // TODO: We need a working .subscribe() fn
-        let interval = tokio::time::interval(std::time::Duration::from_millis(100));
-        let intervals = tokio_stream::wrappers::IntervalStream::new(interval);
-        Ok(intervals.map(|_| Ok(LiveEvent::PendingContentReady)))
+    pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<StoreEvent>>> {
+        // let stream = self
+        //     .space
+        //     .subscribe_area(Area::new_full(), Default::default())
+        //     .await?;
+        let stream =
+            IntervalStream::new(tokio::time::interval(std::time::Duration::from_millis(50)))
+                .map(|_| Ok(StoreEvent));
+        Ok(stream)
     }
 
     pub async fn add(&mut self, id: String, label: String) -> anyhow::Result<()> {
@@ -240,17 +250,17 @@ type GetTicketFn = Arc<dyn Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Syn
 #[derive(derive_more::Debug)]
 pub struct CapExchangeProtocol {
     #[debug(skip)]
-    get_ticket: GetTicketFn,
+    build_ticket: GetTicketFn,
 }
 
 impl CapExchangeProtocol {
     pub const ALPN: &'static [u8] = b"iroh-tauri-todos/cap-request/0";
 
     pub fn new(
-        get_ticket: impl Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static,
+        build_ticket: impl Fn(UserId) -> Boxed<Result<SpaceTicket>> + Send + Sync + 'static,
     ) -> Arc<Self> {
         Arc::new(Self {
-            get_ticket: Arc::new(get_ticket),
+            build_ticket: Arc::new(build_ticket),
         })
     }
 
@@ -259,14 +269,17 @@ impl CapExchangeProtocol {
         node_addr: NodeAddr,
         user: UserId,
     ) -> Result<SpaceTicket> {
+        println!("Requesting caps from {}", node_addr.node_id.fmt_short());
         let conn = endpoint
             .connect(node_addr, CapExchangeProtocol::ALPN)
             .await?;
         let (mut send, mut recv) = conn.open_bi().await?;
         send.write_all(user.as_bytes()).await?;
         send.finish()?;
+        println!("Sent request");
         let ticket_bytes = recv.read_to_end(1024 * 10).await?;
         let ticket: SpaceTicket = postcard::from_bytes(&ticket_bytes)?;
+        println!("Received ticket");
         conn.close(0u32.into(), b"thanks for the ticket!");
         Ok(ticket)
     }
@@ -284,10 +297,11 @@ impl CapExchangeProtocol {
         let user_id = UserId::from(bytes);
         println!("Got incoming cap request from {user_id}");
 
-        let ticket = (self.get_ticket)(user_id).await?;
+        let ticket = (self.build_ticket)(user_id).await?;
         let ticket_bytes = postcard::to_allocvec(&ticket)?;
         send.write_all(&ticket_bytes).await?;
         send.finish()?;
+        println!("Sent ticket");
 
         let close = conn.closed().await;
         println!("conn closed: {close:?}");

@@ -6,7 +6,7 @@ import { Todo } from '../types/todo'
 import TodoItem from './TodoItem'
 import { invoke } from '@tauri-apps/api'
 
-const OpenList: React.FC<{ createList: () => void, joinList: (ticket: string) => void }> = ({ createList, joinList}) => {
+const OpenList: React.FC<{ createList: () => Promise<void>, joinList: (ticket: string) => Promise<void> }> = ({ createList, joinList}) => {
     const [ticket, setTicket] = useState('');
   return (
     <>
@@ -35,7 +35,7 @@ const OpenList: React.FC<{ createList: () => void, joinList: (ticket: string) =>
                 type="text" 
                 placeholder='input a ticket to join a list'
             />
-            <a onClick={() => joinList(ticket)}style={{width: 110, cursor: "pointer", color:"#b83f45"}}>Join Using Ticket ⇨</a>
+            <a onClick={() => joinList(ticket)} style={{width: 110, cursor: "pointer", color:"#b83f45"}}>Join Using Ticket ⇨</a>
           </div>
       </footer>
     </>
