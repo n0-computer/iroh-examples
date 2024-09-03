@@ -120,11 +120,7 @@ impl Todos {
 
     pub async fn share_ticket(&self, user: UserId) -> Result<SpaceTicket> {
         self.space
-            .share(
-                user,
-                AccessMode::Write,
-                RestrictArea::Restrict(Area::new_subspace(user)),
-            )
+            .share(user, AccessMode::Write, RestrictArea::None)
             .await
     }
 
