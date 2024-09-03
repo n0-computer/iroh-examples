@@ -8,13 +8,14 @@ use iroh::net::ticket::NodeTicket;
 use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
 use iroh::spaces::interest::RestrictArea;
-use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Path};
+use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Entry, Path};
 use iroh::spaces::proto::grouping::{Area, Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
 use iroh::spaces::proto::meadowcap::AccessMode;
 use iroh::spaces::session::SessionMode;
 use iroh::spaces::store::traits::StoreEvent;
 use serde::{Deserialize, Serialize};
+use std::collections::{btree_map, BTreeMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::task::JoinSet;
@@ -170,15 +171,29 @@ impl Todos {
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
         let mut entries = self.space.get_many(Range3d::new_full()).await?;
 
-        let mut todos = Vec::new();
+        let mut todos = BTreeMap::<String, (Entry, Todo)>::new();
         while let Some(entry) = entries.next().await {
-            let entry = entry?;
+            let (entry, _) = entry?.into_parts();
             let todo = self.todo_from_entry(&entry).await?;
             if !todo.is_delete {
-                todos.push(todo);
+                match todos.entry(todo.id.clone()) {
+                    btree_map::Entry::Occupied(mut curr) => {
+                        if !curr.get().0.is_newer_than(&entry) {
+                            *curr.get_mut() = (entry, todo);
+                        }
+                    }
+                    btree_map::Entry::Vacant(space) => {
+                        space.insert((entry, todo));
+                    }
+                }
             }
         }
-        todos.sort_by_key(|t| t.created);
+
+        let mut todos = todos
+            .into_values()
+            .map(|(_, todo)| todo)
+            .collect::<Vec<_>>();
+        todos.sort_by_key(|todo| todo.created);
         Ok(todos)
     }
 
@@ -210,11 +225,10 @@ impl Todos {
             .await
             .ok_or_else(|| anyhow::anyhow!("no todo found"))??;
 
-        self.todo_from_entry(&entry).await
+        self.todo_from_entry(&entry.into_parts().0).await
     }
 
-    async fn todo_from_entry(&self, entry: &AuthorisedEntry) -> anyhow::Result<Todo> {
-        let entry = entry.entry();
+    async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
         let key_component = entry
             .path()
             .get_component(0)
