@@ -7,16 +7,17 @@ use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
 use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
-use iroh::spaces::interest::{AreaOfInterestSelector, RestrictArea};
+use iroh::spaces::interest::RestrictArea;
 use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Path};
 use iroh::spaces::proto::grouping::{Area, Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
 use iroh::spaces::proto::meadowcap::AccessMode;
+use iroh::spaces::session::SessionMode;
+use iroh::spaces::store::traits::StoreEvent;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::task::JoinSet;
-use tokio_stream::wrappers::IntervalStream;
 
 /// Todo in a list of todos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,9 +62,6 @@ impl Todo {
 const MAX_TODO_SIZE: usize = 2 * 1024;
 const MAX_LABEL_LEN: usize = 2 * 1000;
 
-#[derive(Debug, Clone)]
-pub struct StoreEvent;
-
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
     node: Iroh,
@@ -87,15 +85,13 @@ impl Todos {
             ),
             Some(node_ticket) => {
                 let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
-                let node_id = node_addr.node_id;
                 let ticket = CapExchangeProtocol::request(&endpoint, node_addr, user).await?;
                 println!("Importing & Syncing");
-                let (space, sync) = node.spaces().import_and_sync(ticket).await?;
-                sync.complete_all().await;
-                let mut tasks = JoinSet::new();
-                let mut sync = space
-                    .sync_continuously(node_id, AreaOfInterestSelector::Widest)
+                let (space, mut sync) = node
+                    .spaces()
+                    .import_and_sync(ticket, SessionMode::Continuous)
                     .await?;
+                let mut tasks = JoinSet::new();
                 tasks.spawn(async move {
                     while let Some(ev) = sync.next().await {
                         println!("=== SYNC EVENT === {ev:?}");
@@ -125,13 +121,10 @@ impl Todos {
     }
 
     pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<StoreEvent>>> {
-        // let stream = self
-        //     .space
-        //     .subscribe_area(Area::new_full(), Default::default())
-        //     .await?;
-        let stream =
-            IntervalStream::new(tokio::time::interval(std::time::Duration::from_millis(50)))
-                .map(|_| Ok(StoreEvent));
+        let stream = self
+            .space
+            .subscribe_area(Area::new_full(), Default::default())
+            .await?;
         Ok(stream)
     }
 
