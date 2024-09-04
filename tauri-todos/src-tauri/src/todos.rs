@@ -8,8 +8,9 @@ use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
 use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
-use iroh::spaces::interest::RestrictArea;
-use iroh::spaces::proto::data_model::{Component, Entry, Path};
+use iroh::spaces::form::{AuthForm, SubspaceForm, TimestampForm};
+use iroh::spaces::interest::{CapabilityPack, RestrictArea};
+use iroh::spaces::proto::data_model::{Entry, Path, PathExt, SubspaceId};
 use iroh::spaces::proto::grouping::{Area, Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
 use iroh::spaces::proto::meadowcap::AccessMode;
@@ -68,6 +69,7 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 pub struct Todos {
     node: Iroh,
     space: Space,
+    subspace_id: SubspaceId,
     user: UserId,
     #[allow(unused)]
     tasks: JoinSet<Result<()>>,
@@ -81,14 +83,17 @@ impl Todos {
     ) -> anyhow::Result<Self> {
         let user = node.spaces().create_user().await?;
 
-        let (space, tasks) = match node_ticket {
+        let (space, subspace_id, tasks) = match node_ticket {
             None => (
                 node.spaces().create(NamespaceKind::Owned, user).await?,
+                user, // owner == subspace ID
                 JoinSet::new(),
             ),
             Some(node_ticket) => {
                 let node_addr = NodeTicket::from_str(&node_ticket)?.node_addr().clone();
                 let ticket = CapExchangeProtocol::request(&endpoint, node_addr, user).await?;
+                anyhow::ensure!(ticket.caps.len() >= 1, "at least one capability delegated");
+                let subspace_id = *progenitor(&ticket.caps[0]);
                 println!("Importing & Syncing");
                 let (space, mut sync) = node
                     .spaces()
@@ -101,13 +106,16 @@ impl Todos {
                     }
                     anyhow::Ok(())
                 });
-                (space, tasks)
+                (space, subspace_id, tasks)
             }
         };
+
+        println!("Using subspace ID {subspace_id}");
 
         Ok(Todos {
             node,
             user,
+            subspace_id,
             space,
             tasks,
         })
@@ -185,7 +193,12 @@ impl Todos {
     async fn insert_bytes(&self, key: impl AsRef<[u8]>, content: Bytes) -> anyhow::Result<()> {
         self.space
             .insert_bytes(
-                EntryForm::new(self.user, Self::to_willow_path(key)?),
+                EntryForm {
+                    auth: AuthForm::Any(self.user),
+                    subspace_id: SubspaceForm::Exact(self.subspace_id),
+                    path: Self::to_willow_path(key)?,
+                    timestamp: TimestampForm::Now,
+                },
                 content,
             )
             .await?;
@@ -247,9 +260,7 @@ impl Todos {
     }
 
     fn to_willow_path(key: impl AsRef<[u8]>) -> anyhow::Result<Path> {
-        Ok(Path::new_singleton(
-            Component::new(key.as_ref()).ok_or_else(|| anyhow::anyhow!("invalid component"))?,
-        )?)
+        Ok(Path::from_bytes(&[key.as_ref()])?)
     }
 
     fn from_willow_path(path: &Path) -> anyhow::Result<String> {
@@ -329,5 +340,12 @@ impl CapExchangeProtocol {
 impl ProtocolHandler for CapExchangeProtocol {
     fn accept(self: Arc<Self>, conn: iroh::net::endpoint::Connecting) -> Boxed<Result<()>> {
         Box::pin(self.respond(conn))
+    }
+}
+
+fn progenitor(cap: &CapabilityPack) -> &UserId {
+    match cap {
+        CapabilityPack::Read(read) => read.read_cap().progenitor(),
+        CapabilityPack::Write(write) => write.progenitor(),
     }
 }
