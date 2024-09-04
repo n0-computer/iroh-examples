@@ -27,6 +27,7 @@ postcard = "1.0.10"
 data-encoding = "2.6.0"
 tokio-stream = "0.1.15"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+futures-util = "0.3.30"
 
 [features]
 # by default Tauri runs in production mode

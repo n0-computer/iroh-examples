@@ -1,14 +1,15 @@
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::future::Boxed;
-use futures_lite::{Stream, StreamExt};
+use futures_lite::Stream;
+use futures_util::{StreamExt, TryStreamExt as _};
 use iroh::client::spaces::{EntryForm, Space, SpaceTicket};
 use iroh::client::Iroh;
 use iroh::net::ticket::NodeTicket;
 use iroh::net::NodeAddr;
 use iroh::node::ProtocolHandler;
 use iroh::spaces::interest::RestrictArea;
-use iroh::spaces::proto::data_model::{AuthorisedEntry, Component, Entry, Path};
+use iroh::spaces::proto::data_model::{Component, Entry, Path};
 use iroh::spaces::proto::grouping::{Area, Range, Range3d};
 use iroh::spaces::proto::keys::{NamespaceKind, UserId};
 use iroh::spaces::proto::meadowcap::AccessMode;
@@ -68,6 +69,7 @@ pub struct Todos {
     node: Iroh,
     space: Space,
     user: UserId,
+    #[allow(unused)]
     tasks: JoinSet<Result<()>>,
 }
 
@@ -169,31 +171,14 @@ impl Todos {
     }
 
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
-        let mut entries = self.space.get_many(Range3d::new_full()).await?;
+        let entries = self.get_latest(Range3d::new_full()).await?;
 
-        let mut todos = BTreeMap::<String, (Entry, Todo)>::new();
-        while let Some(entry) = entries.next().await {
-            let (entry, _) = entry?.into_parts();
-            let todo = self.todo_from_entry(&entry).await?;
-            if !todo.is_delete {
-                match todos.entry(todo.id.clone()) {
-                    btree_map::Entry::Occupied(mut curr) => {
-                        if !curr.get().0.is_newer_than(&entry) {
-                            *curr.get_mut() = (entry, todo);
-                        }
-                    }
-                    btree_map::Entry::Vacant(space) => {
-                        space.insert((entry, todo));
-                    }
-                }
-            }
-        }
-
-        let mut todos = todos
-            .into_values()
-            .map(|(_, todo)| todo)
-            .collect::<Vec<_>>();
+        let mut todos = futures_lite::stream::iter(entries.into_iter())
+            .then(|entry| async move { self.todo_from_entry(&entry).await })
+            .try_collect::<Vec<_>>()
+            .await?;
         todos.sort_by_key(|todo| todo.created);
+        println!("get_todos:\n{todos:#?}");
         Ok(todos)
     }
 
@@ -213,27 +198,47 @@ impl Todos {
     }
 
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
-        let entry = self
-            .space
-            .get_many(Range3d::new(
+        let entries = self
+            .get_latest(Range3d::new(
                 Range::full(),
                 Range::new_open(Self::to_willow_path(&id)?),
                 Range::full(),
             ))
-            .await?
-            .next()
-            .await
-            .ok_or_else(|| anyhow::anyhow!("no todo found"))??;
+            .await?;
 
-        self.todo_from_entry(&entry.into_parts().0).await
+        let entry = entries.last().ok_or_else(|| anyhow!("no todo found"))?;
+
+        self.todo_from_entry(&entry).await
+    }
+
+    async fn get_latest(&self, range: Range3d) -> anyhow::Result<Vec<Entry>> {
+        let mut entries = self
+            .space
+            .get_many(range)
+            .await?
+            .map_ok(|e| e.into_parts().0);
+
+        let mut deduplicated = BTreeMap::<Path, Entry>::new();
+        while let Some(entry) = entries.try_next().await? {
+            match deduplicated.entry(entry.path().clone()) {
+                btree_map::Entry::Occupied(mut curr) => {
+                    if !curr.get().is_newer_than(&entry) {
+                        *curr.get_mut() = entry;
+                    }
+                }
+                btree_map::Entry::Vacant(space) => {
+                    space.insert(entry);
+                }
+            }
+        }
+
+        let mut collected = deduplicated.into_values().collect::<Vec<_>>();
+        collected.sort_by_key(Entry::timestamp);
+        Ok(collected)
     }
 
     async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
-        let key_component = entry
-            .path()
-            .get_component(0)
-            .ok_or_else(|| anyhow::anyhow!("path component missing"))?;
-        let id = String::from_utf8(key_component.to_vec()).context("invalid key")?;
+        let id = Self::from_willow_path(entry.path())?;
         let digest = entry.payload_digest();
         match self.node.blobs().read_to_bytes(digest.0).await {
             Ok(b) => Todo::from_bytes(b),
@@ -245,6 +250,14 @@ impl Todos {
         Ok(Path::new_singleton(
             Component::new(key.as_ref()).ok_or_else(|| anyhow::anyhow!("invalid component"))?,
         )?)
+    }
+
+    fn from_willow_path(path: &Path) -> anyhow::Result<String> {
+        let key_component = path
+            .get_component(0)
+            .ok_or_else(|| anyhow::anyhow!("path component missing"))?;
+        let id = String::from_utf8(key_component.to_vec()).context("invalid key")?;
+        Ok(id)
     }
 }
 
