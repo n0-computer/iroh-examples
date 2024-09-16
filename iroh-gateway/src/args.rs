@@ -1,5 +1,8 @@
 //! Command line arguments.
-use std::path::PathBuf;
+use std::{
+    net::{SocketAddrV4, SocketAddrV6},
+    path::PathBuf,
+};
 
 use clap::Parser;
 
@@ -32,9 +35,13 @@ pub struct Args {
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
 
-    /// Iroh port for the node, random if not specified.
-    #[clap(long)]
-    pub iroh_port: Option<u16>,
+    /// The address to use for the ipv4 iroh socket. Random by default.
+    #[clap(long, default_value = None)]
+    pub iroh_ipv4_addr: Option<SocketAddrV4>,
+
+    /// The address to use for the ipv6 iroh socket. Random by default.
+    #[clap(long, default_value = None)]
+    pub iroh_ipv6_addr: Option<SocketAddrV6>,
 
     /// Certificate mode, default is none.
     #[clap(long, default_value = "none")]

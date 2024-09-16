@@ -1,7 +1,7 @@
 use std::{
+    net::{SocketAddrV4, SocketAddrV6},
     str::FromStr,
     sync::OnceLock,
-    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6}
 };
 
 use anyhow::Context;
@@ -26,9 +26,13 @@ pub struct Args {
     #[clap(long, default_value = "0.0.0.0:8080")]
     pub addr: String,
 
-    /// The port to use for the iroh socket. Random by default.
-    #[clap(long, default_value_t = 0)]
-    pub iroh_port: u16,
+    /// The address to use for the ipv4 iroh socket. Random by default.
+    #[clap(long, default_value = None)]
+    pub iroh_ipv4_addr: Option<SocketAddrV4>,
+
+    /// The address to use for the ipv6 iroh socket. Random by default.
+    #[clap(long, default_value = None)]
+    pub iroh_ipv6_addr: Option<SocketAddrV6>,
 }
 
 /// Get the secret key or generate a new one.
@@ -61,20 +65,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let endpoint = Endpoint::builder()
-        .secret_key(secret_key)
-        .bind_addr_v4(SocketAddrV4::new(
-            Ipv4Addr::UNSPECIFIED,
-            args.iroh_port,
-        ))
-        .bind_addr_v6(SocketAddrV6::new(
-            Ipv6Addr::UNSPECIFIED,
-            args.iroh_port + 1,
-            0,
-            0,
-        ))
-        .bind()
-        .await?;
+    let mut builder = Endpoint::builder().secret_key(secret_key);
+    if let Some(addr) = args.iroh_ipv4_addr {
+        builder = builder.bind_addr_v4(addr);
+    }
+    if let Some(addr) = args.iroh_ipv6_addr {
+        builder = builder.bind_addr_v6(addr);
+    }
+    let endpoint = builder.bind().await?;
     ENDPOINT.set(endpoint).expect("endpoint already set");
 
     // Create a tokio TCP listener for hyper

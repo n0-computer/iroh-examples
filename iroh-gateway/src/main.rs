@@ -37,7 +37,6 @@ use ranges::parse_byte_range;
 use std::{
     result,
     sync::{Arc, Mutex},
-    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6},
 };
 use tokio::net::TcpListener;
 use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
@@ -512,21 +511,14 @@ async fn forward_range(
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     let args = args::Args::parse();
-    let iroh_port = args.iroh_port.unwrap_or_default();
-    let endpoint = Endpoint::builder()
-        .discovery(Box::new(DnsDiscovery::n0_dns()))
-        .bind_addr_v4(SocketAddrV4::new(
-            Ipv4Addr::UNSPECIFIED,
-            iroh_port,
-        ))
-        .bind_addr_v6(SocketAddrV6::new(
-            Ipv6Addr::UNSPECIFIED,
-            iroh_port + 1,
-            0,
-            0,
-        ))
-        .bind()
-        .await?;
+    let mut builder = Endpoint::builder().discovery(Box::new(DnsDiscovery::n0_dns()));
+    if let Some(addr) = args.iroh_ipv4_addr {
+        builder = builder.bind_addr_v4(addr);
+    }
+    if let Some(addr) = args.iroh_ipv6_addr {
+        builder = builder.bind_addr_v6(addr);
+    }
+    let endpoint = builder.bind().await?;
     let default_node = args
         .default_node
         .map(|default_node| {
