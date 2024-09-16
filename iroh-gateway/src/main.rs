@@ -37,6 +37,7 @@ use ranges::parse_byte_range;
 use std::{
     result,
     sync::{Arc, Mutex},
+    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6},
 };
 use tokio::net::TcpListener;
 use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
@@ -514,7 +515,17 @@ async fn main() -> anyhow::Result<()> {
     let iroh_port = args.iroh_port.unwrap_or_default();
     let endpoint = Endpoint::builder()
         .discovery(Box::new(DnsDiscovery::n0_dns()))
-        .bind(iroh_port)
+        .bind_addr_v4(SocketAddrV4::new(
+            Ipv4Addr::UNSPECIFIED,
+            iroh_port,
+        ))
+        .bind_addr_v6(SocketAddrV6::new(
+            Ipv6Addr::UNSPECIFIED,
+            iroh_port + 1,
+            0,
+            0,
+        ))
+        .bind()
         .await?;
     let default_node = args
         .default_node

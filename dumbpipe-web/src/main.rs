@@ -1,5 +1,8 @@
-use std::str::FromStr;
-use std::sync::OnceLock;
+use std::{
+    str::FromStr,
+    sync::OnceLock,
+    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6}
+};
 
 use anyhow::Context;
 use bytes::Bytes;
@@ -60,7 +63,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Done explicitly here because creation is async
     let endpoint = Endpoint::builder()
         .secret_key(secret_key)
-        .bind(args.iroh_port)
+        .bind_addr_v4(SocketAddrV4::new(
+            Ipv4Addr::UNSPECIFIED,
+            args.iroh_port,
+        ))
+        .bind_addr_v6(SocketAddrV6::new(
+            Ipv6Addr::UNSPECIFIED,
+            args.iroh_port + 1,
+            0,
+            0,
+        ))
+        .bind()
         .await?;
     ENDPOINT.set(endpoint).expect("endpoint already set");
 

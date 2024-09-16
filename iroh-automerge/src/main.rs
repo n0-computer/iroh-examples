@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         .build()
         .await?
         .accept(
-            IrohAutomergeProtocol::ALPN,
+            IrohAutomergeProtocol::ALPN.to_vec(),
             Arc::clone(&automerge) as Arc<dyn ProtocolHandler>,
         )
         .spawn()
