@@ -186,7 +186,6 @@ impl Todos {
             .try_collect::<Vec<_>>()
             .await?;
         todos.sort_by_key(|todo| todo.created);
-        println!("get_todos:\n{todos:#?}");
         Ok(todos)
     }
 
@@ -211,10 +210,14 @@ impl Todos {
     }
 
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
+        let path = Self::to_willow_path(&id)?;
+        let path_dumb = Self::to_willow_path(&format!("{id} "))?;
         let entries = self
             .get_latest(Range3d::new(
                 Range::full(),
-                Range::new_open(Self::to_willow_path(&id)?),
+                // Create a closed range, the interval end is simply the path plus another space, to make it lexicographically bigger.
+                // This is a stupid workaround for the fact that `Range` doesn't have a way to be exactly one thing.
+                Range::new_closed(path, path_dumb).expect("we did the dumb thing right"),
                 Range::full(),
             ))
             .await?;
