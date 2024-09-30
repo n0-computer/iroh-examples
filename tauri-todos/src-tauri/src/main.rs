@@ -26,8 +26,8 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
         .ok_or_else(|| anyhow!("can't get application data directory"))?
         .join("iroh_data");
 
-    // create the iroh node
-    let node = iroh::node::Node::persistent(data_root)
+    // create the iroh node that has persistent storage and docs enabled
+    let node = iroh::node::Builder::default().enable_docs().persist(data_root)
         .await?
         .spawn()
         .await?;
