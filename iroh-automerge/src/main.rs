@@ -27,7 +27,6 @@ async fn main() -> Result<()> {
     let (sync_sender, mut sync_finished) = mpsc::channel(10);
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
     let iroh = Node::memory()
-        .disable_docs()
         .build()
         .await?
         .accept(
