@@ -7,7 +7,7 @@ use frost_ed25519::{
 use futures::StreamExt;
 use iroh_net::{
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
-    endpoint::{RecvStream, SendStream, VarInt},
+    endpoint::{RecvStream, SendStream},
     key::{PublicKey, SecretKey},
 };
 use rand::thread_rng;
