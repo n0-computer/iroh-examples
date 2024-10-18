@@ -80,6 +80,9 @@
 
           # Needed for `tauri android dev` to pick up the jdk
           #   JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
+
+          # Fixes an empty window bug for me https://github.com/tauri-apps/tauri/issues/8254
+          WEBKIT_DISABLE_COMPOSITING_MODE = 1;
         };
       });
 }

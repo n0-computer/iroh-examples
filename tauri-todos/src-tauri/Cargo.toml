@@ -18,7 +18,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.6.1", features = ["api-all"] }
 tokio = { version = "1" }
-iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "Frando/willow-proptest" }
+# iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "Frando/willow-proptest" }
+iroh = { path = "../../../iroh-willow/iroh" }
 bytes = "1"
 tokio-util = { version = "0.7" }
 futures-lite = "2.3.0"
