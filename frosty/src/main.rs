@@ -274,7 +274,7 @@ async fn send_cosign_request_round1(
     Identifier,
     frost::round1::SigningCommitments,
 )> {
-    let connection = endpoint.connect((*cosigner).into(), COSIGN_ALPN).await?;
+    let connection = endpoint.connect(*cosigner, COSIGN_ALPN).await?;
     let (mut send, mut recv) = connection.open_bi().await?;
     info!("Sending cosign request for key {} to {}", key, cosigner);
     send.write_all(key.as_bytes()).await?;

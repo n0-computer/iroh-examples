@@ -270,6 +270,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-waker"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
 name = "attohttpc"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1501,6 +1507,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "h2"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524e8ac6999421f49a846c2d4411f337e53497d8ec55d67753beffa43c5d9205"
+dependencies = [
+ "atomic-waker",
+ "bytes",
+ "fnv",
+ "futures-core",
+ "futures-sink",
+ "http 1.1.0",
+ "indexmap",
+ "slab",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1758,7 +1783,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
- "h2",
+ "h2 0.3.26",
  "http 0.2.12",
  "http-body 0.4.6",
  "httparse",
@@ -1781,6 +1806,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
+ "h2 0.4.6",
  "http 1.1.0",
  "http-body 1.0.1",
  "httparse",
@@ -1888,16 +1914,18 @@ dependencies = [
 
 [[package]]
 name = "igd-next"
-version = "0.14.3"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "064d90fec10d541084e7b39ead8875a5a80d9114a2b18791565253bae25f49e4"
+checksum = "76b0d7d4541def58a37bf8efc559683f21edce7c82f0d866c93ac21f7e098f93"
 dependencies = [
  "async-trait",
  "attohttpc",
  "bytes",
  "futures",
- "http 0.2.12",
- "hyper 0.14.30",
+ "http 1.1.0",
+ "http-body-util",
+ "hyper 1.4.1",
+ "hyper-util",
  "log",
  "rand",
  "tokio",
@@ -1975,9 +2003,9 @@ checksum = "187674a687eed5fe42285b40c6291f9a01517d415fad1c3cbc6a9f778af7fcd4"
 
 [[package]]
 name = "iroh"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abda3be73097cc12c2e0fd3dd8babc37aad43711bb7ff9c8952ff6a33986a45a"
+checksum = "5d466e52e137738e33dc334518c37b3c7c0502f9f838ffea4d771a9dd882e0f0"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2020,9 +2048,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "973c0b3c7851fa2e8e6cf4cb81c9f4cab1373848828fafa43dfe25b123a89ff2"
+checksum = "28a777d7e0b3e2fdab4ad1b21b64be87a43ac3ceb2a2ccef905e480ad3317396"
 dependencies = [
  "aead",
  "anyhow",
@@ -2062,9 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-blobs"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9afc7ad5c2aaa1b17071fe99065c6cfbe7a3f0597ecc44381afdddb47965521f"
+checksum = "69e83475d6c8cc312a224d4c6bdf287f862d30d2b176768ef71f188a0d8aa7cd"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2105,9 +2133,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-docs"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8138011bd4e9a5b24a6bdddd50232aa2778a8b430d0f91d32ddba5f88a126ddc"
+checksum = "fb2c8bc1fe680549dd9776031be30e68663884026f71a914aab7108e0b8f8ce4"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2177,9 +2205,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-gossip"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b44749f361aca7cddcb357b62ef84cad1023771aee03d427c8922991fc4a9561"
+checksum = "b434d455389493ff2b2ecbab035c12eb3762f24d04080855ecd4956bf7739448"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2218,9 +2246,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02edfa7ca1aa89b0b9793d94671e32b79c97d61e9022f082c5eb2b95b64e90c0"
+checksum = "0c78cf30022e1c7a10fc0ae0a6ba83f131b7c3b92d4876f6c97aba93fe534be6"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -2239,9 +2267,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "329553be056a92eec7802e1c087eed951eec6e60f0f0740491ef16a295be4ca2"
+checksum = "34192d8846fc59d6669fb80a485b430215ecc1bf3c2b9df4f8a92370fe37e13a"
 dependencies = [
  "anyhow",
  "backoff",
@@ -3669,7 +3697,7 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
- "h2",
+ "h2 0.3.26",
  "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.30",
