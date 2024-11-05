@@ -7,7 +7,7 @@ use automerge::{
 };
 use iroh::{
     net::endpoint::{RecvStream, SendStream},
-    node::ProtocolHandler,
+    router::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
