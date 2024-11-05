@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use automerge::{transaction::Transactable, Automerge, ReadDoc};
 use clap::Parser;
-use iroh::node::{Node, ProtocolHandler};
+use iroh::{node::Node, router::ProtocolHandler};
 
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;

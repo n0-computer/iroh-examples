@@ -1666,9 +1666,9 @@ checksum = "187674a687eed5fe42285b40c6291f9a01517d415fad1c3cbc6a9f778af7fcd4"
 
 [[package]]
 name = "iroh-base"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28a777d7e0b3e2fdab4ad1b21b64be87a43ac3ceb2a2ccef905e480ad3317396"
+checksum = "1c21fd8eb71f166a172a9779c2244db992218e9a9bd929b9df6fc355d2b630c9"
 dependencies = [
  "aead",
  "anyhow",
@@ -1684,7 +1684,6 @@ dependencies = [
  "rand",
  "rand_core",
  "serde",
- "serde-error",
  "ssh-key",
  "thiserror",
  "ttl_cache",
@@ -1707,9 +1706,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c78cf30022e1c7a10fc0ae0a6ba83f131b7c3b92d4876f6c97aba93fe534be6"
+checksum = "e0d40f2ee3997489d47403d204a06514ed65373d224b5b43a8ea133f543e5db1"
 dependencies = [
  "anyhow",
  "erased_set",
@@ -1728,9 +1727,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net"
-version = "0.27.0"
+version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34192d8846fc59d6669fb80a485b430215ecc1bf3c2b9df4f8a92370fe37e13a"
+checksum = "b40e1f1f9029e198c6d05bd232d3239814b0a66ac4668978729b709aeb6a44e2"
 dependencies = [
  "anyhow",
  "backoff",
@@ -1765,11 +1764,13 @@ dependencies = [
  "netlink-packet-core",
  "netlink-packet-route",
  "netlink-sys",
+ "netwatch",
  "num_enum",
  "once_cell",
  "parking_lot",
  "pin-project",
  "pkarr",
+ "portmapper",
  "postcard",
  "rand",
  "rcgen",
@@ -1805,9 +1806,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-quinn"
-version = "0.11.3"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fd590a39a14cfc168efa4d894de5039d65641e62d8da4a80733018ababe3c33"
+checksum = "35ba75a5c57cff299d2d7ca1ddee053f66339d1756bd79ec637bcad5aa61100e"
 dependencies = [
  "bytes",
  "iroh-quinn-proto",
@@ -1823,9 +1824,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-quinn-proto"
-version = "0.11.6"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd0538ff12efe3d61ea1deda2d7913f4270873a519d43e6995c6e87a1558538"
+checksum = "e2c869ba52683d3d067c83ab4c00a2fda18eaf13b1434d4c1352f428674d4a5d"
 dependencies = [
  "bytes",
  "rand",
@@ -1841,9 +1842,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-quinn-udp"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0619b59471fdd393ac8a6c047f640171119c1c8b41f7d2927db91776dcdbc5f"
+checksum = "bfcfc0abc2fdf8cf18a6c72893b7cbebeac2274a3b1306c1760c48c0e10ac5e0"
 dependencies = [
  "libc",
  "once_cell",
@@ -2132,6 +2133,35 @@ dependencies = [
  "libc",
  "log",
  "tokio",
+]
+
+[[package]]
+name = "netwatch"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a639d52c0996ac640e2a7052a5265c8f71efdbdadc83188435ffc358b7ca931"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "derive_more",
+ "futures-lite 2.3.0",
+ "futures-sink",
+ "futures-util",
+ "libc",
+ "netdev",
+ "netlink-packet-core",
+ "netlink-packet-route",
+ "netlink-sys",
+ "once_cell",
+ "rtnetlink",
+ "serde",
+ "socket2",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "windows 0.51.1",
+ "wmi",
 ]
 
 [[package]]
@@ -2606,6 +2636,35 @@ name = "portable-atomic"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
+
+[[package]]
+name = "portmapper"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93d60045fdcfe8ff6b781cf1027fdbb08ed319d93aff7da4bedc018e3bc92226"
+dependencies = [
+ "anyhow",
+ "base64",
+ "bytes",
+ "derive_more",
+ "futures-lite 2.3.0",
+ "futures-util",
+ "igd-next",
+ "iroh-metrics",
+ "libc",
+ "netwatch",
+ "num_enum",
+ "rand",
+ "serde",
+ "smallvec",
+ "socket2",
+ "thiserror",
+ "time",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "url",
+]
 
 [[package]]
 name = "postcard"
@@ -3282,15 +3341,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8e3592472072e6e22e0a54d5904d9febf8508f65fb8552499a1abc7d1078c3a"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-error"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e988182713aeed6a619a88bca186f6d6407483485ffe44c869ee264f8eabd13f"
-dependencies = [
- "serde",
 ]
 
 [[package]]
