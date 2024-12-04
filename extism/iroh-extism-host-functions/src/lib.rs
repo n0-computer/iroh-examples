@@ -25,6 +25,7 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 }
 
 pub struct Iroh {
+    _local_pool: LocalPool,
     router: Router,
     blobs: Arc<Blobs<Store>>,
     node_id: PublicKey,
@@ -35,10 +36,12 @@ impl Iroh {
         // create store
         let store = Store::load(path).await?;
 
+        // create local pool
+        let local_pool = LocalPool::single();
+
         // create an endpoint
         let endpoint = Endpoint::builder().bind().await?;
         let node_id = endpoint.node_id();
-        let local_pool = LocalPool::single();
 
         // create blobs protocol
         let downloader = iroh_blobs::downloader::Downloader::new(
@@ -58,6 +61,7 @@ impl Iroh {
             .spawn()
             .await?;
         Ok(Iroh {
+            _local_pool: local_pool,
             router,
             blobs,
             node_id,
