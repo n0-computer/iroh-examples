@@ -2,8 +2,8 @@ use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::{Stream, StreamExt};
 use iroh::client::docs::{Entry, LiveEvent, ShareMode};
-use iroh::client::{docs::Doc, Iroh};
-use iroh::docs::{AuthorId, DocTicket};
+use iroh_docs::rpc::client::{docs::Doc, Iroh};
+use iroh_docs::{store::Query, AuthorId, DocTicket};
 use std::str::FromStr;
 // use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
@@ -129,10 +129,7 @@ impl Todos {
     }
 
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
-        let mut entries = self
-            .doc
-            .get_many(iroh::docs::store::Query::single_latest_per_key())
-            .await?;
+        let mut entries = self.doc.get_many(Query::single_latest_per_key()).await?;
 
         let mut todos = Vec::new();
         while let Some(entry) = entries.next().await {
@@ -161,7 +158,7 @@ impl Todos {
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
         let entry = self
             .doc
-            .get_many(iroh::docs::store::Query::single_latest_per_key().key_exact(id))
+            .get_many(Query::single_latest_per_key().key_exact(id))
             .await?
             .next()
             .await

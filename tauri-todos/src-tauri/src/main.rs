@@ -6,9 +6,7 @@ mod todos;
 
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
-use iroh::client::docs::LiveEvent;
-use iroh::client::Iroh;
-use iroh::docs::ContentStatus;
+use iroh_docs::{store::fs::Store, ContentStatus, rpc::client::{docs::LiveEvent, Iroh}};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
@@ -26,8 +24,13 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
         .ok_or_else(|| anyhow!("can't get application data directory"))?
         .join("iroh_data");
 
-    // create the iroh node that has persistent storage and docs enabled
-    let node = iroh::node::Builder::default().enable_docs().persist(data_root)
+    // create the docs protocol with persistent storage
+    let store = Store::persistent(data_root)?;
+    let docs = 
+    // create the iroh that has persistent storage and docs enabled
+    let node = iroh::node::Builder::default()
+        .enable_docs()
+        .persist(data_root)
         .await?
         .spawn()
         .await?;
