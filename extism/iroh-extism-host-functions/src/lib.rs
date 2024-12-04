@@ -4,10 +4,11 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::blobs::util::SetTagOption;
-use iroh::node::Node;
-
-type IrohNode = Node<iroh::blobs::store::fs::Store>;
+use iroh::{protocol::Router, Endpoint};
+use iroh_blobs::{
+    net_protocol::Blobs,
+    util::{LocalPool, SetTagOption},
+};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
 
@@ -22,14 +23,38 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
     Ok(path.join(IROH_EXTISM_DATA_DIR))
 }
 
-pub async fn create_iroh(path: PathBuf) -> Result<IrohNode> {
-    let node = iroh::node::Node::persistent(path).await?.spawn().await?;
-    Ok(node)
+pub async fn create_iroh(path: PathBuf) -> Result<Router> {
+    // create store
+    let store = iroh_blobs::store::fs::Store::load(path)?;
+
+    // create an endpoint
+    let endpoint = Endpoint::builder().bind().await?;
+    let addr = endpoint.node_addr().await?;
+    let local_pool = LocalPool::single();
+    // create blobs protocol
+    let downloader = iroh_blobs::downloader::Downloader::new(
+        store.clone(),
+        endpoint.clone(),
+        local_pool.handle().clone(),
+    );
+    let blobs = Arc::new(Blobs::new(
+        store.clone(),
+        local_pool.handle().clone(),
+        Default::default(),
+        downloader.clone(),
+        endpoint.clone(),
+    ));
+    let router = Router::builder(endpoint)
+        .accept(iroh_blobs::ALPN, blobs.clone())
+        .spawn()
+        .await?;
+    Ok(router)
 }
 
 struct Context {
     rt: tokio::runtime::Handle,
-    iroh: IrohNode,
+    iroh: Router,
+    blobs: Blobs,
 }
 
 host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
@@ -38,7 +63,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
 
     let (node_addr, hash, format) = iroh::base::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
 
-    if format != iroh::blobs::BlobFormat::Raw {
+    if format != iroh_blobs::BlobFormat::Raw {
         return Err(anyhow!("can only get raw bytes for now, not HashSequences (collections)"));
     }
     let client = ctx.iroh.client();
@@ -51,7 +76,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
         }).await?;
         while stream.next().await.is_some() {}
 
-        let buffer = client.blobs().read(hash).await?.read_to_bytes().await?;
+        let buffer = self.blobs.read(hash).await?.read_to_bytes().await?;
         anyhow::Ok(buffer.to_vec())
     })?;
 
