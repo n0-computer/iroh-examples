@@ -6,8 +6,8 @@ use automerge::{
     Automerge,
 };
 use iroh::{
-    net::endpoint::{RecvStream, SendStream},
-    router::ProtocolHandler,
+    endpoint::{Connecting, Connection, RecvStream, SendStream},
+    protocol::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
@@ -64,10 +64,7 @@ impl IrohAutomergeProtocol {
         Ok(msg)
     }
 
-    pub async fn initiate_sync(
-        self: Arc<Self>,
-        conn: iroh::net::endpoint::Connection,
-    ) -> Result<()> {
+    pub async fn initiate_sync(self: Arc<Self>, conn: Connection) -> Result<()> {
         let (mut send, mut recv) = conn.open_bi().await?;
 
         let mut doc = self.fork_doc().await;
@@ -106,10 +103,7 @@ impl IrohAutomergeProtocol {
         Ok(())
     }
 
-    pub async fn respond_sync(
-        self: Arc<Self>,
-        conn: iroh::net::endpoint::Connecting,
-    ) -> Result<()> {
+    pub async fn respond_sync(self: Arc<Self>, conn: Connecting) -> Result<()> {
         let (mut send, mut recv) = conn.await?.accept_bi().await?;
 
         let mut doc = self.fork_doc().await;
@@ -152,7 +146,7 @@ impl IrohAutomergeProtocol {
 impl ProtocolHandler for IrohAutomergeProtocol {
     fn accept(
         self: Arc<Self>,
-        conn: iroh::net::endpoint::Connecting,
+        conn: Connecting,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
         Box::pin(async move {
             Arc::clone(&self).respond_sync(conn).await?;
