@@ -29,10 +29,7 @@ async fn main() -> Result<()> {
     // We set up a channel so we can subscribe to sync events from the automerge protocol
     let (sync_sender, mut sync_finished) = mpsc::channel(10);
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
-    let endpoint = Endpoint::builder()
-        .alpns(vec![IrohAutomergeProtocol::ALPN.to_vec()])
-        .bind()
-        .await?;
+    let endpoint = Endpoint::builder().discovery_n0().bind().await?;
     let iroh = Router::builder(endpoint)
         .accept(
             IrohAutomergeProtocol::ALPN,

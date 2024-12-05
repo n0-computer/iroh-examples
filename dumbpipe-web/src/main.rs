@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let mut builder = Endpoint::builder().secret_key(secret_key);
+    let mut builder = Endpoint::builder().secret_key(secret_key).discovery_n0();
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr_v4(addr);
     }

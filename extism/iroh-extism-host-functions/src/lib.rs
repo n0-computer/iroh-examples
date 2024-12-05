@@ -40,7 +40,7 @@ impl Iroh {
         let local_pool = LocalPool::single();
 
         // create an endpoint
-        let endpoint = Endpoint::builder().bind().await?;
+        let endpoint = Endpoint::builder().discovery_n0().bind().await?;
         let node_id = endpoint.node_id();
 
         // create blobs protocol
