@@ -33,9 +33,6 @@ pub struct Iroh {
 
 impl Iroh {
     pub async fn new(path: PathBuf) -> Result<Iroh> {
-        // create store
-        let store = Store::load(path).await?;
-
         // create local pool
         let local_pool = LocalPool::single();
 
@@ -44,18 +41,11 @@ impl Iroh {
         let node_id = endpoint.node_id();
 
         // create blobs protocol
-        let downloader = iroh_blobs::downloader::Downloader::new(
-            store.clone(),
-            endpoint.clone(),
-            local_pool.handle().clone(),
-        );
-        let blobs = Arc::new(Blobs::new(
-            store.clone(),
-            local_pool.handle().clone(),
-            Default::default(),
-            downloader.clone(),
-            endpoint.clone(),
-        ));
+        let blobs = Blobs::persistent(path)
+            .await?
+            .build(local_pool.handle(), &endpoint);
+
+        // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
             .spawn()
@@ -97,7 +87,6 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     }
     let router = ctx.iroh.router();
     let blobs = ctx.iroh.blobs();
-    println!("blobs");
     let buf = ctx.rt.block_on(async move {
         let blobs = blobs.client();
         let mut stream = blobs.download_with_opts(hash, DownloadOptions {
@@ -106,14 +95,10 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
             mode: DownloadMode::Queued,
             tag: SetTagOption::Auto,
         }).await?;
-        println!("download");
         while stream.next().await.is_some() {}
-        println!("stream next");
 
         let buffer = blobs.read(hash).await?.read_to_bytes().await?;
-        println!("read");
         router.shutdown().await?;
-        println!("shutdown");
 
         anyhow::Ok(buffer.to_vec())
     })?;
