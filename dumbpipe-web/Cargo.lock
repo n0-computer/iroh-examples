@@ -713,8 +713,9 @@ checksum = "dcbb2bf8e87535c23f7a8a321e364ce21462d0ff10cb6407820e8e96dfff6653"
 
 [[package]]
 name = "dumbpipe"
-version = "0.20.0"
-source = "git+https://github.com/n0-computer/dumbpipe?branch=iroh-v0.29.0#8b5a08c11a6dc6395e0373505a4328338389793a"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34e265103d05217fd2263bfc741b48911cfb12daa4f72b73b63b730d8f47d04a"
 dependencies = [
  "anyhow",
  "clap",

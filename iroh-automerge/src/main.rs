@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         .await?;
     let iroh = Router::builder(endpoint)
         .accept(
-            IrohAutomergeProtocol::ALPN.to_vec(),
+            IrohAutomergeProtocol::ALPN,
             Arc::clone(&automerge) as Arc<dyn ProtocolHandler>,
         )
         .spawn()
