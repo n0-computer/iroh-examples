@@ -1,12 +1,18 @@
+use std::str::FromStr;
+use std::sync::Arc;
+
 use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
 use futures_lite::{Stream, StreamExt};
-use iroh::client::docs::{Entry, LiveEvent, ShareMode};
-use iroh_docs::rpc::client::{docs::Doc, Iroh};
+use iroh_docs::rpc::client::docs::Doc;
+use iroh_docs::rpc::client::docs::{Entry, LiveEvent, ShareMode};
 use iroh_docs::{store::Query, AuthorId, DocTicket};
-use std::str::FromStr;
+
+use quic_rpc::transport::flume::FlumeConnector;
 // use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
+
+use super::iroh::Iroh;
 
 /// Todo in a list of todos.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -53,28 +59,29 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
-    node: Iroh,
-    doc: Doc,
+    iroh: Arc<Iroh>,
+    doc: Doc<FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>>,
+
     ticket: DocTicket,
     author: AuthorId,
 }
 
 impl Todos {
-    pub async fn new(ticket: Option<String>, node: Iroh) -> anyhow::Result<Self> {
-        let author = node.authors().create().await?;
+    pub async fn new(ticket: Option<String>, iroh: Arc<Iroh>) -> anyhow::Result<Self> {
+        let author = iroh.docs.authors().create().await?;
 
         let doc = match ticket {
-            None => node.docs().create().await?,
+            None => iroh.docs.create().await?,
             Some(ticket) => {
                 let ticket = DocTicket::from_str(&ticket)?;
-                node.docs().import(ticket).await?
+                iroh.docs.import(ticket).await?
             }
         };
 
         let ticket = doc.share(ShareMode::Write, Default::default()).await?;
 
         Ok(Todos {
-            node,
+            iroh,
             author,
             doc,
             ticket,
@@ -169,7 +176,7 @@ impl Todos {
 
     async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
         let id = String::from_utf8(entry.key().to_owned()).context("invalid key")?;
-        match self.node.blobs().read_to_bytes(entry.content_hash()).await {
+        match self.iroh.blobs.read_to_bytes(entry.content_hash()).await {
             Ok(b) => Todo::from_bytes(b),
             Err(_) => Ok(Todo::missing_todo(id)),
         }

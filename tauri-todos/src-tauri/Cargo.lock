@@ -142,8 +142,12 @@ dependencies = [
  "bytes",
  "futures-lite 2.5.0",
  "iroh",
+ "iroh-blobs",
  "iroh-docs",
+ "iroh-gossip",
+ "iroh-node-util",
  "num_cpus",
+ "quic-rpc",
  "serde",
  "serde_json",
  "tauri",
@@ -1231,19 +1235,6 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
-dependencies = [
- "cfg-if",
- "hashbrown 0.14.5",
- "lock_api",
- "once_cell",
- "parking_lot_core",
-]
-
-[[package]]
-name = "dashmap"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
@@ -1460,18 +1451,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "duct"
-version = "0.13.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4ab5718d1224b63252cd0c6f74f6480f9ffeb117438a2e0f5cf6d9a4798929c"
-dependencies = [
- "libc",
- "once_cell",
- "os_pipe",
- "shared_child",
-]
-
-[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1521,18 +1500,6 @@ dependencies = [
  "sha2",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "educe"
-version = "0.4.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0042ff8246a363dbe77d2ceedb073339e85a804b9a47636c6e016a9a32c05f"
-dependencies = [
- "enum-ordinalize",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -1614,19 +1581,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-ordinalize"
-version = "3.1.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bf1fa3f06bbff1ea5b1a9c7b14aa992a39657db60a2759457328d7e058f49ee"
-dependencies = [
- "num-bigint",
- "num-traits",
- "proc-macro2",
- "quote",
- "syn 2.0.90",
-]
-
-[[package]]
 name = "enumflags2"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1661,12 +1615,6 @@ checksum = "6c138974f9d5e7fe373eb04df7cae98833802ae4b11c24ac7039a21d5af4b26c"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "erased_set"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76a5aa24577083f8190ad401e376b55887c7cd9083ae95d83ceec5d28ea78125"
 
 [[package]]
 name = "erased_set"
@@ -2347,32 +2295,12 @@ dependencies = [
 
 [[package]]
 name = "governor"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68a7f542ee6b35af73b06abc0dad1c1bae89964e4e253bc4b587b91c9637867b"
-dependencies = [
- "cfg-if",
- "dashmap 5.5.3",
- "futures",
- "futures-timer",
- "no-std-compat",
- "nonzero_ext",
- "parking_lot",
- "portable-atomic",
- "quanta",
- "rand 0.8.5",
- "smallvec",
- "spinning_top",
-]
-
-[[package]]
-name = "governor"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0746aa765db78b521451ef74221663b57ba595bf83f75d0ce23cc09447c8139f"
 dependencies = [
  "cfg-if",
- "dashmap 6.1.0",
+ "dashmap",
  "futures-sink",
  "futures-timer",
  "futures-util",
@@ -3051,7 +2979,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "genawaiter",
- "governor 0.7.0",
+ "governor",
  "hex",
  "hickory-proto",
  "hickory-resolver",
@@ -3061,29 +2989,29 @@ dependencies = [
  "hyper 1.4.1",
  "hyper-util",
  "igd-next",
- "iroh-base 0.29.0",
- "iroh-metrics 0.29.0",
+ "iroh-base",
+ "iroh-metrics",
  "iroh-net-report",
  "iroh-quinn",
  "iroh-quinn-proto",
  "iroh-quinn-udp",
  "iroh-relay",
  "libc",
- "netdev 0.31.0",
+ "netdev",
  "netlink-packet-core",
  "netlink-packet-route 0.19.0",
  "netlink-packet-route 0.21.0",
  "netlink-sys",
- "netwatch 0.2.0",
+ "netwatch",
  "num_enum 0.7.3",
  "once_cell",
  "parking_lot",
  "pin-project",
  "pkarr",
- "portmapper 0.2.1",
+ "portmapper",
  "postcard",
  "rand 0.8.5",
- "rcgen 0.13.1",
+ "rcgen",
  "reqwest 0.12.7",
  "ring",
  "rtnetlink 0.13.1",
@@ -3109,37 +3037,9 @@ dependencies = [
  "watchable",
  "webpki-roots",
  "windows 0.58.0",
- "wmi 0.14.1",
+ "wmi",
  "x509-parser",
  "z32",
-]
-
-[[package]]
-name = "iroh-base"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c21fd8eb71f166a172a9779c2244db992218e9a9bd929b9df6fc355d2b630c9"
-dependencies = [
- "aead",
- "anyhow",
- "crypto_box",
- "data-encoding",
- "derive_more 1.0.0",
- "ed25519-dalek",
- "getrandom 0.2.15",
- "hex",
- "iroh-blake3",
- "once_cell",
- "postcard",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "redb 2.2.0",
- "serde",
- "ssh-key",
- "thiserror 1.0.64",
- "ttl_cache",
- "url",
- "zeroize",
 ]
 
 [[package]]
@@ -3161,6 +3061,7 @@ dependencies = [
  "postcard",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "redb 2.2.0",
  "serde",
  "ssh-key",
  "thiserror 2.0.4",
@@ -3184,9 +3085,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-blobs"
-version = "0.28.1"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cce615635f60b5a01f6d066084cc0fca8281df594b6b735840d4796a06422604"
+checksum = "5eaff53d1700758783707690b76973775e593841735739678dc240412e1d040f"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -3196,41 +3097,48 @@ dependencies = [
  "derive_more 1.0.0",
  "futures-buffered",
  "futures-lite 2.5.0",
+ "futures-util",
  "genawaiter",
  "hashlink",
  "hex",
- "iroh-base 0.28.0",
+ "iroh",
+ "iroh-base",
  "iroh-io",
- "iroh-metrics 0.28.0",
- "iroh-net",
+ "iroh-metrics",
  "iroh-quinn",
- "iroh-router",
+ "nested_enum_utils",
  "num_cpus",
  "oneshot",
  "parking_lot",
- "pin-project",
+ "portable-atomic",
  "postcard",
+ "quic-rpc",
+ "quic-rpc-derive",
  "rand 0.8.5",
  "range-collections",
  "redb 1.5.1",
  "redb 2.2.0",
+ "ref-cast",
  "reflink-copy",
  "self_cell",
  "serde",
  "serde-error",
  "smallvec",
+ "strum",
  "tempfile",
- "thiserror 1.0.64",
+ "thiserror 2.0.4",
  "tokio",
  "tokio-util",
  "tracing",
  "tracing-futures",
+ "walkdir",
 ]
 
 [[package]]
 name = "iroh-docs"
-version = "0.28.0"
-source = "git+https://github.com/n0-computer/iroh-docs?branch=iroh-v0-29-0#4880c529d63dcc7016ef1e2188419bd7b1a076d1"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7c986963d222f33144146d77c98678f3a9d7e10f79714c93cd29807c7dec409"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -3242,16 +3150,17 @@ dependencies = [
  "futures-util",
  "hex",
  "iroh",
+ "iroh-base",
  "iroh-blake3",
  "iroh-blobs",
  "iroh-gossip",
- "iroh-metrics 0.29.0",
+ "iroh-metrics",
  "nested_enum_utils",
  "num_enum 0.7.3",
  "portable-atomic",
  "postcard",
- "quic-rpc 0.17.0",
- "quic-rpc-derive 0.17.0",
+ "quic-rpc",
+ "quic-rpc-derive",
  "rand 0.8.5",
  "rand_core 0.6.4",
  "redb 1.5.1",
@@ -3270,9 +3179,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-gossip"
-version = "0.28.1"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c078057037f0e741c5ef285c67fd9cfdb928163dd046fb547089898bdb02990e"
+checksum = "e5688dded24660d9d64ab444768b969f8d4c06aae5221d9e2ef619f12873acee"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -3282,16 +3191,15 @@ dependencies = [
  "futures-concurrency",
  "futures-lite 2.5.0",
  "futures-util",
+ "hex",
  "indexmap 2.5.0",
- "iroh-base 0.28.0",
+ "iroh",
  "iroh-blake3",
- "iroh-metrics 0.28.0",
- "iroh-net",
- "iroh-router",
+ "iroh-metrics",
  "nested_enum_utils",
  "postcard",
- "quic-rpc 0.14.0",
- "quic-rpc-derive 0.14.0",
+ "quic-rpc",
+ "quic-rpc-derive",
  "rand 0.8.5",
  "rand_core 0.6.4",
  "serde",
@@ -3317,33 +3225,12 @@ dependencies = [
 
 [[package]]
 name = "iroh-metrics"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0d40f2ee3997489d47403d204a06514ed65373d224b5b43a8ea133f543e5db1"
-dependencies = [
- "anyhow",
- "erased_set 0.7.0",
- "http-body-util",
- "hyper 1.4.1",
- "hyper-util",
- "once_cell",
- "prometheus-client",
- "reqwest 0.12.7",
- "serde",
- "struct_iterable",
- "time",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "iroh-metrics"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a242381d5da20bb4a6cc7482b5cc687a739da8371aff0ea8c12aaf499801886b"
 dependencies = [
  "anyhow",
- "erased_set 0.8.0",
+ "erased_set",
  "http-body-util",
  "hyper 1.4.1",
  "hyper-util",
@@ -3355,85 +3242,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "iroh-net"
-version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b40e1f1f9029e198c6d05bd232d3239814b0a66ac4668978729b709aeb6a44e2"
-dependencies = [
- "anyhow",
- "backoff",
- "base64 0.22.1",
- "bytes",
- "der",
- "derive_more 1.0.0",
- "duct",
- "futures-buffered",
- "futures-concurrency",
- "futures-lite 2.5.0",
- "futures-sink",
- "futures-util",
- "genawaiter",
- "governor 0.6.3",
- "hex",
- "hickory-proto",
- "hickory-resolver",
- "hostname 0.3.1",
- "http 1.1.0",
- "http-body-util",
- "hyper 1.4.1",
- "hyper-util",
- "igd-next",
- "iroh-base 0.28.0",
- "iroh-metrics 0.28.0",
- "iroh-quinn",
- "iroh-quinn-proto",
- "iroh-quinn-udp",
- "libc",
- "netdev 0.30.0",
- "netlink-packet-core",
- "netlink-packet-route 0.17.1",
- "netlink-sys",
- "netwatch 0.1.0",
- "num_enum 0.7.3",
- "once_cell",
- "parking_lot",
- "pin-project",
- "pkarr",
- "portmapper 0.1.0",
- "postcard",
- "rand 0.8.5",
- "rcgen 0.12.1",
- "reqwest 0.12.7",
- "ring",
- "rtnetlink 0.13.1",
- "rustls",
- "rustls-webpki",
- "serde",
- "smallvec",
- "socket2",
- "strum",
- "stun-rs",
- "surge-ping",
- "thiserror 1.0.64",
- "time",
- "tokio",
- "tokio-rustls",
- "tokio-stream",
- "tokio-tungstenite 0.21.0",
- "tokio-tungstenite-wasm",
- "tokio-util",
- "tracing",
- "tungstenite 0.21.0",
- "url",
- "watchable",
- "webpki-roots",
- "windows 0.51.1",
- "wmi 0.13.4",
- "x509-parser",
- "z32",
 ]
 
 [[package]]
@@ -3448,11 +3256,11 @@ dependencies = [
  "futures-buffered",
  "futures-lite 2.5.0",
  "hickory-resolver",
- "iroh-base 0.29.0",
- "iroh-metrics 0.29.0",
+ "iroh-base",
+ "iroh-metrics",
  "iroh-relay",
- "netwatch 0.2.0",
- "portmapper 0.2.1",
+ "netwatch",
+ "portmapper",
  "rand 0.8.5",
  "reqwest 0.12.7",
  "rustls",
@@ -3462,6 +3270,26 @@ dependencies = [
  "tokio-util",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "iroh-node-util"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ef6518a30707bb6394d1286ede6fad4ec7d0896fef2c75d7d966eb5d0658a55"
+dependencies = [
+ "anyhow",
+ "futures-lite 2.5.0",
+ "iroh",
+ "nested_enum_utils",
+ "quic-rpc",
+ "quic-rpc-derive",
+ "serde",
+ "serde-error",
+ "strum",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3528,7 +3356,7 @@ dependencies = [
  "futures-lite 2.5.0",
  "futures-sink",
  "futures-util",
- "governor 0.7.0",
+ "governor",
  "hex",
  "hickory-proto",
  "hickory-resolver",
@@ -3537,8 +3365,8 @@ dependencies = [
  "http-body-util",
  "hyper 1.4.1",
  "hyper-util",
- "iroh-base 0.29.0",
- "iroh-metrics 0.29.0",
+ "iroh-base",
+ "iroh-metrics",
  "iroh-quinn",
  "iroh-quinn-proto",
  "libc",
@@ -3548,7 +3376,7 @@ dependencies = [
  "pin-project",
  "postcard",
  "rand 0.8.5",
- "rcgen 0.13.1",
+ "rcgen",
  "regex",
  "reqwest 0.12.7",
  "ring",
@@ -3572,22 +3400,6 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "webpki-roots",
-]
-
-[[package]]
-name = "iroh-router"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1fd18ec6325dd3f01625f12c01acff50a4374ee1ab708e7b2078885fd63ad30"
-dependencies = [
- "anyhow",
- "futures-buffered",
- "futures-lite 2.5.0",
- "futures-util",
- "iroh-net",
- "tokio",
- "tokio-util",
- "tracing",
 ]
 
 [[package]]
@@ -3918,12 +3730,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
-name = "memalloc"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df39d232f5c40b0891c10216992c2f250c054105cb1e56f0fc9032db6203ecc1"
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4049,23 +3855,6 @@ dependencies = [
 
 [[package]]
 name = "netdev"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7516ad2c46cc25da098ed7d6b9a0cbe9e1fbffbd04b1596148b95f2841179c83"
-dependencies = [
- "dlopen2",
- "libc",
- "memalloc",
- "netlink-packet-core",
- "netlink-packet-route 0.17.1",
- "netlink-sys",
- "once_cell",
- "system-configuration 0.6.1",
- "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "netdev"
 version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f901362e84cd407be6f8cd9d3a46bccf09136b095792785401ea7d283c79b91d"
@@ -4177,35 +3966,6 @@ dependencies = [
 
 [[package]]
 name = "netwatch"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a639d52c0996ac640e2a7052a5265c8f71efdbdadc83188435ffc358b7ca931"
-dependencies = [
- "anyhow",
- "bytes",
- "derive_more 1.0.0",
- "futures-lite 2.5.0",
- "futures-sink",
- "futures-util",
- "libc",
- "netdev 0.30.0",
- "netlink-packet-core",
- "netlink-packet-route 0.17.1",
- "netlink-sys",
- "once_cell",
- "rtnetlink 0.13.1",
- "serde",
- "socket2",
- "thiserror 1.0.64",
- "time",
- "tokio",
- "tracing",
- "windows 0.51.1",
- "wmi 0.13.4",
-]
-
-[[package]]
-name = "netwatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "304c0c1b348830b016039f2cb1c5ac8217084a78875262c5594925dd08aa77fc"
@@ -4219,7 +3979,7 @@ dependencies = [
  "futures-util",
  "iroh-quinn-udp",
  "libc",
- "netdev 0.31.0",
+ "netdev",
  "netlink-packet-core",
  "netlink-packet-route 0.19.0",
  "netlink-sys",
@@ -4234,7 +3994,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "windows 0.58.0",
- "wmi 0.14.1",
+ "wmi",
 ]
 
 [[package]]
@@ -5247,35 +5007,6 @@ checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
 
 [[package]]
 name = "portmapper"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93d60045fdcfe8ff6b781cf1027fdbb08ed319d93aff7da4bedc018e3bc92226"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "bytes",
- "derive_more 1.0.0",
- "futures-lite 2.5.0",
- "futures-util",
- "igd-next",
- "iroh-metrics 0.28.0",
- "libc",
- "netwatch 0.1.0",
- "num_enum 0.7.3",
- "rand 0.8.5",
- "serde",
- "smallvec",
- "socket2",
- "thiserror 1.0.64",
- "time",
- "tokio",
- "tokio-util",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "portmapper"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ea24e7552a28ee4a3478ae116c89080957d6816526d0a533bee6cd67048279"
@@ -5287,9 +5018,9 @@ dependencies = [
  "futures-lite 2.5.0",
  "futures-util",
  "igd-next",
- "iroh-metrics 0.29.0",
+ "iroh-metrics",
  "libc",
- "netwatch 0.2.0",
+ "netwatch",
  "num_enum 0.7.3",
  "rand 0.8.5",
  "serde",
@@ -5525,27 +5256,6 @@ dependencies = [
 
 [[package]]
 name = "quic-rpc"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d8431b2e7c22929347b61a354d4936d71fe7ab1e6b0475dc50e98276970dfec"
-dependencies = [
- "anyhow",
- "derive_more 1.0.0",
- "educe",
- "flume",
- "futures-lite 2.5.0",
- "futures-sink",
- "futures-util",
- "hex",
- "pin-project",
- "serde",
- "slab",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "quic-rpc"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64ae09230350898e9a243a7a4a5fdde934edfb6b010e6a9cfb4136f79b54dbbb"
@@ -5568,24 +5278,12 @@ dependencies = [
 
 [[package]]
 name = "quic-rpc-derive"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "403bc8506c847468e00170dbbbfe2c54d13b090031bcbe474cd3faea021cbd9f"
-dependencies = [
- "proc-macro2",
- "quic-rpc 0.14.0",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "quic-rpc-derive"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44bb53e37914f7e7c6670dc2c834b9299110620cded49e783e78e9d8baf80128"
 dependencies = [
  "proc-macro2",
- "quic-rpc 0.17.0",
+ "quic-rpc",
  "quote",
  "syn 1.0.109",
 ]
@@ -5803,18 +5501,6 @@ name = "raw-window-handle"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
-
-[[package]]
-name = "rcgen"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48406db8ac1f3cbc7dcdb56ec355343817958a356ff430259bb07baf7607e1e1"
-dependencies = [
- "pem",
- "ring",
- "time",
- "yasna",
-]
 
 [[package]]
 name = "rcgen"
@@ -7579,7 +7265,7 @@ dependencies = [
  "num-bigint",
  "pem",
  "proc-macro2",
- "rcgen 0.13.1",
+ "rcgen",
  "reqwest 0.12.7",
  "ring",
  "rustls",
@@ -8463,16 +8149,6 @@ dependencies = [
 
 [[package]]
 name = "windows"
-version = "0.51.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca229916c5ee38c2f2bc1e9d8f04df975b4bd93f9955dc69fabb5d91270045c9"
-dependencies = [
- "windows-core 0.51.1",
- "windows-targets 0.48.5",
-]
-
-[[package]]
-name = "windows"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e48a53791691ab099e5e2ad123536d0fff50652600abaf43bbf952894110d0be"
@@ -8509,15 +8185,6 @@ checksum = "68003dbd0e38abc0fb85b939240f4bce37c43a5981d3df37ccbaaa981b47cb41"
 dependencies = [
  "windows-metadata",
  "windows-tokens",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.51.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1f8cf84f35d2db49a46868f947758c7a1138116f7fac3bc844f43ade1292e64"
-dependencies = [
- "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -8989,21 +8656,6 @@ dependencies = [
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
-]
-
-[[package]]
-name = "wmi"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff00ac1309d4c462be86f03a55e409509e8bf4323ec296aeb4b381dd9aabe6ec"
-dependencies = [
- "chrono",
- "futures",
- "log",
- "serde",
- "thiserror 1.0.64",
- "windows 0.58.0",
- "windows-core 0.58.0",
 ]
 
 [[package]]

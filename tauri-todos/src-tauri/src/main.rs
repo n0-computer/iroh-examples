@@ -2,18 +2,21 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+mod iroh;
 mod todos;
+
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
-use iroh_docs::{store::fs::Store, ContentStatus, rpc::client::{docs::LiveEvent, Iroh}};
+use iroh_docs::{rpc::client::docs::LiveEvent, ContentStatus};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
-use self::todos::{Todo, Todos};
-
-// this example uses a persistend iroh node stored in the application data directory
-type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
+use self::{
+    iroh::Iroh,
+    todos::{Todo, Todos},
+};
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
@@ -24,35 +27,26 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
         .ok_or_else(|| anyhow!("can't get application data directory"))?
         .join("iroh_data");
 
-    // create the docs protocol with persistent storage
-    let store = Store::persistent(data_root)?;
-    let docs = 
-    // create the iroh that has persistent storage and docs enabled
-    let node = iroh::node::Builder::default()
-        .enable_docs()
-        .persist(data_root)
-        .await?
-        .spawn()
-        .await?;
-    handle.manage(AppState::new(node));
+    let iroh = Iroh::new(data_root).await?;
+    handle.manage(AppState::new(iroh));
 
     Ok(())
 }
 
 struct AppState {
     todos: Mutex<Option<(Todos, tokio::task::JoinHandle<()>)>>,
-    iroh: IrohNode,
+    iroh: Arc<Iroh>,
 }
 impl AppState {
-    fn new(iroh: IrohNode) -> Self {
+    fn new(iroh: Iroh) -> Self {
         AppState {
             todos: Mutex::new(None),
-            iroh,
+            iroh: Arc::new(iroh),
         }
     }
 
-    fn iroh(&self) -> Iroh {
-        self.iroh.client().clone()
+    fn iroh(&self) -> Arc<Iroh> {
+        self.iroh.clone()
     }
 
     async fn init_todos<R: tauri::Runtime>(
