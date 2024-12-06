@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use anyhow::{anyhow, Result};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::{key::PublicKey, protocol::Router, Endpoint};
+use iroh::{protocol::Router, Endpoint, NodeId};
 use iroh_blobs::{
     net_protocol::{Blobs, DownloadMode},
     rpc::client::blobs::DownloadOptions,
@@ -28,7 +28,6 @@ pub struct Iroh {
     _local_pool: LocalPool,
     router: Router,
     blobs: Arc<Blobs<Store>>,
-    node_id: PublicKey,
 }
 
 impl Iroh {
@@ -38,7 +37,6 @@ impl Iroh {
 
         // create an endpoint
         let endpoint = Endpoint::builder().discovery_n0().bind().await?;
-        let node_id = endpoint.node_id();
 
         // create blobs protocol
         let blobs = Blobs::persistent(path)
@@ -54,12 +52,11 @@ impl Iroh {
             _local_pool: local_pool,
             router,
             blobs,
-            node_id,
         })
     }
 
-    pub fn node_id(&self) -> PublicKey {
-        self.node_id
+    pub fn node_id(&self) -> NodeId {
+        self.router.endpoint().node_id()
     }
 
     pub fn blobs(&self) -> Arc<Blobs<Store>> {

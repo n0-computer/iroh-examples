@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use anyhow::{bail, ensure, Context, Result};
 use bytes::Bytes;
@@ -59,7 +58,7 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
-    iroh: Arc<Iroh>,
+    iroh: Iroh,
     doc: Doc<FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>>,
 
     ticket: DocTicket,
@@ -67,7 +66,7 @@ pub struct Todos {
 }
 
 impl Todos {
-    pub async fn new(ticket: Option<String>, iroh: Arc<Iroh>) -> anyhow::Result<Self> {
+    pub async fn new(ticket: Option<String>, iroh: Iroh) -> anyhow::Result<Self> {
         let author = iroh.docs.authors().create().await?;
 
         let doc = match ticket {

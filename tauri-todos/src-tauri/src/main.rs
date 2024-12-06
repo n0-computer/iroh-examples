@@ -5,8 +5,6 @@
 mod iroh;
 mod todos;
 
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
 use iroh_docs::{rpc::client::docs::LiveEvent, ContentStatus};
@@ -35,18 +33,18 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
 
 struct AppState {
     todos: Mutex<Option<(Todos, tokio::task::JoinHandle<()>)>>,
-    iroh: Arc<Iroh>,
+    iroh: Iroh,
 }
 impl AppState {
     fn new(iroh: Iroh) -> Self {
         AppState {
             todos: Mutex::new(None),
-            iroh: Arc::new(iroh),
+            iroh,
         }
     }
 
-    fn iroh(&self) -> Arc<Iroh> {
-        self.iroh.clone()
+    fn iroh(&self) -> &Iroh {
+        &self.iroh
     }
 
     async fn init_todos<R: tauri::Runtime>(
@@ -129,7 +127,7 @@ async fn new_list(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(None, state.iroh())
+    let todos = Todos::new(None, state.iroh().clone())
         .await
         .map_err(|e| e.to_string())?;
 
@@ -189,7 +187,7 @@ async fn set_ticket(
     ticket: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(Some(ticket), state.iroh())
+    let todos = Todos::new(Some(ticket), state.iroh().clone())
         .await
         .map_err(|e| e.to_string())?;
 

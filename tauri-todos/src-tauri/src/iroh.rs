@@ -2,9 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use iroh::protocol::Router;
-use iroh_blobs::{
-    downloader::Downloader, net_protocol::Blobs, provider::EventSender, util::local_pool::LocalPool,
-};
+use iroh_blobs::util::local_pool::LocalPool;
 use quic_rpc::transport::flume::FlumeConnector;
 
 pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
@@ -14,6 +12,7 @@ pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
     FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>,
 >;
 
+#[derive(Clone, Debug)]
 pub(crate) struct Iroh {
     _local_pool: Arc<LocalPool>,
     router: Router,
@@ -29,11 +28,10 @@ impl Iroh {
         // load or create key
         let key = iroh_node_util::load_secret_key(path.clone().join("keypair")).await?;
 
-        // load or create stores
+        // load or create docs stores
         let docs_store = iroh_docs::store::Store::persistent(path.join("docs.redb"))?;
         let author_store =
             iroh_docs::engine::DefaultAuthorStorage::Persistent(path.join("default-author"));
-        let blobs_store = iroh_blobs::store::fs::Store::load(path.join("blobs")).await?;
 
         // local thread pool manager for blobs
         let local_pool = LocalPool::default();
@@ -55,33 +53,21 @@ impl Iroh {
             Default::default(),
             &addr.info,
         );
-        builder = builder.accept(
-            iroh_gossip::net::GOSSIP_ALPN.to_vec(),
-            Arc::new(gossip.clone()),
-        );
+        builder = builder.accept(iroh_gossip::ALPN, Arc::new(gossip.clone()));
 
         // add iroh blobs
-        let downloader = Downloader::new(
-            blobs_store.clone(),
-            builder.endpoint().clone(),
-            local_pool.handle().clone(),
-        );
-        let blobs = Arc::new(Blobs::new(
-            blobs_store.clone(),
-            local_pool.handle().clone(),
-            EventSender::default(),
-            downloader.clone(),
-            builder.endpoint().clone(),
-        ));
-        builder = builder.accept(iroh_blobs::protocol::ALPN.to_vec(), blobs.clone());
+        let blobs = iroh_blobs::net_protocol::Blobs::persistent(path)
+            .await?
+            .build(&local_pool.handle(), builder.endpoint());
+        builder = builder.accept(iroh_blobs::ALPN, blobs.clone());
 
         // add docs
         let docs = iroh_docs::engine::Engine::spawn(
             builder.endpoint().clone(),
             gossip,
             docs_store,
-            blobs_store.clone(),
-            downloader,
+            blobs.store().clone(),
+            blobs.downloader().clone(),
             author_store,
             local_pool.handle().clone(),
         )
