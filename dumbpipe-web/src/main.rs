@@ -14,8 +14,7 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
-use iroh::net::key::SecretKey;
-use iroh::net::{AddrInfo, Endpoint, NodeAddr};
+use iroh::{key::SecretKey, AddrInfo, Endpoint, NodeAddr};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -65,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let mut builder = Endpoint::builder().secret_key(secret_key);
+    let mut builder = Endpoint::builder().secret_key(secret_key).discovery_n0();
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr_v4(addr);
     }
@@ -112,7 +111,7 @@ fn bad_request(text: &'static str) -> anyhow::Result<Response<BoxBody<Bytes, hyp
 
 fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
     // first try to parse as a node id
-    if let Ok(node_id) = iroh::net::NodeId::from_str(subdomain) {
+    if let Ok(node_id) = iroh::NodeId::from_str(subdomain) {
         return Ok(NodeAddr {
             node_id,
             info: AddrInfo {

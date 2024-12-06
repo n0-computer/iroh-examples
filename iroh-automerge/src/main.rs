@@ -3,7 +3,10 @@ use std::sync::Arc;
 use anyhow::Result;
 use automerge::{transaction::Transactable, Automerge, ReadDoc};
 use clap::Parser;
-use iroh::{node::Node, router::ProtocolHandler};
+use iroh::{
+    protocol::{ProtocolHandler, Router},
+    Endpoint,
+};
 
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;
@@ -14,7 +17,7 @@ mod protocol;
 #[command(version, about, long_about = None)]
 struct Cli {
     #[clap(long)]
-    remote_id: Option<iroh::net::NodeId>,
+    remote_id: Option<iroh::NodeId>,
 }
 
 #[tokio::main]
@@ -26,19 +29,18 @@ async fn main() -> Result<()> {
     // We set up a channel so we can subscribe to sync events from the automerge protocol
     let (sync_sender, mut sync_finished) = mpsc::channel(10);
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
-    let iroh = Node::memory()
-        .build()
-        .await?
+    let endpoint = Endpoint::builder().discovery_n0().bind().await?;
+    let iroh = Router::builder(endpoint)
         .accept(
-            IrohAutomergeProtocol::ALPN.to_vec(),
+            IrohAutomergeProtocol::ALPN,
             Arc::clone(&automerge) as Arc<dyn ProtocolHandler>,
         )
         .spawn()
         .await?;
 
-    let addr = iroh.net().node_addr().await?;
+    let node_id = iroh.endpoint().node_id();
 
-    println!("Running\nNode Id: {}", addr.node_id,);
+    println!("Running\nNode Id: {}", node_id,);
 
     // we distinguish the roles in protocol based on if the --remote-id CLI argument is present
     if let Some(remote_id) = opts.remote_id {
@@ -54,7 +56,7 @@ async fn main() -> Result<()> {
         automerge.merge_doc(&mut doc).await?;
 
         // connect to the other node
-        let node_addr = iroh::net::NodeAddr::new(remote_id);
+        let node_addr = iroh::NodeAddr::new(remote_id);
         let conn = iroh
             .endpoint()
             .connect(node_addr, IrohAutomergeProtocol::ALPN)

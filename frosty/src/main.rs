@@ -5,7 +5,7 @@ use frost_ed25519::{
     Ed25519ScalarField, Field, Identifier, SigningPackage,
 };
 use futures::StreamExt;
-use iroh_net::{
+use iroh::{
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
     endpoint::{RecvStream, SendStream},
     key::{PublicKey, SecretKey},
@@ -101,7 +101,7 @@ fn split(args: SplitArgs) -> anyhow::Result<()> {
     let max_signers = args.max_signers;
     let min_signers = args.min_signers;
     let key = fs::read_to_string(&args.key)?;
-    let iroh_key = iroh_net::key::SecretKey::try_from_openssh(key)?;
+    let iroh_key = iroh::key::SecretKey::try_from_openssh(key)?;
     let key_bytes = iroh_key.to_bytes();
     let scalar = ed25519_secret_key_to_scalar(&key_bytes);
     let key = frost::SigningKey::from_scalar(scalar);
@@ -198,7 +198,7 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     let signature = secret.sign(rand::thread_rng(), msg);
     let signature_bytes = signature.serialize();
     println!("Signature: {}", hex::encode(signature_bytes));
-    let iroh_signature: iroh_net::key::Signature = signature_bytes.into();
+    let iroh_signature: iroh::key::Signature = signature_bytes.into();
     let res = key.verify(msg, &iroh_signature);
     if res.is_err() {
         println!("Verification failed: {:?}", res);
@@ -227,12 +227,12 @@ fn ed25519_secret_key_to_scalar(secret_key: &[u8; 32]) -> <Ed25519ScalarField as
 }
 
 async fn handle_cosign_request(
-    incoming: iroh_net::endpoint::Incoming,
+    incoming: iroh::endpoint::Incoming,
     data_path: PathBuf,
 ) -> anyhow::Result<()> {
     // we don't need to check the ALPN, since we only accept connections with the correct ALPN
     let connection = incoming.await?;
-    let remote_node_id = iroh_net::endpoint::get_remote_node_id(&connection)?;
+    let remote_node_id = iroh::endpoint::get_remote_node_id(&connection)?;
     info!("Incoming connection from {}", remote_node_id,);
     let (mut send, mut recv) = connection.accept_bi().await?;
     let key_bytes = read_exact_bytes(&mut recv).await?;
@@ -265,7 +265,7 @@ async fn handle_cosign_request(
 }
 
 async fn send_cosign_request_round1(
-    endpoint: &iroh_net::Endpoint,
+    endpoint: &iroh::Endpoint,
     cosigner: &PublicKey,
     key: &PublicKey,
 ) -> anyhow::Result<(
@@ -314,7 +314,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     let min_cosigners = (key_package.min_signers() - 1) as usize;
     info!("{} co-signers required", min_cosigners);
     let discovery = DnsDiscovery::n0_dns();
-    let endpoint = iroh_net::endpoint::Endpoint::builder()
+    let endpoint = iroh::endpoint::Endpoint::builder()
         .secret_key(secret_key)
         .discovery(Box::new(discovery))
         .bind()
@@ -353,12 +353,12 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     info!("got {} signature shares", signature_shares.len());
     let signature = frost::aggregate(&signing_package, &signature_shares, &public_key_package)?;
     let bytes = signature.serialize();
-    let iroh_signature = iroh_net::key::Signature::from(bytes);
+    let iroh_signature = iroh::key::Signature::from(bytes);
     if let Err(cause) = key.verify(args.message.as_bytes(), &iroh_signature) {
         error!("Verification failed: {:?}", cause);
     }
     println!("Signature: {}", hex::encode(bytes));
-    endpoint.close(0u8.into(), b"done").await?;
+    endpoint.close().await?;
     Ok(())
 }
 
@@ -376,7 +376,7 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
         {
             if let Some(stem) = path.file_stem() {
                 if let Some(text) = stem.to_str() {
-                    let key = iroh_net::key::PublicKey::from_str(text)?;
+                    let key = iroh::key::PublicKey::from_str(text)?;
                     let secret_share_bytes = fs::read(&path)?;
                     let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
                     let key_package = frost::keys::KeyPackage::try_from(secret_share)?;
@@ -392,7 +392,7 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
         }
     }
     let discovery = PkarrPublisher::n0_dns(secret_key.clone());
-    let endpoint = iroh_net::endpoint::Endpoint::builder()
+    let endpoint = iroh::endpoint::Endpoint::builder()
         .alpns(vec![COSIGN_ALPN.to_vec()])
         .secret_key(secret_key)
         .discovery(Box::new(discovery))

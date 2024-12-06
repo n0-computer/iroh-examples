@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
 
     let iroh = rt.block_on(async {
         let iroh_path = iroh_extism_host_functions::default_iroh_extism_data_root().await?;
-        iroh_extism_host_functions::create_iroh(iroh_path).await
+        iroh_extism_host_functions::Iroh::new(iroh_path).await
     })?;
     println!("iroh node id: {:?}", iroh.node_id());
 

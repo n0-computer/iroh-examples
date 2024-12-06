@@ -2,20 +2,19 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+mod iroh;
 mod todos;
 
 use anyhow::{anyhow, Result};
 use futures_lite::StreamExt;
-use iroh::client::docs::LiveEvent;
-use iroh::client::Iroh;
-use iroh::docs::ContentStatus;
+use iroh_docs::{rpc::client::docs::LiveEvent, ContentStatus};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
-use self::todos::{Todo, Todos};
-
-// this example uses a persistend iroh node stored in the application data directory
-type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
+use self::{
+    iroh::Iroh,
+    todos::{Todo, Todos},
+};
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
@@ -26,30 +25,26 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
         .ok_or_else(|| anyhow!("can't get application data directory"))?
         .join("iroh_data");
 
-    // create the iroh node that has persistent storage and docs enabled
-    let node = iroh::node::Builder::default().enable_docs().persist(data_root)
-        .await?
-        .spawn()
-        .await?;
-    handle.manage(AppState::new(node));
+    let iroh = Iroh::new(data_root).await?;
+    handle.manage(AppState::new(iroh));
 
     Ok(())
 }
 
 struct AppState {
     todos: Mutex<Option<(Todos, tokio::task::JoinHandle<()>)>>,
-    iroh: IrohNode,
+    iroh: Iroh,
 }
 impl AppState {
-    fn new(iroh: IrohNode) -> Self {
+    fn new(iroh: Iroh) -> Self {
         AppState {
             todos: Mutex::new(None),
             iroh,
         }
     }
 
-    fn iroh(&self) -> Iroh {
-        self.iroh.client().clone()
+    fn iroh(&self) -> &Iroh {
+        &self.iroh
     }
 
     async fn init_todos<R: tauri::Runtime>(
@@ -132,7 +127,7 @@ async fn new_list(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(None, state.iroh())
+    let todos = Todos::new(None, state.iroh().clone())
         .await
         .map_err(|e| e.to_string())?;
 
@@ -192,7 +187,7 @@ async fn set_ticket(
     ticket: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let todos = Todos::new(Some(ticket), state.iroh())
+    let todos = Todos::new(Some(ticket), state.iroh().clone())
         .await
         .map_err(|e| e.to_string())?;
 
