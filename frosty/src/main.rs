@@ -2,7 +2,7 @@ use clap::Parser;
 use frost_ed25519::{
     self as frost,
     keys::{IdentifierList, KeyPackage, PublicKeyPackage, SecretShare},
-    Ed25519ScalarField, Field, Identifier, SigningPackage,
+    Ciphersuite, Ed25519ScalarField, Ed25519Sha512, Field, Group, Identifier, SigningPackage,
 };
 use futures::StreamExt;
 use iroh::{
@@ -297,7 +297,7 @@ async fn send_cosign_request_round1(
     let (mut send, mut recv) = connection.open_bi().await?;
     info!("Sending cosign request for key {} to {}", key, cosigner);
     send.write_all(key.as_bytes()).await?;
-    let identifier_bytes = read_exact_bytes(&mut recv).await?;
+    let identifier_bytes: <<<Ed25519Sha512 as Ciphersuite>::Group as Group>::Field as Field>::Serialization = read_exact_bytes(&mut recv).await?;
     let identifier = Identifier::deserialize(&identifier_bytes)?;
     let commitments_bytes = read_lp(&mut recv).await?;
     let commitments = frost::round1::SigningCommitments::deserialize(&commitments_bytes)?;
@@ -365,7 +365,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     signature_shares.insert(local_identifier, local_signature_share);
     for (mut send, mut recv, identifier, _) in cosigners {
         write_lp(&mut send, &signing_package_bytes).await?;
-        let signature_share_bytes = read_exact_bytes(&mut recv).await?;
+        let signature_share_bytes: <<<Ed25519Sha512 as Ciphersuite>::Group as Group>::Field as Field>::Serialization = read_exact_bytes(&mut recv).await?;
         let signature_share = frost::round2::SignatureShare::deserialize(&signature_share_bytes)?;
         signature_shares.insert(identifier, signature_share);
     }
