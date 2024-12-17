@@ -15,17 +15,14 @@ use derive_more::Deref;
 use futures::{pin_mut, StreamExt};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::{
-    discovery::dns::DnsDiscovery,
-    key::NodeId,
-    ticket::{BlobTicket, NodeTicket},
-    Endpoint, NodeAddr,
-};
+use iroh::{discovery::dns::DnsDiscovery, Endpoint, NodeAddr, NodeId};
+use iroh_base::ticket::NodeTicket;
 use iroh_blobs::{
     format::collection::Collection,
     get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
     protocol::{RangeSpecSeq, ALPN},
     store::bao_tree::{io::fsm::BaoContentItem, ChunkNum},
+    ticket::BlobTicket,
     BlobFormat, Hash,
 };
 use lru::LruCache;
