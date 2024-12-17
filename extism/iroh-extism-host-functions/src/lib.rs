@@ -51,7 +51,7 @@ impl Iroh {
         Ok(Iroh {
             _local_pool: local_pool,
             router,
-            blobs,
+            blobs: Arc::new(blobs),
         })
     }
 
@@ -77,7 +77,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     let ctx = user_data.get()?;
     let ctx = ctx.lock().unwrap();
 
-    let (node_addr, hash, format) = iroh::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
+    let (node_addr, hash, format) = iroh_blobs::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
 
     if format != iroh_blobs::BlobFormat::Raw {
         return Err(anyhow!("can only get raw bytes for now, not HashSequences (collections)"));
