@@ -8,10 +8,11 @@ use futures::StreamExt;
 use iroh::{
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
     endpoint::{RecvStream, SendStream},
-    key::{PublicKey, SecretKey},
+    PublicKey, SecretKey,
 };
 use rand::thread_rng;
 use sha2::{Digest, Sha512};
+use ssh_key::LineEnding;
 use std::{
     collections::BTreeMap,
     fs,
@@ -94,6 +95,24 @@ struct CosignArgs {
     data_path: Option<PathBuf>,
 }
 
+fn try_from_openssh<T: AsRef<[u8]>>(data: T) -> anyhow::Result<iroh::SecretKey> {
+    let ser_key = ssh_key::private::PrivateKey::from_openssh(data)?;
+    match ser_key.key_data() {
+        ssh_key::private::KeypairData::Ed25519(kp) => {
+            Ok(SecretKey::from_bytes(&kp.private.to_bytes()))
+        }
+        _ => anyhow::bail!("invalid key format"),
+    }
+}
+
+fn to_openssh(key: &SecretKey) -> ssh_key::Result<zeroize::Zeroizing<String>> {
+    let ckey = ssh_key::private::Ed25519Keypair {
+        public: key.secret().verifying_key().into(),
+        private: key.secret().clone().into(),
+    };
+    ssh_key::private::PrivateKey::from(ckey).to_openssh(LineEnding::default())
+}
+
 fn split(args: SplitArgs) -> anyhow::Result<()> {
     if args.max_signers < args.min_signers {
         anyhow::bail!("max-signers must be greater than or equal to min-signers");
@@ -101,10 +120,10 @@ fn split(args: SplitArgs) -> anyhow::Result<()> {
     let max_signers = args.max_signers;
     let min_signers = args.min_signers;
     let key = fs::read_to_string(&args.key)?;
-    let iroh_key = iroh::key::SecretKey::try_from_openssh(key)?;
+    let iroh_key = try_from_openssh(key)?;
     let key_bytes = iroh_key.to_bytes();
     let scalar = ed25519_secret_key_to_scalar(&key_bytes);
-    let key = frost::SigningKey::from_scalar(scalar);
+    let key = frost::SigningKey::from_scalar(scalar)?;
     println!(
         "Splitting key {} into {} parts",
         iroh_key.public(),
@@ -196,9 +215,9 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     println!("Reconstructed a signing key from {:?}", paths);
     let msg = args.message.as_bytes();
     let signature = secret.sign(rand::thread_rng(), msg);
-    let signature_bytes = signature.serialize();
-    println!("Signature: {}", hex::encode(signature_bytes));
-    let iroh_signature: iroh::key::Signature = signature_bytes.into();
+    let signature_bytes = signature.serialize()?;
+    println!("Signature: {}", hex::encode(&signature_bytes));
+    let iroh_signature = iroh_base::Signature::from_slice(&signature_bytes)?;
     let res = key.verify(msg, &iroh_signature);
     if res.is_err() {
         println!("Verification failed: {:?}", res);
@@ -347,13 +366,13 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     for (mut send, mut recv, identifier, _) in cosigners {
         write_lp(&mut send, &signing_package_bytes).await?;
         let signature_share_bytes = read_exact_bytes(&mut recv).await?;
-        let signature_share = frost::round2::SignatureShare::deserialize(signature_share_bytes)?;
+        let signature_share = frost::round2::SignatureShare::deserialize(&signature_share_bytes)?;
         signature_shares.insert(identifier, signature_share);
     }
     info!("got {} signature shares", signature_shares.len());
     let signature = frost::aggregate(&signing_package, &signature_shares, &public_key_package)?;
-    let bytes = signature.serialize();
-    let iroh_signature = iroh::key::Signature::from(bytes);
+    let bytes = signature.serialize()?;
+    let iroh_signature = iroh_base::Signature::from_slice(&bytes)?;
     if let Err(cause) = key.verify(args.message.as_bytes(), &iroh_signature) {
         error!("Verification failed: {:?}", cause);
     }
@@ -376,7 +395,7 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
         {
             if let Some(stem) = path.file_stem() {
                 if let Some(text) = stem.to_str() {
-                    let key = iroh::key::PublicKey::from_str(text)?;
+                    let key = iroh::PublicKey::from_str(text)?;
                     let secret_share_bytes = fs::read(&path)?;
                     let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
                     let key_package = frost::keys::KeyPackage::try_from(secret_share)?;
@@ -428,10 +447,10 @@ async fn main() -> anyhow::Result<()> {
 fn get_or_create_key(path: &Path) -> anyhow::Result<SecretKey> {
     if path.exists() {
         let key_bytes = std::fs::read(path)?;
-        Ok(SecretKey::try_from_openssh(key_bytes.as_slice())?)
+        Ok(try_from_openssh(key_bytes.as_slice())?)
     } else {
-        let key = SecretKey::generate();
-        let key_bytes = key.to_openssh()?;
+        let key = SecretKey::generate(rand::thread_rng());
+        let key_bytes = to_openssh(&key)?;
         std::fs::write(path, &key_bytes)?;
         Ok(key)
     }
