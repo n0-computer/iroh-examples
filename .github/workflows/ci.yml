@@ -12,7 +12,7 @@ env:
   RUST_BACKTRACE: 1
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
-  MSRV: "1.75"
+  MSRV: "1.81"
   RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-gateway,frosty"
   IROH_FORCE_STAGING_RELAYS: "1"
 

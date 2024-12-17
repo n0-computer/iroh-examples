@@ -12,9 +12,9 @@ use iroh::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IrohAutomergeProtocol {
-    inner: Mutex<Automerge>,
+    inner: Arc<Mutex<Automerge>>,
     sync_finished: mpsc::Sender<Automerge>,
 }
 
@@ -29,7 +29,7 @@ impl IrohAutomergeProtocol {
 
     pub fn new(doc: Automerge, sync_finished: mpsc::Sender<Automerge>) -> Arc<Self> {
         Arc::new(Self {
-            inner: Mutex::new(doc),
+            inner: Arc::new(Mutex::new(doc)),
             sync_finished,
         })
     }
@@ -103,7 +103,7 @@ impl IrohAutomergeProtocol {
         Ok(())
     }
 
-    pub async fn respond_sync(self: Arc<Self>, conn: Connecting) -> Result<()> {
+    pub async fn respond_sync(&self, conn: Connecting) -> Result<()> {
         let (mut send, mut recv) = conn.await?.accept_bi().await?;
 
         let mut doc = self.fork_doc().await;
@@ -145,13 +145,16 @@ impl IrohAutomergeProtocol {
 
 impl ProtocolHandler for IrohAutomergeProtocol {
     fn accept(
-        self: Arc<Self>,
+        &self,
         conn: Connecting,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
+        let automerge = self.clone();
         Box::pin(async move {
-            Arc::clone(&self).respond_sync(conn).await?;
-
-            self.sync_finished.send(self.fork_doc().await).await?;
+            automerge.respond_sync(conn).await?;
+            automerge
+                .sync_finished
+                .send(automerge.fork_doc().await)
+                .await?;
 
             Ok(())
         })

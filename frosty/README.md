@@ -5,10 +5,10 @@ Schnorr Threshold Signatures](https://eprint.iacr.org/2020/852.pdf)
 
 ## Splitting a keypair
 
-Split the keypair in ~/.iroh/keypair into subdirectories a, b, c
+Split the keypair in ~/.iroh/keypair into subdirectories a/1, a/2, a/3
 
 ```
-> cargo run split --key ~/.iroh/keypair a b c 
+> cargo run split --key ~/.iroh/keypair --target a
 ```
 
 Minimum number of parts is 3. Default threshold is n-1.
@@ -19,7 +19,7 @@ the keypair.
 ## Local signing using the fragments
 
 ```
-> cargo run sign a c --key 25mzjgjlrcrma7wkm4l3fjv2afcs53cvmmyw3v2uwwt2dczsinaa --message test
+> cargo run sign a/1 a/3 --key 25mzjgjlrcrma7wkm4l3fjv2afcs53cvmmyw3v2uwwt2dczsinaa --message test
 Reconstructed a signing key from ["a/25mzjgjlrcrma7wkm4l3fjv2afcs53cvmmyw3v2uwwt2dczsinaa.secret", "c/25mzjgjlrcrma7wkm4l3fjv2afcs53cvmmyw3v2uwwt2dczsinaa.secret"]
 Signature: daec0537cd6f080cce1ae7150684ac3147e576c9bde9a74d27e914bcfa834cef2d204ff9295379784fcca3eaa95e4b196b4fb8b60ec316840b5e649844db880e
 ```
@@ -55,5 +55,6 @@ that defeats the purpose of the scheme.
 
 ```
 > cargo run sign --message test --data-path b --key 25mzjgjlrcrma7wkm4l3fjv2afcs53cvmmyw3v2uwwt2dczsinaa 2wgtsap6bsur5ruzb6pxdindy6j2n4e5zyq34tz7n2kjmngter2a
+
 Signature: 8cfae38266ee55c274d865b352b94d19e701def117fbcafd4eefccde8eefa5a8382d43275bafe2da6c39e07fdd2b88a12a43c8b12126d17e3a7c2bf14590400f
 ```

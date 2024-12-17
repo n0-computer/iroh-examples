@@ -14,7 +14,7 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
-use iroh::{key::SecretKey, AddrInfo, Endpoint, NodeAddr};
+use iroh::{Endpoint, NodeAddr, SecretKey};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -41,7 +41,7 @@ fn get_or_create_secret() -> anyhow::Result<SecretKey> {
     match std::env::var("IROH_SECRET") {
         Ok(secret) => SecretKey::from_str(&secret).context("invalid secret"),
         Err(_) => {
-            let key = SecretKey::generate();
+            let key = SecretKey::generate(rand::thread_rng());
             eprintln!("using secret key {}", key);
             Ok(key)
         }
@@ -114,10 +114,8 @@ fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
     if let Ok(node_id) = iroh::NodeId::from_str(subdomain) {
         return Ok(NodeAddr {
             node_id,
-            info: AddrInfo {
-                relay_url: None, // Use discovery
-                direct_addresses: Default::default(),
-            },
+            relay_url: None, // Use discovery
+            direct_addresses: Default::default(),
         });
     }
     // then try to parse as a node ticket

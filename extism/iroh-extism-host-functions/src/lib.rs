@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr};
 
 use anyhow::{anyhow, Result};
 use extism::*;
@@ -27,7 +27,7 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 pub struct Iroh {
     _local_pool: LocalPool,
     router: Router,
-    blobs: Arc<Blobs<Store>>,
+    blobs: Blobs<Store>,
 }
 
 impl Iroh {
@@ -59,7 +59,7 @@ impl Iroh {
         self.router.endpoint().node_id()
     }
 
-    pub fn blobs(&self) -> Arc<Blobs<Store>> {
+    pub fn blobs(&self) -> Blobs<Store> {
         self.blobs.clone()
     }
 
@@ -77,7 +77,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     let ctx = user_data.get()?;
     let ctx = ctx.lock().unwrap();
 
-    let (node_addr, hash, format) = iroh::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
+    let (node_addr, hash, format) = iroh_blobs::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
 
     if format != iroh_blobs::BlobFormat::Raw {
         return Err(anyhow!("can only get raw bytes for now, not HashSequences (collections)"));

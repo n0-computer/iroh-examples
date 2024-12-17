@@ -1,12 +1,7 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use automerge::{transaction::Transactable, Automerge, ReadDoc};
 use clap::Parser;
-use iroh::{
-    protocol::{ProtocolHandler, Router},
-    Endpoint,
-};
+use iroh::{protocol::Router, Endpoint};
 
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;
@@ -31,10 +26,7 @@ async fn main() -> Result<()> {
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
     let endpoint = Endpoint::builder().discovery_n0().bind().await?;
     let iroh = Router::builder(endpoint)
-        .accept(
-            IrohAutomergeProtocol::ALPN,
-            Arc::clone(&automerge) as Arc<dyn ProtocolHandler>,
-        )
+        .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
         .spawn()
         .await?;
 
