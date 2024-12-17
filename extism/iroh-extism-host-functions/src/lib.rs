@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr};
 
 use anyhow::{anyhow, Result};
 use extism::*;
@@ -27,7 +27,7 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 pub struct Iroh {
     _local_pool: LocalPool,
     router: Router,
-    blobs: Arc<Blobs<Store>>,
+    blobs: Blobs<Store>,
 }
 
 impl Iroh {
@@ -51,7 +51,7 @@ impl Iroh {
         Ok(Iroh {
             _local_pool: local_pool,
             router,
-            blobs: Arc::new(blobs),
+            blobs,
         })
     }
 
@@ -59,7 +59,7 @@ impl Iroh {
         self.router.endpoint().node_id()
     }
 
-    pub fn blobs(&self) -> Arc<Blobs<Store>> {
+    pub fn blobs(&self) -> Blobs<Store> {
         self.blobs.clone()
     }
 
