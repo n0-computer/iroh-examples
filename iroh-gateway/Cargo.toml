@@ -33,3 +33,8 @@ hyper-util = "0.1.3"
 rustls-pemfile = "1.0.2"
 tower-service = "0.3.2"
 mime_guess = "2.0.4"
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "iroh-0-31-0" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "iroh-0-31-0" }
+iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-0-31-0" }

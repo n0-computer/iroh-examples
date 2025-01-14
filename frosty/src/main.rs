@@ -377,7 +377,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
         error!("Verification failed: {:?}", cause);
     }
     println!("Signature: {}", hex::encode(bytes));
-    endpoint.close().await?;
+    endpoint.close().await;
     Ok(())
 }
 

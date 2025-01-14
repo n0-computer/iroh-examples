@@ -36,3 +36,10 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "iroh-0-31-0" }
+iroh-docs = { git = "https://github.com/n0-computer/iroh-docs.git", branch = "iroh-0-31-0" }
+iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-0-31-0" }
+iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "iroh-0-31-0" }
+iroh-node-util = { git = "https://github.com/n0-computer/iroh-node-util.git", branch = "iroh-0-31-0" }

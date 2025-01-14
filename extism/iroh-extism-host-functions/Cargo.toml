@@ -12,3 +12,7 @@ iroh = "0.30"
 iroh-blobs = { version = "0.30", features = ["rpc"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec", "io-util", "io", "time"] }
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "iroh-0-31-0" }
+iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-0-31-0" }
