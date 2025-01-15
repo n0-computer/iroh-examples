@@ -1748,8 +1748,9 @@ checksum = "187674a687eed5fe42285b40c6291f9a01517d415fad1c3cbc6a9f778af7fcd4"
 
 [[package]]
 name = "iroh"
-version = "0.30.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=iroh-0-31-0#abc50641c23398d776676fdf86cc6749ac9e1de5"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27ee97c8412bbf06d7c5253c6638a8bac741cb44d405669cedbfd7d47cd68090"
 dependencies = [
  "aead",
  "anyhow",
@@ -1780,7 +1781,7 @@ dependencies = [
  "iroh-quinn-udp",
  "iroh-relay",
  "netdev",
- "netwatch",
+ "netwatch 0.3.0",
  "pin-project",
  "pkarr",
  "portmapper",
@@ -1810,8 +1811,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "0.30.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=iroh-0-31-0#abc50641c23398d776676fdf86cc6749ac9e1de5"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0546d176f79fb63a5efeb8eb8c692c483920e35bd9ba66c028928cf2ca27239b"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",
@@ -1866,8 +1868,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net-report"
-version = "0.30.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=iroh-0-31-0#abc50641c23398d776676fdf86cc6749ac9e1de5"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "547eacca10cd072412b04d784336e29c5e81e7ba4fbb9c1ad70777f7874a5d1a"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1879,7 +1882,7 @@ dependencies = [
  "iroh-metrics 0.31.0",
  "iroh-quinn",
  "iroh-relay",
- "netwatch",
+ "netwatch 0.3.0",
  "portmapper",
  "rand",
  "reqwest",
@@ -1943,8 +1946,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-relay"
-version = "0.30.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=iroh-0-31-0#abc50641c23398d776676fdf86cc6749ac9e1de5"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21e4c13758cac9d81a6793b59eba17da2ccbf90a76278ec160d7c8f90b1bb903"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2318,6 +2322,39 @@ name = "netwatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "304c0c1b348830b016039f2cb1c5ac8217084a78875262c5594925dd08aa77fc"
+dependencies = [
+ "anyhow",
+ "atomic-waker",
+ "bytes",
+ "derive_more",
+ "futures-lite",
+ "futures-sink",
+ "futures-util",
+ "iroh-quinn-udp",
+ "libc",
+ "netdev",
+ "netlink-packet-core",
+ "netlink-packet-route 0.19.0",
+ "netlink-sys",
+ "once_cell",
+ "rtnetlink 0.13.1",
+ "rtnetlink 0.14.1",
+ "serde",
+ "socket2",
+ "thiserror 2.0.7",
+ "time",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "windows 0.58.0",
+ "wmi",
+]
+
+[[package]]
+name = "netwatch"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64da82edf903649e6cb6a77b5a6f7fe01387d8865065d411d139018510880302"
 dependencies = [
  "anyhow",
  "atomic-waker",
@@ -2829,7 +2866,7 @@ dependencies = [
  "igd-next",
  "iroh-metrics 0.30.0",
  "libc",
- "netwatch",
+ "netwatch 0.2.0",
  "num_enum",
  "rand",
  "serde",

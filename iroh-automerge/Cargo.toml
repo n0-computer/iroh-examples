@@ -7,11 +7,8 @@ edition = "2021"
 anyhow = "1.0.80"
 automerge = "0.5.7"
 clap = { version = "4.5.1", features = ["derive"] }
-iroh = "0.30"
+iroh = "0.31"
 postcard = "1.0.8"
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-
-[patch.crates-io]
-iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "iroh-0-31-0" }

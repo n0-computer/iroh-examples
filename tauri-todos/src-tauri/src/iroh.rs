@@ -15,6 +15,7 @@ pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
 #[derive(Clone, Debug)]
 pub(crate) struct Iroh {
     _local_pool: Arc<LocalPool>,
+    #[allow(dead_code)]
     router: Router,
     pub(crate) blobs: BlobsClient,
     pub(crate) docs: DocsClient,
@@ -71,6 +72,7 @@ impl Iroh {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn shutdown(self) -> Result<()> {
         self.router.shutdown().await
     }
