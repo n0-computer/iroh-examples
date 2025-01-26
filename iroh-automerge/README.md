@@ -38,13 +38,13 @@ Now, let's start another node in the second terminal that will connect to the fi
 
 ```sh
 # Second Terminal
-> cargo run -- --remote-id t4xj3pbb2fzkmphnu5npfznpir62i5zxacbgywf22ev5w4sjelma`
+> cargo run -- --remote-id lkpz2uw6jf7qahl7oo6qc46qad5ysszhtdzqyotkb3pwtd7sv3va
 Running
 Node Id: gcq5e7mcsvwgtxfvbu7w7rkikxhfudbqt5yvl34f47qlmsyuy7wa
 >
 ```
 
-This will connect the two nodes, have them exchnage data and finish running within a couple of seconds.
+This will connect the two nodes, have them exchange data and finish running within a couple of seconds.
 
 Coming back to the first terminal, we'll see that the receiving end got all data:
 
