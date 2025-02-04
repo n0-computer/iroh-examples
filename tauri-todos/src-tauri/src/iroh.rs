@@ -2,7 +2,6 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use iroh::protocol::Router;
-use iroh_blobs::util::local_pool::LocalPool;
 use quic_rpc::transport::flume::FlumeConnector;
 
 pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
@@ -14,7 +13,6 @@ pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
 
 #[derive(Clone, Debug)]
 pub(crate) struct Iroh {
-    _local_pool: Arc<LocalPool>,
     #[allow(dead_code)]
     router: Router,
     pub(crate) blobs: BlobsClient,
@@ -27,9 +25,6 @@ impl Iroh {
         tokio::fs::create_dir_all(&path).await?;
 
         let key = iroh_blobs::util::fs::load_secret_key(path.clone().join("keypair")).await?;
-
-        // local thread pool manager for blobs
-        let local_pool = LocalPool::default();
 
         // create endpoint
         let endpoint = iroh::Endpoint::builder()
@@ -50,7 +45,7 @@ impl Iroh {
         // add iroh blobs
         let blobs = iroh_blobs::net_protocol::Blobs::persistent(&path)
             .await?
-            .build(&local_pool.handle(), builder.endpoint());
+            .build(builder.endpoint());
         builder = builder.accept(iroh_blobs::ALPN, blobs.clone());
 
         // add docs
@@ -65,7 +60,6 @@ impl Iroh {
         let docs_client = docs.client().clone();
 
         Ok(Self {
-            _local_pool: Arc::new(local_pool),
             router,
             blobs: blobs_client,
             docs: docs_client,
