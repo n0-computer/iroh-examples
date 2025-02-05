@@ -8,7 +8,7 @@ use iroh_blobs::{
     net_protocol::{Blobs, DownloadMode},
     rpc::client::blobs::DownloadOptions,
     store::fs::Store,
-    util::{local_pool::LocalPool, SetTagOption},
+    util::SetTagOption,
 };
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
@@ -25,34 +25,24 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 }
 
 pub struct Iroh {
-    _local_pool: LocalPool,
     router: Router,
     blobs: Blobs<Store>,
 }
 
 impl Iroh {
     pub async fn new(path: PathBuf) -> Result<Iroh> {
-        // create local pool
-        let local_pool = LocalPool::single();
-
         // create an endpoint
         let endpoint = Endpoint::builder().discovery_n0().bind().await?;
 
         // create blobs protocol
-        let blobs = Blobs::persistent(path)
-            .await?
-            .build(local_pool.handle(), &endpoint);
+        let blobs = Blobs::persistent(path).await?.build(&endpoint);
 
         // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
             .spawn()
             .await?;
-        Ok(Iroh {
-            _local_pool: local_pool,
-            router,
-            blobs,
-        })
+        Ok(Iroh { router, blobs })
     }
 
     pub fn node_id(&self) -> NodeId {

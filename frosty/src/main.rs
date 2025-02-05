@@ -251,7 +251,7 @@ async fn handle_cosign_request(
 ) -> anyhow::Result<()> {
     // we don't need to check the ALPN, since we only accept connections with the correct ALPN
     let connection = incoming.await?;
-    let remote_node_id = iroh::endpoint::get_remote_node_id(&connection)?;
+    let remote_node_id = connection.remote_node_id()?;
     info!("Incoming connection from {}", remote_node_id,);
     let (mut send, mut recv) = connection.accept_bi().await?;
     let key_bytes = read_exact_bytes(&mut recv).await?;

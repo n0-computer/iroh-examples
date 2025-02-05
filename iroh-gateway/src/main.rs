@@ -15,7 +15,7 @@ use derive_more::Deref;
 use futures::{pin_mut, StreamExt};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::{discovery::dns::DnsDiscovery, Endpoint, NodeAddr, NodeId};
+use iroh::{discovery::dns::DnsDiscovery, endpoint::Connection, Endpoint, NodeAddr, NodeId};
 use iroh_base::ticket::NodeTicket;
 use iroh_blobs::{
     format::collection::Collection,
@@ -111,7 +111,7 @@ impl Inner {
     }
 
     /// Get the mime type for a hash from the remote node.
-    async fn get_default_connection(&self) -> anyhow::Result<iroh_quinn::Connection> {
+    async fn get_default_connection(&self) -> anyhow::Result<Connection> {
         let connection = self.endpoint.connect(self.default_node()?, ALPN).await?;
         Ok(connection)
     }
@@ -119,7 +119,7 @@ impl Inner {
 
 async fn get_collection_inner(
     hash: &Hash,
-    connection: &iroh_quinn::Connection,
+    connection: &iroh::endpoint::Connection,
     headers: bool,
 ) -> anyhow::Result<(Collection, Vec<(Hash, u64, Vec<u8>)>)> {
     let spec = if headers {
@@ -166,7 +166,7 @@ async fn get_collection_inner(
 async fn get_collection(
     gateway: &Gateway,
     hash: &Hash,
-    connection: &iroh_quinn::Connection,
+    connection: &Connection,
 ) -> anyhow::Result<Collection> {
     if let Some(res) = gateway.collection_cache.lock().unwrap().get(hash) {
         return Ok(res.clone());
@@ -204,7 +204,7 @@ fn get_extension(name: &str) -> Option<String> {
 async fn get_mime_type_inner(
     hash: &Hash,
     ext: Option<&str>,
-    connection: &iroh_quinn::Connection,
+    connection: &Connection,
     mime_classifier: &MimeClassifier,
 ) -> anyhow::Result<(u64, Mime)> {
     // read 2 KiB.
@@ -251,7 +251,7 @@ async fn get_mime_type(
     gateway: &Gateway,
     hash: &Hash,
     name: Option<&str>,
-    connection: &iroh_quinn::Connection,
+    connection: &Connection,
 ) -> anyhow::Result<(u64, Mime)> {
     let ext = name.and_then(get_extension);
     let key = (*hash, ext.clone());
@@ -340,7 +340,7 @@ async fn handle_ticket_request(
 
 async fn collection_index(
     gateway: &Gateway,
-    connection: iroh_quinn::Connection,
+    connection: Connection,
     hash: &Hash,
     link_prefix: &str,
 ) -> anyhow::Result<impl IntoResponse> {
@@ -377,7 +377,7 @@ async fn collection_index(
 
 async fn forward_collection_range(
     gateway: &Gateway,
-    connection: iroh_quinn::Connection,
+    connection: Connection,
     hash: &Hash,
     suffix: &str,
     range: (Option<u64>, Option<u64>),
@@ -412,7 +412,7 @@ fn format_content_range(start: Option<u64>, end: Option<u64>, size: u64) -> Stri
 
 async fn forward_range(
     gateway: &Gateway,
-    connection: iroh_quinn::Connection,
+    connection: Connection,
     hash: &Hash,
     name: Option<&str>,
     (start, end): (Option<u64>, Option<u64>),

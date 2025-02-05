@@ -18,12 +18,12 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.6.1", features = ["api-all"] }
 tokio = { version = "1" }
-quic-rpc = { version = "0.17" }
-iroh = "0.31"
-iroh-docs = { version = "0.31", features = ["rpc"] }
-iroh-blobs = { version = "0.31", features = ["rpc"] }
-iroh-gossip = { version = "0.31", features = ["rpc"] }
-iroh-node-util = "0.31"
+quic-rpc = { version = "0.18" }
+iroh = "0.32"
+iroh-docs = { version = "0.32", features = ["rpc"] }
+iroh-blobs = { version = "0.32", features = ["rpc"] }
+iroh-gossip = { version = "0.32", features = ["rpc"] }
+iroh-node-util = "0.32"
 bytes = "1"
 num_cpus = { version = "1.15.0" }
 tokio-util = { version = "0.7" }
