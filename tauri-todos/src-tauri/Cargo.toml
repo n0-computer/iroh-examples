@@ -20,8 +20,8 @@ tauri = { version = "1.6.1", features = ["api-all"] }
 tokio = { version = "1" }
 quic-rpc = { version = "0.18" }
 iroh = "0.32"
-iroh-docs = { version = "0.31", features = ["rpc"] }
-iroh-blobs = { version = "0.31", features = ["rpc"] }
+iroh-docs = { version = "0.32", features = ["rpc"] }
+iroh-blobs = { version = "0.32", features = ["rpc"] }
 iroh-gossip = { version = "0.32", features = ["rpc"] }
 iroh-node-util = "0.32"
 bytes = "1"
@@ -36,7 +36,3 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
-
-[patch.crates-io]
-iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-0-32-0"}
-iroh-docs = { git = "https://github.com/n0-computer/iroh-docs.git", branch = "iroh-0-32-0"}

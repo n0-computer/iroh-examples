@@ -2061,8 +2061,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-blobs"
-version = "0.31.0"
-source = "git+https://github.com/n0-computer/iroh-blobs.git?branch=iroh-0-32-0#0b8b2295fccf5168762167878a2734e0b05610a4"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da38a62138561d5ab6bd67439961017dbd0b2a808e7d0a81bb81dbc53f7f8c60"
 dependencies = [
  "anyhow",
  "async-channel",
