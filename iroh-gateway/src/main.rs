@@ -577,7 +577,6 @@ async fn main() -> anyhow::Result<()> {
             let certs = load_certs(cert_file)?;
             let secret_key = load_secret_key(key_file)?;
             let config = rustls::ServerConfig::builder()
-                .with_safe_defaults()
                 .with_no_client_auth()
                 .with_single_cert(certs, secret_key)?;
             // Run our application with hyper
@@ -646,7 +645,6 @@ async fn main() -> anyhow::Result<()> {
                 .directory_lets_encrypt(is_production)
                 .state();
             let config = rustls::ServerConfig::builder()
-                .with_safe_defaults()
                 .with_no_client_auth()
                 .with_cert_resolver(state.resolver());
             // config.alpn_protocols.extend([b"h2".to_vec(), b"http/1.1".to_vec()]);
