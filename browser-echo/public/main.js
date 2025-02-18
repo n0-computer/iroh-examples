@@ -9,7 +9,7 @@ log("iroh endpoint launched");
 log("our node id: " + node.node_id());
 
 log("connect from the command line:");
-log("git clone git@github.com:n0-computer/iroh-examples.git", "cmd");
+log("git clone https://github.com/n0-computer/iroh-examples.git", "cmd");
 log("cd iroh-examples/browser-echo", "cmd");
 log(
   `cargo run --features cli -- connect ${node.node_id()} "hi from cli"`,
