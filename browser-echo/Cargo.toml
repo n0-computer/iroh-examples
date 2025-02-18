@@ -1,0 +1,44 @@
+[package]
+name = "browser-echo"
+version = "0.1.0"
+edition = "2021"
+default-run = "cli"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "cli"
+required-features = ["cli"]
+
+[dependencies]
+anyhow = "1.0.86"
+async-channel = "2.3.1"
+clap = { version = "4.5.30", features = ["derive"], optional = true }
+console_error_panic_hook = "0.1.7"
+getrandom = { version = "0.2", features = ["js"] }
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "matheus23/iroh-browser", version = "0.31", default-features = false }
+n0-future = "0.1.2"
+serde = "1.0.217"
+serde-wasm-bindgen = "0.6.5"
+tokio = { version = "1.43.0", default-features = false, features = ["sync"] }
+tokio-stream = { version = "0.1.17", default-features = false, features = ["sync"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber-wasm = "0.1.0"
+wasm-bindgen = "=0.2.100"
+wasm-bindgen-futures = "0.4.50"
+wasm-streams = "0.4.2"
+
+[dev-dependencies]
+
+[features]
+cli = ["tokio/full", "dep:clap"]
+
+[profile.release]
+codegen-units = 1
+strip = "symbols"
+debug = false
+lto = true
+opt-level = "z"
+panic = 'abort'
