@@ -72,6 +72,7 @@ jobs:
           publish_branch: generated-deploy-preview
 
       - name: Find Docs Comment
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -80,10 +81,12 @@ jobs:
           body-includes: Deployment for this PR has been generated
 
       - name: Get current timestamp
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         id: get_timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
       - name: Create or Update Docs Comment
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
