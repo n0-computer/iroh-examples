@@ -1,0 +1,61 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+
+# ensure job runs sequentially so pushing to the preview branch doesn't conflict
+concurrency:
+  group: ci-deploy-preview
+
+jobs:
+  preview_deploy:
+    permissions: write-all
+    timeout-minutes: 30
+    name: Deploy Docs preview
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' ) && !github.event.pull_request.head.repo.fork }}
+    runs-on: ubuntu-latest
+    env:
+      PREVIEW_PATH: pr/${{ github.event.pull_request.number || inputs.pr_number }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+
+      - name: Build example
+        run: cd browser-echo && npm run build:release
+
+      - name: Deploy Docs to Preview Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./browser-echo/public
+          destination_dir: ${{ env.PREVIEW_PATH }}/browser-echo
+          publish_branch: generated-deploy-preview
+
+      - name: Find Docs Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          comment-author: "github-actions[bot]"
+          body-includes: Deployment for this PR has been generated
+
+      - name: Get current timestamp
+        id: get_timestamp
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
+      - name: Create or Update Docs Comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          body: |
+            Deployment for this PR has been generated and is available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.PREVIEW_PATH }}/browser-echo/
+
+            Last updated: ${{ env.TIMESTAMP }}
+          edit-mode: replace
