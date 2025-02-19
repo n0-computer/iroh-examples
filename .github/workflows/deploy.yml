@@ -36,6 +36,11 @@ jobs:
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
 
+      - name: Install wasm-bindgen
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen
+
       - name: Build browser-echo example
         run: cd browser-echo && npm run build:release
 
