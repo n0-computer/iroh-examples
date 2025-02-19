@@ -1,7 +1,14 @@
 name: Deploy Preview
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "browser-echo/**"
   pull_request:
+    paths:
+      - "browser-echo/**"
   workflow_dispatch:
     inputs:
       pr_number:
@@ -17,12 +24,24 @@ jobs:
     permissions: write-all
     timeout-minutes: 30
     name: Deploy Docs preview
-    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' ) && !github.event.pull_request.head.repo.fork }}
+    if: ${{ github.event_name == 'push' || ((github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' ) && !github.event.pull_request.head.repo.fork ) }}
     runs-on: ubuntu-latest
-    env:
-      PREVIEW_PATH: pr/${{ github.event.pull_request.number || inputs.pr_number }}
 
     steps:
+      - name: Set preview path (PR)
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        env:
+          PREVIEW_PATH: pr/${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          echo "PREVIEW_PATH=$PREVIEW_PATH" >> "$GITHUB_ENV"
+
+      - name: Set preview path (push)
+        if: ${{ github.event_name == 'push' }}
+        env:
+          PREVIEW_PATH: main
+        run: |
+          echo "PREVIEW_PATH=$PREVIEW_PATH" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - name: Install Node.js
