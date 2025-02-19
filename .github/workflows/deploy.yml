@@ -39,7 +39,7 @@ jobs:
       - name: Install wasm-bindgen
         uses: taiki-e/install-action@v2
         with:
-          tool: wasm-bindgen
+          tool: wasm-bindgen,wasm-opt
 
       - name: Build browser-echo example
         run: cd browser-echo && npm run build:release
