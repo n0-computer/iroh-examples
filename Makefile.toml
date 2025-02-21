@@ -1,0 +1,23 @@
+# Use cargo-make to run tasks here: https://crates.io/crates/cargo-make
+
+# this task is run from the "deploy" workflow in .github/workflows/deploy
+# it builds all browser examples, and assembles them in a deploy-out directory
+# together with a simple index.html with links to the individual examples.
+[tasks.deploy]
+dependencies = [{ name = "deploy", path = "browser-echo" }]
+
+script = '''
+rm -r deploy-out
+mkdir deploy-out
+
+cat <<EOF > deploy-out/index.html
+<!DOCTYPE html>
+<html lang="en"><head><title>iroh examples</title></head>
+<body><h1>iroh examples</h1><a href="https://github.com/n0-computer/iroh-examples">source code</a><ul>
+EOF
+
+cp -r browser-echo/public deploy-out/browser-echo
+echo '<li><a href="./browser-echo/index.html">browser-echo</li>' >> deploy-out/index.html
+
+echo '</ul></body></html>' >> deploy-out/index.html
+'''

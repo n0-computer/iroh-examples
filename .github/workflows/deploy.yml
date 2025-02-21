@@ -55,20 +55,20 @@ jobs:
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install wasm-bindgen
+      - name: Install tools
         uses: taiki-e/install-action@v2
         with:
-          tool: wasm-bindgen,wasm-opt
+          tool: wasm-bindgen,wasm-opt,wasm-pack,cargo-make
 
-      - name: Build browser-echo example
-        run: cd browser-echo && npm run build:release
+      - name: Build examples
+        run: cargo make deploy
 
       - name: Deploy Docs to Preview Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./browser-echo/public
-          destination_dir: ${{ env.PREVIEW_PATH }}/browser-echo
+          publish_dir: ./deploy-out
+          destination_dir: ${{ env.PREVIEW_PATH }}
           publish_branch: generated-deploy-preview
 
       - name: Find Docs Comment
