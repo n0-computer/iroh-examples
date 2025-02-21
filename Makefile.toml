@@ -4,7 +4,10 @@
 # it builds all browser examples, and assembles them in a deploy-out directory
 # together with a simple index.html with links to the individual examples.
 [tasks.deploy]
-dependencies = [{ name = "deploy", path = "browser-echo" }]
+dependencies = [
+    { name = "deploy", path = "browser-echo" },
+    { name = "deploy", path = "browser-chat" },
+]
 
 script = '''
 rm -r deploy-out || true
@@ -18,6 +21,9 @@ EOF
 
 cp -r browser-echo/public deploy-out/browser-echo
 echo '<li><a href="./browser-echo/index.html">browser-echo</li>' >> deploy-out/index.html
+
+cp -r browser-chat/frontend/dist deploy-out/browser-chat
+echo '<li><a href="./browser-chat/index.html">browser-chat</li>' >> deploy-out/index.html
 
 echo '</ul></body></html>' >> deploy-out/index.html
 '''
