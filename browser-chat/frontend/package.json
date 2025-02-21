@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --base='./'",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:wasm": "wasm-pack build ../browser-wasm --weak-refs --reference-types -t bundler --dev -d pkg",
