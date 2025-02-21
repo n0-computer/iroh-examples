@@ -6,12 +6,15 @@ on:
       - main
     paths:
       - "browser-echo/**"
+      - "browser-chat/**"
   pull_request:
     paths:
       - "browser-echo/**"
+      - "browser-chat/**"
   workflow_dispatch:
     inputs:
       pr_number:
+        description: "PR number"
         required: true
         type: string
 
@@ -92,7 +95,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
           comment-id: ${{ steps.fc.outputs.comment-id }}
           body: |
-            Deployment for this PR has been generated and is available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.PREVIEW_PATH }}/browser-echo/
+            Deployment for this PR has been generated and is available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.PREVIEW_PATH }}
 
             Last updated: ${{ env.TIMESTAMP }}
           edit-mode: replace
