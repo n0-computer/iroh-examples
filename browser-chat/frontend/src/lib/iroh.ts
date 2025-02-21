@@ -68,7 +68,13 @@ export class IrohAPI implements API {
     this.channels.set(id, state)
 
     const subscribe = async () => {
-      for await (const event of (channel.receiver as unknown as AsyncIterable<ChatEvent>)) {
+      const reader = channel.receiver.getReader() as ReadableStreamDefaultReader<ChatEvent>
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break;
+        }
+        const event = value;
         console.log("chat event", event)
         if (event.type === "messageReceived") {
           const peerInfo: PeerInfo = {
