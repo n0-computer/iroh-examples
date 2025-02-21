@@ -7,7 +7,7 @@
 dependencies = [{ name = "deploy", path = "browser-echo" }]
 
 script = '''
-rm -r deploy-out
+rm -r deploy-out || true
 mkdir deploy-out
 
 cat <<EOF > deploy-out/index.html
