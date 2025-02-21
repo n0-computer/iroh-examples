@@ -1,0 +1,10 @@
+# Use cargo-make to run tasks here: https://crates.io/crates/cargo-make
+
+[tasks.deploy]
+workspace = false
+script = '''
+cd frontend
+npm run build:wasm:release
+npm install
+npm run build
+'''
