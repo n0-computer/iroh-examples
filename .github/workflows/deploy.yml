@@ -1,0 +1,98 @@
+name: Deploy Preview
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "browser-echo/**"
+  pull_request:
+    paths:
+      - "browser-echo/**"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+
+# ensure job runs sequentially so pushing to the preview branch doesn't conflict
+concurrency:
+  group: ci-deploy-preview
+
+jobs:
+  preview_deploy:
+    permissions: write-all
+    timeout-minutes: 30
+    name: Deploy Docs preview
+    if: ${{ github.event_name == 'push' || ((github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' ) && !github.event.pull_request.head.repo.fork ) }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set preview path (PR)
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        env:
+          PREVIEW_PATH: pr/${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          echo "PREVIEW_PATH=$PREVIEW_PATH" >> "$GITHUB_ENV"
+
+      - name: Set preview path (push)
+        if: ${{ github.event_name == 'push' }}
+        env:
+          PREVIEW_PATH: main
+        run: |
+          echo "PREVIEW_PATH=$PREVIEW_PATH" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen,wasm-opt,wasm-pack,cargo-make
+
+      - name: Build examples
+        run: cargo make deploy
+
+      - name: Deploy Docs to Preview Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy-out
+          destination_dir: ${{ env.PREVIEW_PATH }}
+          publish_branch: generated-deploy-preview
+
+      - name: Find Docs Comment
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          comment-author: "github-actions[bot]"
+          body-includes: Deployment for this PR has been generated
+
+      - name: Get current timestamp
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        id: get_timestamp
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
+      - name: Create or Update Docs Comment
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          body: |
+            Deployment for this PR has been generated and is available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.PREVIEW_PATH }}/browser-echo/
+
+            Last updated: ${{ env.TIMESTAMP }}
+          edit-mode: replace

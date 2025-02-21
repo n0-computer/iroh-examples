@@ -1,0 +1,5 @@
+# Use cargo-make to run tasks here: https://crates.io/crates/cargo-make
+
+[tasks.deploy]
+command = "npm"
+args = ["run", "build:release"]

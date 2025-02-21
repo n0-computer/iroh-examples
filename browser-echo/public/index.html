@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Iroh browser echo demo</title>
+        <script src="./main.js" type="module"></script>
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+
+    <body>
+        <header>
+            <h1>
+                iroh in the browser
+            </h1>
+            This example runs iroh in the browser, compiled to web assembly. The example uses a custom <i>Echo protocol</i>: You connect to remote node, send some data, and the remote node sends back the same data.
+            The protocol may be used both from the browser and from the command line, and browser and cli nodes can connect to each other.
+            <br>
+            <a href="https://github.com/n0-computer/iroh-examples/tree/main/browser-echo" target="_blank">
+                Source code
+            </a>
+        </header>
+        <main></main>
+        <div class="spawned" style="display:none">
+        <form id="connect">
+            <h3>connect to another node</h3>
+            <div class="fields">
+                <div>
+                <label for="node-id">node id to connect to:</label>
+                <input name="node-id" placeholder="node id" />
+                </div>
+                <div>
+                <label for="payload">text to send to the node:</label>
+                <input name="payload" placeholder="string to send" />
+                </div>
+            </div>
+            <div>
+            <button type="submit">connect</button>
+            </div>
+          </form>
+        <div id="outgoing" class="connections"">
+            <h2>outgoing connections</h2>
+        </div>
+        <div id="incoming" class="connections"">
+            <h2>incoming connections</h2>
+        </div>
+        </div>
+    </body>
+</html>

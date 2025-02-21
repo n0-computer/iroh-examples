@@ -13,7 +13,8 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.81"
-  RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-gateway,frosty"
+  RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-gateway,frosty,browser-echo"
+  WASM_EXAMPLES_LIST: "browser-echo"
   IROH_FORCE_STAGING_RELAYS: "1"
 
 jobs:
@@ -47,6 +48,9 @@ jobs:
         toolchain: ${{ matrix.rust }}
         components: clippy,rustfmt
 
+    - name: Add wasm target
+      run: rustup target add wasm32-unknown-unknown
+
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.4
 
@@ -56,6 +60,16 @@ jobs:
         do
           echo "Checking $i"
           cargo check --manifest-path $i/Cargo.toml --all-features
+        done
+      env:
+        RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+
+    - name: wasm
+      run: |
+        for i in ${WASM_EXAMPLES_LIST//,/ }
+        do
+          echo "Checking wasm $i"
+          cargo build --manifest-path $i/Cargo.toml --target wasm32-unknown-unknown
         done
       env:
         RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
