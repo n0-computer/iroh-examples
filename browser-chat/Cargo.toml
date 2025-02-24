@@ -12,4 +12,4 @@ iroh-gossip = { version = "0.32", default-features = false, features = ["net"] }
 # patching iroh until release
 iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
 iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
-iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "Frando/wasm" }
+iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "main" }
