@@ -12,10 +12,13 @@
     "build:wasm:release": "wasm-pack build ../browser-wasm --release --weak-refs --reference-types -t bundler -d pkg"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-popover": "^1.1.6",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-slot": "^1.1.2",
+    "@types/react-timeago": "^4.1.7",
     "autoprefixer": "^10.4.20",
     "chat-browser": "file:../browser-wasm/pkg",
     "class-variance-authority": "^0.7.1",
@@ -24,6 +27,7 @@
     "next-themes": "latest",
     "react": "^18",
     "react-dom": "^18",
+    "react-timeago": "^7.2.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "yet-another-name-generator": "^1.2.0"

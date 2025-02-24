@@ -1,14 +1,16 @@
-import type { API, ChannelInfo, Message, PeerInfo, SubscribeCb, TicketOpts } from "./api"
+import { PeerRole, type API, type ChannelInfo, type Message, type PeerInfo, type SubscribeCb, type TicketOpts } from "./api"
 import { log } from "./log"
 import { ChatNode, Channel as IrohChannel } from "chat-browser"
 
 type ChannelState = {
   label: string
+  myself: PeerInfo
   messages: Message[]
   peers: Map<string, PeerInfo>
   channel: IrohChannel
   subscribers: SubscribeCb[]
   neighborSubscribers: ((neighbors: number) => void)[]
+  peerSubscribers: (() => void)[]
   neighbors: number
   nextId: number
   onClose: (() => void)
@@ -47,6 +49,14 @@ export class IrohAPI implements API {
     let onClosePromise = new Promise<void>(resolve => {
       onClose = resolve
     })
+    const nodeId = this.chatNode.node_id()
+    const myself: PeerInfo = {
+      id: nodeId,
+      name: nickname,
+      lastSeen: new Date(),
+      status: "online",
+      role: PeerRole.Myself
+    }
     const state: ChannelState = {
       label,
       messages: [],
@@ -56,15 +66,11 @@ export class IrohAPI implements API {
       nextId: 0,
       neighbors: 0,
       neighborSubscribers: [],
+      peerSubscribers: [],
+      myself,
       onClose: onClose!
     }
-    const nodeId = this.chatNode.node_id()
-    state.peers.set(nodeId, {
-      id: nodeId,
-      name: nickname,
-      lastSeen: new Date(),
-      status: "online"
-    })
+    state.peers.set(nodeId, myself)
     this.channels.set(id, state)
 
     const subscribe = async () => {
@@ -75,13 +81,14 @@ export class IrohAPI implements API {
           break;
         }
         const event = value;
-        console.log("chat event", event)
+        console.debug("channel event", id.substring(0, 8), event)
         if (event.type === "messageReceived") {
           const peerInfo: PeerInfo = {
             id: event.from,
             name: event.nickname,
             lastSeen: new Date(event.sentTimestamp / 1000),
-            status: "online"
+            status: "online",
+            role: PeerRole.RemoteNode
           }
           state.peers.set(event.from, peerInfo)
           const message: Message = {
@@ -94,14 +101,17 @@ export class IrohAPI implements API {
           for (const sub of state.subscribers) {
             sub(messageWithName)
           }
+          for (const sub of state.peerSubscribers) { sub() }
         } else if (event.type === "presence") {
           const peerInfo: PeerInfo = {
             id: event.from,
             name: event.nickname,
             lastSeen: new Date(event.sentTimestamp / 1000),
-            status: "online"
+            status: "online",
+            role: PeerRole.RemoteNode
           }
           state.peers.set(event.from, peerInfo)
+          for (const sub of state.peerSubscribers) { sub() }
         } else if (event.type === "joined") {
           log.info(`joined channel ${id}`)
           state.neighbors += event.neighbors.length
@@ -146,6 +156,14 @@ export class IrohAPI implements API {
     return { id, name: label }
   }
 
+  getMyself(channelId: string): PeerInfo {
+    const state = this.channels.get(channelId)
+    if (!state) {
+      throw new Error("Channel not found")
+    }
+    return { ...state.myself }
+  }
+
   getTicket(channelId: string, opts: TicketOpts) {
     const state = this.channels.get(channelId)
     if (!state) {
@@ -183,8 +201,20 @@ export class IrohAPI implements API {
     }
   }
 
+  setNickname(channelId: string, nickname: string) {
+    const state = this.channels.get(channelId)
+    if (!state) {
+      throw new Error("Channel not found")
+    }
+    console.log('state', state)
+    log.info(`changing nickname from ${state.myself.name} to ${nickname}`)
+    state.myself.name = nickname
+    state.channel.sender.set_nickame(nickname)
+    for (const sub of state.peerSubscribers) { sub() }
+  }
 
-  async getMessages(channelId: string): Promise<Message[]> {
+
+  getMessages(channelId: string): Message[] {
     const state = this.channels.get(channelId)
     if (!state) {
       throw new Error("Channel not found")
@@ -193,9 +223,9 @@ export class IrohAPI implements API {
     return messages
   }
 
-  async getPeers(
+  getPeers(
     channelId: string,
-  ): Promise<PeerInfo[]> {
+  ): PeerInfo[] {
     const state = this.channels.get(channelId)
     if (!state) {
       throw new Error("Channel not found")
@@ -231,16 +261,15 @@ export class IrohAPI implements API {
 
   subscribeToPeers(
     channelId: string,
-    callback: (peers: PeerInfo[]) => void,
+    callback: () => void,
   ): () => void {
-    // Iroh doesn't provide a way to subscribe to peer updates, so we'll simulate it with a polling mechanism
-    const intervalId = setInterval(async () => {
-      const peers = await this.getPeers(channelId)
-      callback(peers)
-    }, 1000) // Poll every second
-
+    const state = this.channels.get(channelId)
+    if (!state) {
+      throw new Error("Channel not found")
+    }
+    state.peerSubscribers.push(callback)
     return () => {
-      clearInterval(intervalId)
+      state.peerSubscribers = state.peerSubscribers.filter(cb => cb != callback)
     }
   }
 }

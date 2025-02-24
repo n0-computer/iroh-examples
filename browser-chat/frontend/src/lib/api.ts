@@ -25,15 +25,17 @@ export interface API {
   createChannel(nickname: string): Promise<ChannelInfo>
   joinChannel(ticket: string, nickname: string): Promise<ChannelInfo>
   sendMessage(channelId: string, message: string): Promise<void>
-  getMessages(channelId: string): Promise<Message[]>
-  getPeers(channelId: string): Promise<PeerInfo[]>
+  setNickname(channelId: string, nickname: string): void
+  getMessages(channelId: string): Message[]
+  getPeers(channelId: string): PeerInfo[]
+  getMyself(channelId: string): PeerInfo
   subscribeToMessages(
     channelId: string,
     callback: (message: Message) => void,
   ): () => void
   subscribeToPeers(
     channelId: string,
-    callback: (peers: PeerInfo[]) => void,
+    callback: () => void,
   ): () => void
   subscribeToNeighbors(
     channelId: string,
@@ -65,4 +67,10 @@ export interface PeerInfo {
   name: string
   status: "online" | "away" | "offline"
   lastSeen: Date
+  role: PeerRole
+}
+
+export enum PeerRole {
+  Myself,
+  RemoteNode
 }

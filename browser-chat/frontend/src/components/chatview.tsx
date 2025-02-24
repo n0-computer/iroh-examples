@@ -3,13 +3,17 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import TimeAgo from 'react-timeago'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ArrowDown } from "lucide-react"
-import { type API, Message, PeerInfo } from "../lib/api"
+import { type API, Message, PeerInfo, PeerRole } from "../lib/api"
 import { log } from "../lib/log"
+import clsx from "clsx"
+import { LeaveChannelButton } from "./leave-channel-button"
+import { ChangeNicknameButton } from "./change-nickname-button"
 
 interface ChatViewProps {
   api: API
@@ -27,6 +31,7 @@ export default function ChatView({ api, channel, onClose }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
+
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
@@ -40,27 +45,13 @@ export default function ChatView({ api, channel, onClose }: ChatViewProps) {
   }, [channel])
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const fetchedMessages = await api.getMessages(channel)
-        setMessages(fetchedMessages)
-        scrollToBottom()
-      } catch (error) {
-        log.error(`Failed to fetch messages`, error)
-      }
-    }
+    setPeers([...api.getPeers(channel)])
+    return api.subscribeToPeers(channel, () => setPeers([...api.getPeers(channel)]))
+  }, [channel])
 
-    const fetchPeers = async () => {
-      try {
-        const fetchedPeers = await api.getPeers(channel)
-        setPeers(fetchedPeers)
-      } catch (error) {
-        log.error('Failed to fetch peers', error)
-      }
-    }
-
-    fetchMessages()
-    fetchPeers()
+  useEffect(() => {
+    setMessages(api.getMessages(channel))
+    scrollToBottom()
 
     // Subscribe to new messages
     const unsubscribeMessages = api.subscribeToMessages(channel, (newMessage) => {
@@ -80,16 +71,9 @@ export default function ChatView({ api, channel, onClose }: ChatViewProps) {
       log.info(`New message received: ${newMessage.content}`)
     })
 
-    // Subscribe to peer updates
-    const unsubscribePeers = api.subscribeToPeers(channel, (updatedPeers) => {
-      setPeers(updatedPeers)
-    })
 
     // Cleanup function
-    return () => {
-      unsubscribeMessages()
-      unsubscribePeers()
-    }
+    return unsubscribeMessages
   }, [channel, isScrolledToBottom, scrollToBottom])
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -102,23 +86,6 @@ export default function ChatView({ api, channel, onClose }: ChatViewProps) {
       } catch (error) {
         log.error('Failed to send message', error)
       }
-    }
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
-
-  const getStatusColor = (status: PeerInfo["status"]) => {
-    switch (status) {
-      case "online":
-        return "bg-green-500"
-      case "away":
-        return "bg-yellow-500"
-      case "offline":
-        return "bg-red-500"
-      default:
-        return "bg-gray-500"
     }
   }
 
@@ -183,45 +150,108 @@ export default function ChatView({ api, channel, onClose }: ChatViewProps) {
         <div className="mb-4">
           <h2 className="font-bold mb-2">Status</h2>
           {neighbors > 0 && (
-            <p>Connected ({neighbors} neighbors)</p>
+            <p>Connected <span className="text-sm">({neighbors} neighbors)</span></p>
           )}
           {neighbors === 0 && (
             <p>Waiting for peers</p>
           )}
         </div>
-        <div className="mb-4">
-          <Button onClick={_ => onClose()}>Leave channel</Button>
+        <div className="mb-4 flex space-x-2">
+          <ChangeNicknameButton api={api} channel={channel} />
+          <LeaveChannelButton onConfirm={onClose} />
         </div>
         <h2 className="font-bold mb-2">Peers</h2>
         <div className="flex-grow">
           <ScrollArea className="h-full">
             {sortedPeers.map((peer) => (
-              <Popover key={peer.id}>
-                <PopoverTrigger asChild>
-                  <div className="flex items-center mb-2 cursor-pointer">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${getStatusColor(peer.status)}`}></div>
-                    <span>{peer.name}</span>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-60">
-                  <div className="space-y-2">
-                    <p>
-                      <strong>Last seen:</strong> {peer.lastSeen.toLocaleString()}
-                    </p>
-                    <div>
-                      <strong>Node ID:</strong>
-                      <span className="ml-2">{peer.id.substring(0, 8)}...</span>
-                      <Button size="sm" onClick={() => copyToClipboard(peer.id)} className="ml-2">
-                        Copy
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <Peer peer={peer} key={peer.id} />
             ))}
           </ScrollArea>
         </div>
       </div>
     </div>
   )
+}
+
+
+
+interface PeerProps {
+  peer: PeerInfo
+}
+
+function Peer({ peer }: PeerProps) {
+  const isMyself = peer.role == PeerRole.Myself
+  const popoverContent = isMyself ? <MyselfInfo peer={peer} /> :
+    <RemotePeerInfo peer={peer} />
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <div className="flex items-center mb-2 cursor-pointer">
+          <div className={`w-2 h-2 rounded-full mr-2 ${getStatusColor(peer.status)}`}></div>
+          <span className={clsx(isMyself && 'italic')}>{peer.name}</span>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 bg-secondary">
+        {popoverContent}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function MyselfInfo({ peer }: PeerProps) {
+  return (
+    <div className="space-y-2">
+      This is us :)
+      <div>
+        <strong>Node ID:</strong>
+        <NodeId nodeId={peer.id} />
+      </div>
+    </div>
+  )
+}
+
+function RemotePeerInfo({ peer }: PeerProps) {
+  return (
+    <div className="space-y-2">
+      <p>
+        <strong>Last seen:</strong> <TimeAgo date={peer.lastSeen} />
+      </p>
+      <div>
+        <strong>Node ID:</strong>
+        <NodeId nodeId={peer.id} />
+      </div>
+    </div>
+  )
+}
+
+interface NodeIdProps {
+  nodeId: string
+}
+
+function NodeId({ nodeId }: NodeIdProps) {
+  return (
+    <>
+      <span className="ml-2 font-mono">{nodeId.substring(0, 8)}…</span>
+      <Button size="sm" onClick={() => copyToClipboard(nodeId)} className="ml-2 inline" variant="outline">
+        Copy
+      </Button>
+    </>
+  )
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+}
+
+function getStatusColor(status: PeerInfo["status"]) {
+  switch (status) {
+    case "online":
+      return "bg-green-500"
+    case "away":
+      return "bg-yellow-500"
+    case "offline":
+      return "bg-red-500"
+    default:
+      return "bg-gray-500"
+  }
 }

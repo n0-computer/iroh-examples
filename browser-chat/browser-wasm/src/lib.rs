@@ -190,10 +190,13 @@ pub struct ChannelSender(ChatSender);
 
 #[wasm_bindgen]
 impl ChannelSender {
-    #[wasm_bindgen]
     pub async fn broadcast(&self, text: String) -> Result<(), JsError> {
         self.0.send(text).await.map_err(to_js_err)?;
         Ok(())
+    }
+
+    pub fn set_nickame(&self, nickname: String) {
+        self.0.set_nickname(nickname);
     }
 }
 
