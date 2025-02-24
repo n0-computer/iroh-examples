@@ -159,7 +159,11 @@ function App({ api }: AppProps) {
         {showLogView && <LogView onClose={() => setShowLogView(false)} />}
         {showInvitePopup && activeChannel && (
           <InvitePopup
-            onClose={() => setShowInvitePopup(false)}
+            open={showInvitePopup}
+            onOpenChange={(x) => {
+              console.log("openchange", x)
+              setShowInvitePopup(x)
+            }}
             channel={channels.find((c) => c.id === activeChannel)?.name || ""}
             getTicket={(opts) => api.getTicket(activeChannel!, opts)}
           />

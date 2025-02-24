@@ -4,6 +4,14 @@ import { useState, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Copy } from "lucide-react"
 import { TicketOpts } from "@/lib/api"
 
@@ -14,7 +22,8 @@ function ticketUrl(ticket: string) {
 }
 
 interface InvitePopupProps {
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   channel: string
   getTicket: (options: {
     includeMyself: boolean
@@ -23,7 +32,7 @@ interface InvitePopupProps {
   }) => string
 }
 
-export function InvitePopup({ onClose, channel, getTicket }: InvitePopupProps) {
+export function InvitePopup({ open, onOpenChange, channel, getTicket }: InvitePopupProps) {
   const [ticketOptions, setTicketOptions] = useState<TicketOpts>({
     includeMyself: true,
     includeBootstrap: true,
@@ -40,13 +49,13 @@ export function InvitePopup({ onClose, channel, getTicket }: InvitePopupProps) {
   const cliCommand = `cargo run -- join ${ticket}`
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-background text-foreground p-6 rounded-lg w-full max-w-md shadow-lg border-2 border-primary/10">
-        <h2 className="text-xl font-semibold mb-4">Invite to Channel</h2>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTitle>Invite to channel</DialogTitle>
+      <DialogContent>
         <div className="mb-4">
-          <p className="font-semibold mb-2">Ticket:</p>
+          <p className="font-semibold mb-2">Ticket</p>
           <div className="flex items-center">
-            <span className="mr-2">{ticket.substring(0, 8)}...</span>
+            <span className="mr-2 font-mono">{ticket.substring(0, 16)}...</span>
             <Button variant="outline" size="sm" onClick={() => copyToClipboard(ticket)}>
               <Copy className="w-4 h-4 mr-2" />
               Copy
@@ -54,13 +63,13 @@ export function InvitePopup({ onClose, channel, getTicket }: InvitePopupProps) {
           </div>
         </div>
         <div className="mb-4">
-          <p className="font-semibold mb-2">Join Link:</p>
+          <p className="font-semibold mb-2">Join link</p>
           <a href={ticketUrl(ticket)} className="text-blue-500 hover:underline" target="_blank">
-            {ticketUrl(ticket.substring(0, 8))}...
+            {ticketUrl(ticket.substring(0, 16))}...
           </a>
         </div>
         <div className="mb-4">
-          <p className="font-semibold mb-2">Join from CLI:</p>
+          <p className="font-semibold mb-2">Join from the command line</p>
           <Input
             ref={cliCommandRef}
             value={cliCommand}
@@ -74,7 +83,7 @@ export function InvitePopup({ onClose, channel, getTicket }: InvitePopupProps) {
           </Button>
         </div>
         <div className="mb-4">
-          <h3 className="font-semibold mb-2">Configure Ticket:</h3>
+          <h3 className="font-semibold mb-2">Configure ticket</h3>
           <div className="space-y-2">
             <div className="flex items-center">
               <Checkbox
@@ -110,9 +119,9 @@ export function InvitePopup({ onClose, channel, getTicket }: InvitePopupProps) {
         </div>
         {/* <Button onClick={generateTicket}>Generate Ticket</Button> */}
         <div className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={(_) => onOpenChange(false)}>Close</Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
