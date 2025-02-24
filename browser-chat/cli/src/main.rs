@@ -11,14 +11,20 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 struct Args {
     #[clap(subcommand)]
     command: Command,
+    /// Set your name for this chat session
     #[clap(short, long)]
     nickname: String,
 }
 
 #[derive(Parser, Debug)]
 pub enum Command {
-    Open,
-    Join { ticket: String },
+    /// Create a new chat channel
+    Create,
+    /// Join a chat channel
+    Join {
+        /// Ticket for the channel
+        ticket: String,
+    },
 }
 
 #[tokio::main]
@@ -42,7 +48,7 @@ async fn main() -> Result<()> {
     println!("node id: {}", node.node_id());
 
     let ticket = match args.command {
-        Command::Open => ChatTicket::new_random(),
+        Command::Create => ChatTicket::new_random(),
         Command::Join { ticket } => ChatTicket::deserialize(&ticket)?,
     };
 

@@ -10,7 +10,11 @@ The example has the following parts:
 * [`frontend`](frontend) is a web app that uses `browser-wasm`. The web app is a single-page application written [Typescript](https://www.typescriptlang.org/), using [React](https://react.dev/) and [shadcn components](https://ui.shadcn.com/).
   It is built and bundled with [Vite](https://vite.dev/). The UI was initially mostly written by an AI tool, which we then adapted to use the API exposed by `browser-wasm`.
 
-## Requirements
+## Browser app
+
+Follow the steps below to build and run the browser version of the chat app.
+
+### Requirements
 
 To build the example, you need a Rust toolchain for `wasm32-unknown-unknown`, [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) and [`wasm-pack`](https://github.com/rustwasm/wasm-pack).
 
@@ -20,7 +24,7 @@ cargo binstall wasm-bindgen wasm-pack
 ```
 `cargo binstall` is a nifty little tool that downloads binaries from Github releases matching your system architecture. If you don't have it yet, first [install it](https://github.com/cargo-bins/cargo-binstall?tab=readme-ov-file#quickly).
 
-## Usage
+### Building for development
 
 To run the example, first build the Wasm library:
 
@@ -47,7 +51,7 @@ The frontend package has a `file:` dependency onto the Wasm package created by `
 Whenever you change something on the rust side, you need to rebuild the Wasm package with `npm run build:wasm` (or the `wasm-pack` command).
 Likely you will have to restart the Vite dev server afterwards, as the Wasm is not properly picked up by Vite's hot module reloader.
 
-## Production build
+### Building for production
 
 To build for production, run these commands:
 ```
@@ -60,3 +64,7 @@ You will find the output (HTML and assets) in the `frontend/dist` folder.
 
 The `build:wasm:release` command is an alias to `wasm-pack` in release mode. We also have a custom profile definition for the release build
 that includes optimizations to reduce the Wasm size (see [`.cargo/config.toml`](browser-wasm/.cargo/config.toml)).
+
+## Command-line app
+
+To run the CLI version of our chat app, simply run `cargo run` from this folder. It will print help text on how to create or join channels.
