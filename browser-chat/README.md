@@ -1,16 +1,16 @@
 # browser-chat
 
-This is a chat app that runs in both the browser and the command line. It uses [`iroh-gossip`](https://github.com/n0-computer/iroh-gossip/).
+This is a chat app that runs in both the browser and the command line. It uses [`iroh-gossip`](https://github.com/n0-computer/iroh-gossip/) to send messages between peers sharing a channel.
 
 The example has the following parts:
 
-* [`shared`](shared) is a Rust library that exposes a `ChatNode`, which uses iroh and iroh-gossip to power a simple ephemeral gossip chat between peers.
-* [`cli`](cli) uses the `shared` library to create a basic command-line interface to chat with peers
-* [`browser-wasm`](browser-wasm) is a WebAssembly wrapper around the shared library which uses [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) to expose the chat node to JavaScript running in web browser. It can be packaged with [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) into a NPM package.
-* [`frontend`](frontend) is a web app that uses `browser-wasm`. The web app is a single-page application written [Typescript](https://www.typescriptlang.org/), using [React](https://react.dev/) and [shadcn components](https://ui.shadcn.com/).
-  It is built and bundled with [Vite](https://vite.dev/). The UI was initially mostly written by an AI tool, which we then adapted to use the API exposed by `browser-wasm`.
+* [**shared**](shared) is a Rust library that exposes a `ChatNode`, which uses iroh and iroh-gossip to power a simple ephemeral gossip chat between peers.
+* [**cli**](cli) uses that library to create a simple command-line chat app.
+* [**browser-wasm**](browser-wasm) is a wrapper around the shared library that uses [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) to export JavaScript bindings.
+* [**frontend**](frontend) is the web app. It is written in [TypeScript](https://www.typescriptlang.org/) and uses [React](https://react.dev/) and [shadcn components](https://ui.shadcn.com/).
+  It is built and bundled with [Vite](https://vite.dev/).
 
-## Browser app
+## Web app
 
 Follow the steps below to build and run the browser version of the chat app.
 
@@ -25,8 +25,6 @@ cargo binstall wasm-bindgen wasm-pack
 `cargo binstall` is a nifty little tool that downloads binaries from Github releases matching your system architecture. If you don't have it yet, first [install it](https://github.com/cargo-bins/cargo-binstall?tab=readme-ov-file#quickly).
 
 ### Building for development
-
-To run the example, first build the Wasm library:
 
 To build the chat app in development mode, run these commands:
 ```
