@@ -2,8 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+    background: hsl(0 0% 3.9%);
+}
+
 body {
     font-family: Arial, Helvetica, sans-serif;
+    display: none;
 }
 
 @layer utilities {
@@ -90,5 +95,9 @@ body {
     }
     body {
         @apply bg-background text-foreground;
+    }
+    .dark body,
+    .light body {
+        @apply block;
     }
 }

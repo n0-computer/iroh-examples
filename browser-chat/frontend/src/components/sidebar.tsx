@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { PlusCircle, Hash, ChevronLeft, ChevronRight } from "lucide-react"
 import type { ChannelInfo } from "../lib/api"
+import clsx from "clsx"
 
 interface SidebarProps {
   channels: ChannelInfo[]
@@ -25,20 +26,27 @@ export default function Sidebar({ channels, activeChannel, onChannelSelect, onNe
         </Button>
       </div>
       <ScrollArea className="flex-grow">
-        {channels.map((channel) => (
-          <Button
-            key={channel.id}
-            variant={channel.id === activeChannel ? "secondary" : "ghost"}
-            className={`w-full justify-start px-4 py-2 ${isCollapsed ? "px-2" : "px-4"}`}
-            onClick={() => onChannelSelect(channel.id)}
-          >
-            <Hash className="h-4 w-4 mr-2" />
-            {!isCollapsed && channel.name}
-          </Button>
-        ))}
+        {channels.map((channel) => {
+          const cls = clsx(
+            channel.id === activeChannel && "bg-primary/10",
+            isCollapsed ? "px-2" : "px-4"
+          )
+          return (
+            <Button
+              key={channel.id}
+              variant="ghost"
+              className={`w-full justify-start px-4 py-2 hover:bg-primary/20 rounded-none ${cls}`}
+              onClick={() => onChannelSelect(channel.id)}
+            >
+              <Hash className="h-4 w-4 mr-2" />
+              {!isCollapsed && channel.name}
+            </Button>
+          )
+        })}
       </ScrollArea>
-      <Button variant="ghost" size="icon" onClick={onNewChannel} className="m-4">
+      <Button variant="default" onClick={onNewChannel} className="m-4">
         <PlusCircle className="h-5 w-5" />
+        Add channel
       </Button>
     </div>
   )

@@ -23,9 +23,9 @@ export class IrohAPI implements API {
   }
 
   static async create(): Promise<IrohAPI> {
-    log.info("spawning iroh node")
+    log.info("Spawning iroh node")
     const chatNode = await ChatNode.spawn()
-    log.info(`node spawned. node id: ${chatNode.node_id()}`)
+    log.info(`Iroh node spawned. our node id: ${chatNode.node_id()}`)
     return new IrohAPI(chatNode)
   }
 
@@ -105,10 +105,13 @@ export class IrohAPI implements API {
         } else if (event.type === "joined") {
           log.info(`joined channel ${id}`)
           state.neighbors += event.neighbors.length
+          for (const sub of state.neighborSubscribers) { sub(state.neighbors) }
         } else if (event.type === "neighborUp") {
           state.neighbors += 1
+          for (const sub of state.neighborSubscribers) { sub(state.neighbors) }
         } else if (event.type === "neighborDown") {
           state.neighbors -= 1
+          for (const sub of state.neighborSubscribers) { sub(state.neighbors) }
         }
       }
     }
@@ -256,11 +259,6 @@ function nextId(state: ChannelState): string {
   const id = "" + state.nextId
   state.nextId = state.nextId + 1
   return id
-}
-
-// Export a function to create and initialize the IrohAPI
-export async function createIrohAPI(): Promise<API> {
-  return await IrohAPI.create()
 }
 
 // types used in chat-browser, for now they are defined manually here.

@@ -12,12 +12,16 @@ class LogSystem {
   private logs: LogMessage[] = []
   private subscribers: Set<(log: LogMessage) => void> = new Set()
 
-  error(message: any) {
-    console.error(message)
-    this.info(String(message), "error")
+  error(message: any, error: any) {
+    console.error(message, error)
+    this.log(`${message} ${error}`, "error")
   }
 
-  info(message: string, level: LogLevel = "info") {
+  info(message: string) {
+    this.log(message)
+  }
+
+  log(message: string, level: LogLevel = "info") {
     const logMessage: LogMessage = {
       timestamp: new Date(),
       level,
@@ -25,9 +29,10 @@ class LogSystem {
     }
     this.logs.push(logMessage)
     this.notifySubscribers(logMessage)
+
   }
 
-  getLogs(): LogMessage[] {
+  get(): LogMessage[] {
     return this.logs
   }
 

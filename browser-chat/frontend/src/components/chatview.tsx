@@ -8,15 +8,16 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ArrowDown } from "lucide-react"
-import { api, Message, PeerInfo } from "../lib/api"
+import { type API, Message, PeerInfo } from "../lib/api"
 import { log } from "../lib/log"
 
 interface ChatViewProps {
+  api: API
   channel: string
   onClose: () => void
 }
 
-export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
+export default function ChatView({ api, channel, onClose }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState("")
   const [peers, setPeers] = useState<PeerInfo[]>([])
@@ -45,7 +46,7 @@ export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
         setMessages(fetchedMessages)
         scrollToBottom()
       } catch (error) {
-        log.info(`Failed to fetch messages: ${error}`, "error")
+        log.error(`Failed to fetch messages`, error)
       }
     }
 
@@ -54,7 +55,7 @@ export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
         const fetchedPeers = await api.getPeers(channel)
         setPeers(fetchedPeers)
       } catch (error) {
-        log.info(`Failed to fetch peers: ${error}`, "error")
+        log.error('Failed to fetch peers', error)
       }
     }
 
@@ -76,7 +77,7 @@ export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
         }
         return prevMessages
       })
-      log.info(`New message received: ${newMessage.content}`, "info")
+      log.info(`New message received: ${newMessage.content}`)
     })
 
     // Subscribe to peer updates
@@ -97,9 +98,9 @@ export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
       try {
         await api.sendMessage(channel, inputMessage.trim())
         setInputMessage("")
-        log.info(`Message sent in channel ${channel}: ${inputMessage.trim()}`, "info")
+        log.info(`Message sent in channel ${channel}: ${inputMessage.trim()}`)
       } catch (error) {
-        log.info(`Failed to send message: ${error}`, "error")
+        log.error('Failed to send message', error)
       }
     }
   }
@@ -178,43 +179,48 @@ export default function ChatView({ channel, onClose: _ }: ChatViewProps) {
           </Button>
         </form>
       </div>
-      <div className="w-1/4 p-4 border-l">
+      <div className="w-1/4 p-4 border-l flex flex-col">
         <div className="mb-4">
           <h2 className="font-bold mb-2">Status</h2>
-          {!!neighbors && (
+          {neighbors > 0 && (
             <p>Connected ({neighbors} neighbors)</p>
           )}
-          {!neighbors && (
+          {neighbors === 0 && (
             <p>Waiting for peers</p>
           )}
         </div>
+        <div className="mb-4">
+          <Button onClick={_ => onClose()}>Leave channel</Button>
+        </div>
         <h2 className="font-bold mb-2">Peers</h2>
-        <ScrollArea className="h-[calc(100%-6rem)]">
-          {sortedPeers.map((peer) => (
-            <Popover key={peer.id}>
-              <PopoverTrigger asChild>
-                <div className="flex items-center mb-2 cursor-pointer">
-                  <div className={`w-2 h-2 rounded-full mr-2 ${getStatusColor(peer.status)}`}></div>
-                  <span>{peer.name}</span>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-60">
-                <div className="space-y-2">
-                  <p>
-                    <strong>Last seen:</strong> {peer.lastSeen.toLocaleString()}
-                  </p>
-                  <div>
-                    <strong>Node ID:</strong>
-                    <span className="ml-2">{peer.id.substring(0, 8)}...</span>
-                    <Button size="sm" onClick={() => copyToClipboard(peer.id)} className="ml-2">
-                      Copy
-                    </Button>
+        <div className="flex-grow">
+          <ScrollArea className="h-full">
+            {sortedPeers.map((peer) => (
+              <Popover key={peer.id}>
+                <PopoverTrigger asChild>
+                  <div className="flex items-center mb-2 cursor-pointer">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${getStatusColor(peer.status)}`}></div>
+                    <span>{peer.name}</span>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          ))}
-        </ScrollArea>
+                </PopoverTrigger>
+                <PopoverContent className="w-60">
+                  <div className="space-y-2">
+                    <p>
+                      <strong>Last seen:</strong> {peer.lastSeen.toLocaleString()}
+                    </p>
+                    <div>
+                      <strong>Node ID:</strong>
+                      <span className="ml-2">{peer.id.substring(0, 8)}...</span>
+                      <Button size="sm" onClick={() => copyToClipboard(peer.id)} className="ml-2">
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ))}
+          </ScrollArea>
+        </div>
       </div>
     </div>
   )

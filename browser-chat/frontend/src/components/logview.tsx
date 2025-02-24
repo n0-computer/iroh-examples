@@ -1,12 +1,14 @@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { log, LogMessage } from "@/lib/log";
 
 interface LogViewProps {
-  logs: { timestamp: Date; level: "info" | "warn" | "error"; message: string }[]
   onClose: () => void
 }
 
-export default function LogView({ logs, onClose }: LogViewProps) {
+export default function LogView({ onClose }: LogViewProps) {
+  const logs = useLogs();
   const formatTimestamp = (date: Date) => {
     return date.toTimeString().split(" ")[0] + "." + date.getMilliseconds().toString().padStart(3, "0").slice(0, 2)
   }
@@ -41,3 +43,14 @@ export default function LogView({ logs, onClose }: LogViewProps) {
   )
 }
 
+
+function useLogs() {
+  const [logs, setLogs] = useState<LogMessage[]>([...log.get()])
+  useEffect(() => {
+    const unsubscribe = log.subscribe((logMessage) => {
+      setLogs((prevLogs) => [...prevLogs, logMessage])
+    })
+    return () => unsubscribe()
+  }, [])
+  return logs
+}

@@ -1,5 +1,49 @@
-// import { MockAPI } from "./mock"
-import { IrohAPI } from "./iroh"
+import { log } from './log'
+
+// We want to only ever create the API once, therefore we define a module-level
+// singleton that holds the promise to create the API.
+// As promises can be awaited any number of times in JavaScript, this gives us
+// an async singleton instance to the wasm API.
+const api = importAndInitOnce()
+
+export async function initApi() {
+  return await api
+}
+
+async function importAndInitOnce() {
+  try {
+    log.info("Importing WASM module")
+    const { IrohAPI } = await import('./iroh')
+    return await IrohAPI.create()
+  } catch (err) {
+    log.error('Failed to import or launch iroh', err)
+    throw err
+  }
+}
+
+export interface API {
+  createChannel(nickname: string): Promise<ChannelInfo>
+  joinChannel(ticket: string, nickname: string): Promise<ChannelInfo>
+  sendMessage(channelId: string, message: string): Promise<void>
+  getMessages(channelId: string): Promise<Message[]>
+  getPeers(channelId: string): Promise<PeerInfo[]>
+  subscribeToMessages(
+    channelId: string,
+    callback: (message: Message) => void,
+  ): () => void
+  subscribeToPeers(
+    channelId: string,
+    callback: (peers: PeerInfo[]) => void,
+  ): () => void
+  subscribeToNeighbors(
+    channelId: string,
+    callback: (neighbors: number) => void,
+  ): () => void
+  getTicket(channelId: string, opts: TicketOpts): string
+  closeChannel(channelId: string): Promise<void>
+}
+
+export type SubscribeCb = (message: Message) => void;
 
 export type ChannelInfo = {
   id: string
@@ -22,75 +66,3 @@ export interface PeerInfo {
   status: "online" | "away" | "offline"
   lastSeen: Date
 }
-
-export interface API {
-  createChannel(name: string, nickname: string): Promise<ChannelInfo>
-  joinChannel(ticket: string, nickname: string): Promise<ChannelInfo>
-  sendMessage(channelId: string, message: string): Promise<void>
-  getMessages(channelId: string): Promise<Message[]>
-  getPeers(channelId: string): Promise<PeerInfo[]>
-  subscribeToMessages(
-    channelId: string,
-    callback: (message: Message) => void,
-  ): () => void
-  subscribeToPeers(
-    channelId: string,
-    callback: (peers: PeerInfo[]) => void,
-  ): () => void
-  subscribeToNeighbors(
-    channelId: string,
-    callback: (neighbors: number) => void,
-  ): () => void
-  getTicket(channelId: string, opts: TicketOpts): string
-  closeChannel(channelId: string): Promise<void>
-}
-
-export const api = await IrohAPI.create()
-
-// Log system
-export type LogLevel = "info" | "warn" | "error"
-
-export type LogMessage = {
-  timestamp: Date
-  level: LogLevel
-  message: string
-}
-
-export type SubscribeCb = (message: Message) => void;
-
-class LogSystem {
-  private logs: LogMessage[] = []
-  private subscribers: Set<(log: LogMessage) => void> = new Set()
-
-  error(message: any) {
-    console.error(message)
-    this.info(String(message), "error")
-  }
-
-  info(message: string, level: LogLevel = "info") {
-    const logMessage: LogMessage = {
-      timestamp: new Date(),
-      level,
-      message,
-    }
-    this.logs.push(logMessage)
-    this.notifySubscribers(logMessage)
-  }
-
-  getLogs(): LogMessage[] {
-    return this.logs
-  }
-
-  subscribe(callback: (log: LogMessage) => void): () => void {
-    this.subscribers.add(callback)
-    return () => {
-      this.subscribers.delete(callback)
-    }
-  }
-
-  private notifySubscribers(log: LogMessage) {
-    this.subscribers.forEach((callback) => callback(log))
-  }
-}
-
-export const log = new LogSystem()

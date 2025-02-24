@@ -1,42 +1,55 @@
 "use client"
 
-import type React from "react"
 import { Button } from "@/components/ui/button"
-import { UserPlus, FileText } from "lucide-react"
+import { UserPlus, FileText, Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 interface HeaderProps {
-  isConnected: boolean
-  neighbors: number
-  onMenuClick: () => void
-  onInviteClick: () => void
-  themeToggle: React.ReactNode
-  channel: string | null
+  onLogsClick: () => void
+  onInviteClick?: () => void
+  title?: string | null
 }
 
 export default function Header({
-  onMenuClick,
+  onLogsClick: onLogsClick,
   onInviteClick,
-  themeToggle,
-  channel,
-  // isConnected,
-  // neighbors,
+  title,
 }: HeaderProps) {
   return (
     <header className="bg-background text-foreground p-4 flex justify-between items-center">
-      <div className="flex items-center">{channel && <h1 className="text-xl font-bold mr-4">#{channel}</h1>}</div>
+      <div className="flex items-center">
+        {title && <h1 className="text-xl font-bold mr-4">{title}</h1>}
+      </div>
       <div className="flex items-center space-x-2">
-        {themeToggle}
-        {channel && (
+        {onInviteClick && (
           <Button onClick={onInviteClick} variant="default">
             <UserPlus className="w-4 h-4 mr-2" />
             Invite
           </Button>
         )}
-        <Button onClick={onMenuClick} variant="secondary">
+        <Button onClick={onLogsClick} variant="secondary">
           <FileText className="w-4 h-4 mr-2" />
           Logs
         </Button>
+        <ThemeToggle />
       </div>
     </header>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  if (!mounted) return null
+
+  return (
+    <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+      {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+      <span className="sr-only">Toggle theme</span>
+    </Button>
   )
 }
