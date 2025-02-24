@@ -1016,12 +1016,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcbb2bf8e87535c23f7a8a321e364ce21462d0ff10cb6407820e8e96dfff6653"
 
 [[package]]
-name = "dyn-clone"
-version = "1.0.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feeef44e73baff3a26d371801df019877a9866a8c493d315ab00177843314f35"
-
-[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2183,69 +2177,6 @@ checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
 name = "iroh"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27ee97c8412bbf06d7c5253c6638a8bac741cb44d405669cedbfd7d47cd68090"
-dependencies = [
- "aead",
- "anyhow",
- "backoff",
- "bytes",
- "concurrent-queue",
- "crypto_box",
- "data-encoding",
- "der",
- "derive_more",
- "ed25519-dalek",
- "futures-buffered",
- "futures-lite",
- "futures-sink",
- "futures-util",
- "governor",
- "hickory-resolver",
- "http 1.2.0",
- "http-body-util",
- "hyper",
- "hyper-util",
- "igd-next",
- "iroh-base 0.31.0",
- "iroh-metrics",
- "iroh-net-report 0.31.0",
- "iroh-quinn 0.12.0",
- "iroh-quinn-proto 0.12.0",
- "iroh-quinn-udp",
- "iroh-relay 0.31.0",
- "netdev",
- "netwatch",
- "pin-project",
- "pkarr",
- "portmapper",
- "rand",
- "rcgen",
- "reqwest",
- "ring",
- "rustls",
- "rustls-webpki",
- "serde",
- "smallvec",
- "strum",
- "stun-rs",
- "thiserror 2.0.11",
- "tokio",
- "tokio-rustls",
- "tokio-stream",
- "tokio-tungstenite 0.21.0",
- "tokio-tungstenite-wasm 0.3.1",
- "tokio-util",
- "tracing",
- "url",
- "webpki-roots",
- "x509-parser",
- "z32",
-]
-
-[[package]]
-name = "iroh"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3a813bde213da0740a28141ea97be251bd8df27f00d9d0938a3d55c0c6e5cb"
@@ -2269,13 +2200,13 @@ dependencies = [
  "hyper",
  "hyper-util",
  "igd-next",
- "iroh-base 0.32.0",
+ "iroh-base",
  "iroh-metrics",
- "iroh-net-report 0.32.0",
- "iroh-quinn 0.13.0",
- "iroh-quinn-proto 0.13.0",
+ "iroh-net-report",
+ "iroh-quinn",
+ "iroh-quinn-proto",
  "iroh-quinn-udp",
- "iroh-relay 0.32.0",
+ "iroh-relay",
  "n0-future",
  "netdev",
  "netwatch",
@@ -2306,24 +2237,6 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0546d176f79fb63a5efeb8eb8c692c483920e35bd9ba66c028928cf2ca27239b"
-dependencies = [
- "curve25519-dalek",
- "data-encoding",
- "derive_more",
- "ed25519-dalek",
- "getrandom 0.2.15",
- "postcard",
- "rand_core",
- "serde",
- "thiserror 2.0.11",
- "url",
-]
-
-[[package]]
-name = "iroh-base"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d56b4a9e4db1e505710d0aaca2afc17dd92aeac2dd06a34ccf9934dab7240bc9"
@@ -2333,6 +2246,7 @@ dependencies = [
  "derive_more",
  "ed25519-dalek",
  "getrandom 0.2.15",
+ "postcard",
  "rand_core",
  "serde",
  "thiserror 2.0.11",
@@ -2354,9 +2268,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-blobs"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a78917ffda5c440e23f1dc5680cb506cbdb2bd9f919fee0720a792e26321dff0"
+checksum = "da38a62138561d5ab6bd67439961017dbd0b2a808e7d0a81bb81dbc53f7f8c60"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2371,19 +2285,18 @@ dependencies = [
  "genawaiter",
  "hashlink",
  "hex",
- "iroh 0.31.0",
- "iroh-base 0.31.0",
+ "iroh",
+ "iroh-base",
  "iroh-blake3",
  "iroh-io",
  "iroh-metrics",
- "iroh-quinn 0.12.0",
  "nested_enum_utils",
  "num_cpus",
  "oneshot",
  "parking_lot",
  "portable-atomic",
  "postcard",
- "quic-rpc",
+ "quic-rpc 0.18.1",
  "quic-rpc-derive",
  "rand",
  "range-collections",
@@ -2401,6 +2314,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-futures",
+ "tracing-test",
  "walkdir",
 ]
 
@@ -2412,7 +2326,7 @@ dependencies = [
  "dirs-next",
  "extism",
  "futures",
- "iroh 0.32.0",
+ "iroh",
  "iroh-blobs",
  "tokio",
  "tokio-util",
@@ -2452,35 +2366,6 @@ dependencies = [
 
 [[package]]
 name = "iroh-net-report"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "547eacca10cd072412b04d784336e29c5e81e7ba4fbb9c1ad70777f7874a5d1a"
-dependencies = [
- "anyhow",
- "bytes",
- "derive_more",
- "futures-buffered",
- "futures-lite",
- "hickory-resolver",
- "iroh-base 0.31.0",
- "iroh-metrics",
- "iroh-quinn 0.12.0",
- "iroh-relay 0.31.0",
- "netwatch",
- "portmapper",
- "rand",
- "reqwest",
- "rustls",
- "surge-ping",
- "thiserror 2.0.11",
- "tokio",
- "tokio-util",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "iroh-net-report"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6043244fda74da51f46c6199ff7f7e1c350d58b650e39983ae24ca4cfd46f4be"
@@ -2489,10 +2374,10 @@ dependencies = [
  "bytes",
  "derive_more",
  "hickory-resolver",
- "iroh-base 0.32.0",
+ "iroh-base",
  "iroh-metrics",
- "iroh-quinn 0.13.0",
- "iroh-relay 0.32.0",
+ "iroh-quinn",
+ "iroh-relay",
  "n0-future",
  "netwatch",
  "portmapper",
@@ -2509,31 +2394,13 @@ dependencies = [
 
 [[package]]
 name = "iroh-quinn"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35ba75a5c57cff299d2d7ca1ddee053f66339d1756bd79ec637bcad5aa61100e"
-dependencies = [
- "bytes",
- "iroh-quinn-proto 0.12.0",
- "iroh-quinn-udp",
- "pin-project-lite",
- "rustc-hash",
- "rustls",
- "socket2",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "iroh-quinn"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76c6245c9ed906506ab9185e8d7f64857129aee4f935e899f398a3bd3b70338d"
 dependencies = [
  "bytes",
  "cfg_aliases",
- "iroh-quinn-proto 0.13.0",
+ "iroh-quinn-proto",
  "iroh-quinn-udp",
  "pin-project-lite",
  "rustc-hash",
@@ -2543,24 +2410,6 @@ dependencies = [
  "tokio",
  "tracing",
  "web-time",
-]
-
-[[package]]
-name = "iroh-quinn-proto"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c869ba52683d3d067c83ab4c00a2fda18eaf13b1434d4c1352f428674d4a5d"
-dependencies = [
- "bytes",
- "rand",
- "ring",
- "rustc-hash",
- "rustls",
- "rustls-platform-verifier 0.3.4",
- "slab",
- "thiserror 1.0.69",
- "tinyvec",
- "tracing",
 ]
 
 [[package]]
@@ -2576,7 +2425,7 @@ dependencies = [
  "rustc-hash",
  "rustls",
  "rustls-pki-types",
- "rustls-platform-verifier 0.5.0",
+ "rustls-platform-verifier",
  "slab",
  "thiserror 2.0.11",
  "tinyvec",
@@ -2600,53 +2449,6 @@ dependencies = [
 
 [[package]]
 name = "iroh-relay"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e4c13758cac9d81a6793b59eba17da2ccbf90a76278ec160d7c8f90b1bb903"
-dependencies = [
- "anyhow",
- "bytes",
- "data-encoding",
- "derive_more",
- "futures-buffered",
- "futures-lite",
- "futures-sink",
- "futures-util",
- "governor",
- "hickory-proto",
- "hickory-resolver",
- "http 1.2.0",
- "http-body-util",
- "hyper",
- "hyper-util",
- "iroh-base 0.31.0",
- "iroh-metrics",
- "iroh-quinn 0.12.0",
- "iroh-quinn-proto 0.12.0",
- "lru",
- "num_enum",
- "pin-project",
- "postcard",
- "rand",
- "reqwest",
- "rustls",
- "rustls-webpki",
- "serde",
- "stun-rs",
- "thiserror 2.0.11",
- "time",
- "tokio",
- "tokio-rustls",
- "tokio-tungstenite 0.21.0",
- "tokio-tungstenite-wasm 0.3.1",
- "tokio-util",
- "tracing",
- "url",
- "webpki-roots",
-]
-
-[[package]]
-name = "iroh-relay"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0700bfc2dcd5d6b28a9176dddbc989a6c90b06fc49e9e60069213408450ab47"
@@ -2661,10 +2463,10 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
- "iroh-base 0.32.0",
+ "iroh-base",
  "iroh-metrics",
- "iroh-quinn 0.13.0",
- "iroh-quinn-proto 0.13.0",
+ "iroh-quinn",
+ "iroh-quinn-proto",
  "lru",
  "n0-future",
  "num_enum",
@@ -2679,7 +2481,7 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "tokio-rustls",
- "tokio-tungstenite-wasm 0.4.0",
+ "tokio-tungstenite-wasm",
  "tokio-util",
  "tracing",
  "url",
@@ -2728,20 +2530,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52f5385394064fa2c886205dba02598013ce83d3e92d33dbdc0c52fe0e7bf4fc"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "jni"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6df18c2e3db7e453d3c6ac5b3e9d5182664d28788126d39b91f2d1e22b017ec"
-dependencies = [
- "cesu8",
- "combine",
- "jni-sys",
- "log",
- "thiserror 1.0.69",
- "walkdir",
 ]
 
 [[package]]
@@ -2904,26 +2692,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "mainline"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b751ffb57303217bcae8f490eee6044a5b40eadf6ca05ff476cad37e7b7970d"
-dependencies = [
- "bytes",
- "crc",
- "ed25519-dalek",
- "flume",
- "lru",
- "rand",
- "serde",
- "serde_bencode",
- "serde_bytes",
- "sha1_smol",
- "thiserror 1.0.69",
- "tracing",
 ]
 
 [[package]]
@@ -3600,13 +3368,11 @@ checksum = "92eff194c72f00f3076855b413ad2d940e3a6e307fa697e5c7733e738341aed4"
 dependencies = [
  "bytes",
  "document-features",
- "dyn-clone",
  "ed25519-dalek",
  "flume",
  "futures",
  "js-sys",
  "lru",
- "mainline",
  "self_cell",
  "simple-dns",
  "thiserror 2.0.11",
@@ -3990,13 +3756,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "quic-rpc"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09b61cd874b52a79146069fc15456f5cf7abafea818e2fdd828598456349d6a4"
+dependencies = [
+ "anyhow",
+ "document-features",
+ "flume",
+ "futures-lite",
+ "futures-sink",
+ "futures-util",
+ "pin-project",
+ "serde",
+ "slab",
+ "smallvec",
+ "time",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "quic-rpc-derive"
 version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a32e88a525c7616b2bfce4be94a875eeac46bf20faea5e580cb54dc739e64e5"
 dependencies = [
  "proc-macro2",
- "quic-rpc",
+ "quic-rpc 0.17.3",
  "quote",
  "syn 1.0.109",
 ]
@@ -4505,19 +4293,6 @@ dependencies = [
 
 [[package]]
 name = "rustls-native-certs"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5bfb394eeed242e909609f56089eecfe5fda225042e8b171791b9c95f5931e5"
-dependencies = [
- "openssl-probe",
- "rustls-pemfile",
- "rustls-pki-types",
- "schannel",
- "security-framework 2.11.1",
-]
-
-[[package]]
-name = "rustls-native-certs"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcff2dd52b58a8d98a70243663a0d234c4e2b79235637849d15913394a247d3"
@@ -4525,7 +4300,7 @@ dependencies = [
  "openssl-probe",
  "rustls-pki-types",
  "schannel",
- "security-framework 3.2.0",
+ "security-framework",
 ]
 
 [[package]]
@@ -4548,41 +4323,20 @@ dependencies = [
 
 [[package]]
 name = "rustls-platform-verifier"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afbb878bdfdf63a336a5e63561b1835e7a8c91524f51621db870169eac84b490"
-dependencies = [
- "core-foundation 0.9.4",
- "core-foundation-sys",
- "jni 0.19.0",
- "log",
- "once_cell",
- "rustls",
- "rustls-native-certs 0.7.3",
- "rustls-platform-verifier-android",
- "rustls-webpki",
- "security-framework 2.11.1",
- "security-framework-sys",
- "webpki-roots",
- "winapi",
-]
-
-[[package]]
-name = "rustls-platform-verifier"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e012c45844a1790332c9386ed4ca3a06def221092eda277e6f079728f8ea99da"
 dependencies = [
  "core-foundation 0.10.0",
  "core-foundation-sys",
- "jni 0.21.1",
+ "jni",
  "log",
  "once_cell",
  "rustls",
- "rustls-native-certs 0.8.1",
+ "rustls-native-certs",
  "rustls-platform-verifier-android",
  "rustls-webpki",
- "security-framework 3.2.0",
+ "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
  "windows-sys 0.52.0",
@@ -4672,20 +4426,6 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "2.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "897b2245f0b511c87893af39b033e5ca9cce68824c4d7e7630b5a1d339658d02"
-dependencies = [
- "bitflags 2.8.0",
- "core-foundation 0.9.4",
- "core-foundation-sys",
- "libc",
- "num-bigint",
- "security-framework-sys",
-]
-
-[[package]]
-name = "security-framework"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "271720403f46ca04f7ba6f55d438f8bd878d6b8ca0a1046e8228c4145bcbb316"
@@ -4742,25 +4482,6 @@ name = "serde-error"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "342110fb7a5d801060c885da03bf91bfa7c7ca936deafcc64bb6706375605d47"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_bencode"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a70dfc7b7438b99896e7f8992363ab8e2c4ba26aa5ec675d32d1c3c2c33d413e"
-dependencies = [
- "serde",
- "serde_bytes",
-]
-
-[[package]]
-name = "serde_bytes"
-version = "0.11.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
 dependencies = [
  "serde",
 ]
@@ -4829,12 +4550,6 @@ dependencies = [
  "cpufeatures",
  "digest",
 ]
-
-[[package]]
-name = "sha1_smol"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sha2"
@@ -5395,18 +5110,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c83b561d025642014097b66e6c1bb422783339e0909e4429cde4749d1990bc38"
-dependencies = [
- "futures-util",
- "log",
- "tokio",
- "tungstenite 0.21.0",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
@@ -5414,25 +5117,7 @@ dependencies = [
  "futures-util",
  "log",
  "tokio",
- "tungstenite 0.24.0",
-]
-
-[[package]]
-name = "tokio-tungstenite-wasm"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e57a65894797a018b28345fa298a00c450a574aa9671e50b18218a6292a55ac"
-dependencies = [
- "futures-channel",
- "futures-util",
- "http 1.2.0",
- "httparse",
- "js-sys",
- "thiserror 1.0.69",
- "tokio",
- "tokio-tungstenite 0.21.0",
- "wasm-bindgen",
- "web-sys",
+ "tungstenite",
 ]
 
 [[package]]
@@ -5448,7 +5133,7 @@ dependencies = [
  "js-sys",
  "thiserror 1.0.69",
  "tokio",
- "tokio-tungstenite 0.24.0",
+ "tokio-tungstenite",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -5603,29 +5288,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-test"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
+dependencies = [
+ "tracing-core",
+ "tracing-subscriber",
+ "tracing-test-macro",
+]
+
+[[package]]
+name = "tracing-test-macro"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
+dependencies = [
+ "quote",
+ "syn 2.0.98",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "tungstenite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ef1a641ea34f399a848dea702823bbecfb4c486f911735368f1f137cb8257e1"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http 1.2.0",
- "httparse",
- "log",
- "rand",
- "sha1",
- "thiserror 1.0.69",
- "url",
- "utf-8",
-]
 
 [[package]]
 name = "tungstenite"

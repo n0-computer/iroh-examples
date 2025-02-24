@@ -20,3 +20,8 @@ rand = "0.8.5"
 tokio = { version = "1.34.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+dumbpipe = { git = "https://github.com/n0-computer/dumbpipe.git", branch = "main" }
