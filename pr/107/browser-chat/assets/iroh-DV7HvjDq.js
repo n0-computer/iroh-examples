@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as j, __tla as __tla_0 } from "./index-dw3IOSXq.js";
+import { l as j, __tla as __tla_0 } from "./index-B4Xnulot.js";
 let K;
 let __tla = Promise.all([
   (() => {
@@ -11,7 +11,7 @@ let __tla = Promise.all([
     }
   })()
 ]).then(async () => {
-  const Y = "" + new URL("chat_browser_bg-CJHxUcb7.wasm", import.meta.url).href, Z = async (e = {}, n) => {
+  const Y = "" + new URL("chat_browser_bg-BUP1sfkT.wasm", import.meta.url).href, Z = async (e = {}, n) => {
     let t;
     if (n.startsWith("data:")) {
       const _ = n.replace(/^data:.*?base64,/, "");
@@ -355,10 +355,10 @@ ${e.stack}` : _;
     unregister: () => {
     }
   } : new FinalizationRegistry((e) => o.__wbg_intounderlyingsource_free(e >>> 0, 1));
-  class N {
+  class B {
     static __wrap(n) {
       n = n >>> 0;
-      const t = Object.create(N.prototype);
+      const t = Object.create(B.prototype);
       return t.__wbg_ptr = n, V.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
@@ -491,10 +491,10 @@ ${e.stack}` : _;
     var t = S(e, n).slice();
     o.__wbindgen_export_6(e, n * 4, 4), console.error(...t);
   }
-  function Ne(e) {
+  function Be(e) {
     return fetch(e);
   }
-  function Be(e, n) {
+  function Ne(e, n) {
     return e.fetch(n);
   }
   function We() {
@@ -644,7 +644,7 @@ ${e.stack}` : _;
     return new Uint8Array(e, n >>> 0, t >>> 0);
   }
   function pn(e, n) {
-    return new ReadableStream(N.__wrap(e), n);
+    return new ReadableStream(B.__wrap(e), n);
   }
   function yn(e) {
     return new Uint8Array(e >>> 0);
@@ -717,12 +717,12 @@ ${e.stack}` : _;
       e.respond(n >>> 0);
     }, arguments);
   }
-  function Nn() {
+  function Bn() {
     return u(function(e, n, t) {
       e.send(f(n, t));
     }, arguments);
   }
-  function Bn() {
+  function Nn() {
     return u(function(e, n, t) {
       e.send(re(n, t));
     }, arguments);
@@ -900,10 +900,10 @@ ${e.stack}` : _;
   function zt(e, n) {
     return e == n;
   }
-  function Nt() {
+  function Bt() {
     return o.memory;
   }
-  function Bt(e, n) {
+  function Nt(e, n) {
     const t = n, _ = typeof t == "number" ? t : void 0;
     b().setFloat64(e + 8 * 1, l(_) ? 0 : _, true), b().setInt32(e + 4 * 0, !l(_), true);
   }
@@ -933,7 +933,7 @@ ${e.stack}` : _;
       __wbindgen_as_number: mt,
       __wbg_chatnode_new: Se,
       __wbindgen_jsval_loose_eq: zt,
-      __wbindgen_number_get: Bt,
+      __wbindgen_number_get: Nt,
       __wbindgen_string_get: Dt,
       __wbg_String_8f0eb39a4a4c2f66: ue,
       __wbindgen_number_new: Wt,
@@ -948,7 +948,7 @@ ${e.stack}` : _;
       __wbg_error_91947ba14c44e1c9: ze,
       __wbg_log_e51ef223c244b133: tn,
       __wbg_warn_479b8bbb8337357b: yt,
-      __wbg_fetch_4465c2b10f21a927: Ne,
+      __wbg_fetch_4465c2b10f21a927: Be,
       __wbg_getReader_48e00749fe3f6089: De,
       __wbg_newwithintounderlyingsource_b47f6a6a596a7f24: pn,
       __wbindgen_is_string: qt,
@@ -996,9 +996,9 @@ ${e.stack}` : _;
       __wbg_new_92c54fc74574ef55: dn,
       __wbg_close_2893b7d056a0627d: Re,
       __wbg_close_e1253d480ed93ce3: Ae,
-      __wbg_send_0293179ba074ffb4: Nn,
-      __wbg_send_fc0c204e8a1757f4: Bn,
-      __wbg_fetch_509096533071c657: Be,
+      __wbg_send_0293179ba074ffb4: Bn,
+      __wbg_send_fc0c204e8a1757f4: Nn,
+      __wbg_fetch_509096533071c657: Ne,
       __wbg_setTimeout_592d289a39056aa2: Wn,
       __wbg_clearTimeout_710cb18754e44d88: Te,
       __wbg_queueMicrotask_97d92b4fcc8a61c5: jn,
@@ -1057,7 +1057,7 @@ ${e.stack}` : _;
       __wbg_set_65595bdd868b3009: $n,
       __wbindgen_debug_string: At,
       __wbindgen_throw: $t,
-      __wbindgen_memory: Nt,
+      __wbindgen_memory: Bt,
       __wbindgen_closure_wrapper3882: Tt,
       __wbindgen_closure_wrapper3884: Rt,
       __wbindgen_closure_wrapper3886: Ft,
@@ -1175,13 +1175,13 @@ ${e.stack}` : _;
               status: "online"
             };
             i.peers.set(d.from, m);
-            const B = {
+            const N = {
               id: G(i),
               sender: d.from,
               content: d.text
             };
-            i.messages.push(B);
-            const Q = M(i, B);
+            i.messages.push(N);
+            const Q = M(i, N);
             for (const X of i.subscribers) X(Q);
           } else if (d.type === "presence") {
             const m = {

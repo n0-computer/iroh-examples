@@ -14080,7 +14080,7 @@ Error generating stack: ` + u.message + `
     try {
       yt.info("Importing WASM module");
       const { IrohAPI: n } = await k0(async () => {
-        const { IrohAPI: i } = await import("./iroh-BsqkxrqJ.js").then(async (m) => {
+        const { IrohAPI: i } = await import("./iroh-DV7HvjDq.js").then(async (m) => {
           await m.__tla;
           return m;
         });
