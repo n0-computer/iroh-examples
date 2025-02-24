@@ -13122,7 +13122,7 @@ Error generating stack: ` + u.message + `
       __publicField(this, "subscribers", /* @__PURE__ */ new Set());
     }
     error(i, l) {
-      console.error(i, l), this.log(`${i} ${l}`, "error");
+      console.error(i, l), this.log(`${i} ${l || ""}`, "error");
     }
     info(i) {
       this.log(i);
@@ -14080,7 +14080,7 @@ Error generating stack: ` + u.message + `
     try {
       yt.info("Importing WASM module");
       const { IrohAPI: n } = await k0(async () => {
-        const { IrohAPI: i } = await import("./iroh-DV7HvjDq.js").then(async (m) => {
+        const { IrohAPI: i } = await import("./iroh-BVDf5VkK.js").then(async (m) => {
           await m.__tla;
           return m;
         });

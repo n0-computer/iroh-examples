@@ -1,8 +1,8 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as j, __tla as __tla_0 } from "./index-B4Xnulot.js";
-let K;
+import { l as j, __tla as __tla_0 } from "./index-8-yILgUj.js";
+let Z;
 let __tla = Promise.all([
   (() => {
     try {
@@ -11,7 +11,7 @@ let __tla = Promise.all([
     }
   })()
 ]).then(async () => {
-  const Y = "" + new URL("chat_browser_bg-BUP1sfkT.wasm", import.meta.url).href, Z = async (e = {}, n) => {
+  const X = "" + new URL("chat_browser_bg-v0ZRNCfp.wasm", import.meta.url).href, Y = async (e = {}, n) => {
     let t;
     if (n.startsWith("data:")) {
       const _ = n.replace(/^data:.*?base64,/, "");
@@ -166,7 +166,7 @@ let __tla = Promise.all([
     return e instanceof Error ? `${e.name}: ${e.message}
 ${e.stack}` : _;
   }
-  function U(e) {
+  function N(e) {
     const n = o.__wbindgen_export_4.get(e);
     return o.__wbindgen_export_8(e), n;
   }
@@ -227,7 +227,7 @@ ${e.stack}` : _;
         const y = o.__wbindgen_add_to_stack_pointer(-16);
         o.channel_ticket(y, this.__wbg_ptr, n);
         var r = b().getInt32(y + 4 * 0, true), s = b().getInt32(y + 4 * 1, true), a = b().getInt32(y + 4 * 2, true), i = b().getInt32(y + 4 * 3, true), g = r, v = s;
-        if (i) throw g = 0, v = 0, U(a);
+        if (i) throw g = 0, v = 0, N(a);
         return t = g, _ = v, f(g, v);
       } finally {
         o.__wbindgen_add_to_stack_pointer(16), o.__wbindgen_export_6(t, _, 1);
@@ -329,7 +329,7 @@ ${e.stack}` : _;
         const s = o.__wbindgen_add_to_stack_pointer(-16), a = p(n, o.__wbindgen_export_0, o.__wbindgen_export_1), i = w;
         o.chatnode_create(s, this.__wbg_ptr, a, i);
         var t = b().getInt32(s + 4 * 0, true), _ = b().getInt32(s + 4 * 1, true), r = b().getInt32(s + 4 * 2, true);
-        if (r) throw U(_);
+        if (r) throw N(_);
         return E.__wrap(t);
       } finally {
         o.__wbindgen_add_to_stack_pointer(16);
@@ -340,7 +340,7 @@ ${e.stack}` : _;
         const a = o.__wbindgen_add_to_stack_pointer(-16), i = p(n, o.__wbindgen_export_0, o.__wbindgen_export_1), g = w, v = p(t, o.__wbindgen_export_0, o.__wbindgen_export_1), y = w;
         o.chatnode_join(a, this.__wbg_ptr, i, g, v, y);
         var _ = b().getInt32(a + 4 * 0, true), r = b().getInt32(a + 4 * 1, true), s = b().getInt32(a + 4 * 2, true);
-        if (s) throw U(r);
+        if (s) throw N(r);
         return E.__wrap(_);
       } finally {
         o.__wbindgen_add_to_stack_pointer(16);
@@ -355,10 +355,10 @@ ${e.stack}` : _;
     unregister: () => {
     }
   } : new FinalizationRegistry((e) => o.__wbg_intounderlyingsource_free(e >>> 0, 1));
-  class B {
+  class U {
     static __wrap(n) {
       n = n >>> 0;
-      const t = Object.create(B.prototype);
+      const t = Object.create(U.prototype);
       return t.__wbg_ptr = n, V.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
@@ -479,7 +479,7 @@ ${e.stack}` : _;
       e.enqueue(n);
     }, arguments);
   }
-  function Ue(e, n) {
+  function Ne(e, n) {
     let t, _;
     try {
       t = e, _ = n, console.error(f(e, n));
@@ -491,10 +491,10 @@ ${e.stack}` : _;
     var t = S(e, n).slice();
     o.__wbindgen_export_6(e, n * 4, 4), console.error(...t);
   }
-  function Be(e) {
+  function Ue(e) {
     return fetch(e);
   }
-  function Ne(e, n) {
+  function Be(e, n) {
     return e.fetch(n);
   }
   function We() {
@@ -530,10 +530,10 @@ ${e.stack}` : _;
       return Reflect.has(e, n);
     }, arguments);
   }
-  function Ke(e) {
+  function Ze(e) {
     return e.headers;
   }
-  function Qe(e) {
+  function Ke(e) {
     let n;
     try {
       n = e instanceof ArrayBuffer;
@@ -542,7 +542,7 @@ ${e.stack}` : _;
     }
     return n;
   }
-  function Xe(e) {
+  function Qe(e) {
     let n;
     try {
       n = e instanceof Blob;
@@ -551,7 +551,7 @@ ${e.stack}` : _;
     }
     return n;
   }
-  function Ye(e) {
+  function Xe(e) {
     let n;
     try {
       n = e instanceof Response;
@@ -560,7 +560,7 @@ ${e.stack}` : _;
     }
     return n;
   }
-  function Ze(e) {
+  function Ye(e) {
     let n;
     try {
       n = e instanceof Uint8Array;
@@ -644,7 +644,7 @@ ${e.stack}` : _;
     return new Uint8Array(e, n >>> 0, t >>> 0);
   }
   function pn(e, n) {
-    return new ReadableStream(B.__wrap(e), n);
+    return new ReadableStream(U.__wrap(e), n);
   }
   function yn(e) {
     return new Uint8Array(e >>> 0);
@@ -709,7 +709,7 @@ ${e.stack}` : _;
       return module.require;
     }, arguments);
   }
-  function Un(e) {
+  function Nn(e) {
     return Promise.resolve(e);
   }
   function zn() {
@@ -717,12 +717,12 @@ ${e.stack}` : _;
       e.respond(n >>> 0);
     }, arguments);
   }
-  function Bn() {
+  function Un() {
     return u(function(e, n, t) {
       e.send(f(n, t));
     }, arguments);
   }
-  function Nn() {
+  function Bn() {
     return u(function(e, n, t) {
       e.send(re(n, t));
     }, arguments);
@@ -753,19 +753,19 @@ ${e.stack}` : _;
   function Jn(e, n) {
     e.credentials = ae[n];
   }
-  function Kn(e, n) {
+  function Zn(e, n) {
     e.headers = n;
   }
-  function Qn(e, n) {
+  function Kn(e, n) {
     e.highWaterMark = n;
   }
-  function Xn(e, n, t) {
+  function Qn(e, n, t) {
     e.method = f(n, t);
   }
-  function Yn(e, n) {
+  function Xn(e, n) {
     e.mode = be[n];
   }
-  function Zn(e, n) {
+  function Yn(e, n) {
     e.onclose = n;
   }
   function et(e, n) {
@@ -894,16 +894,16 @@ ${e.stack}` : _;
   function qt(e) {
     return typeof e == "string";
   }
-  function Ut(e) {
+  function Nt(e) {
     return e === void 0;
   }
   function zt(e, n) {
     return e == n;
   }
-  function Bt() {
+  function Ut() {
     return o.memory;
   }
-  function Nt(e, n) {
+  function Bt(e, n) {
     const t = n, _ = typeof t == "number" ? t : void 0;
     b().setFloat64(e + 8 * 1, l(_) ? 0 : _, true), b().setInt32(e + 4 * 0, !l(_), true);
   }
@@ -922,18 +922,18 @@ ${e.stack}` : _;
     throw new Error(f(e, n));
   }
   URL = globalThis.URL;
-  const c = await Z({
+  const c = await Y({
     "./chat_browser_bg.js": {
       __wbindgen_error_new: Ct,
       __wbindgen_string_new: Pt,
-      __wbindgen_is_undefined: Ut,
+      __wbindgen_is_undefined: Nt,
       __wbindgen_in: Et,
       __wbindgen_boolean_get: vt,
       __wbindgen_is_object: Mt,
       __wbindgen_as_number: mt,
       __wbg_chatnode_new: Se,
       __wbindgen_jsval_loose_eq: zt,
-      __wbindgen_number_get: Nt,
+      __wbindgen_number_get: Bt,
       __wbindgen_string_get: Dt,
       __wbg_String_8f0eb39a4a4c2f66: ue,
       __wbindgen_number_new: Wt,
@@ -942,27 +942,27 @@ ${e.stack}` : _;
       __wbg_set_3f1d0b984ed272ed: Pn,
       __wbg_new_8a6f238a6ece86ea: un,
       __wbg_stack_0ed75d68575b0f3c: ot,
-      __wbg_error_7534b8e9a36f1ab4: Ue,
+      __wbg_error_7534b8e9a36f1ab4: Ne,
       __wbindgen_cb_drop: kt,
       __wbg_debug_55137df391ebfd29: Le,
       __wbg_error_91947ba14c44e1c9: ze,
       __wbg_log_e51ef223c244b133: tn,
       __wbg_warn_479b8bbb8337357b: yt,
-      __wbg_fetch_4465c2b10f21a927: Be,
+      __wbg_fetch_4465c2b10f21a927: Ue,
       __wbg_getReader_48e00749fe3f6089: De,
       __wbg_newwithintounderlyingsource_b47f6a6a596a7f24: pn,
       __wbindgen_is_string: qt,
       __wbg_signal_aaf9ad74119f20a4: rt,
       __wbg_new_e25e5aab09ff45db: wn,
       __wbg_abort_775ef1d17fc65868: de,
-      __wbg_instanceof_Blob_ca721ef3bdab15d1: Xe,
+      __wbg_instanceof_Blob_ca721ef3bdab15d1: Qe,
       __wbg_code_f4ec1e6e2e1b0417: Ce,
       __wbg_reason_49f1cede8bcf23dd: Ln,
       __wbg_new_018dcc2d6c8c2f6a: on,
       __wbg_append_8c7dd8d641a5f01b: fe,
       __wbg_data_432d9c3df2630942: Oe,
       __wbg_now_d18023d54d4e5500: Tn,
-      __wbg_sethighwatermark_793c99c89830c8e9: Qn,
+      __wbg_sethighwatermark_793c99c89830c8e9: Kn,
       __wbg_byobRequest_77d9adf63337edfb: pe,
       __wbg_close_5ce03e29be453811: je,
       __wbg_view_fd8a56e8983f448d: pt,
@@ -977,28 +977,28 @@ ${e.stack}` : _;
       __wbg_newwithstrandinit_06c535e0a867c635: mn,
       __wbg_setbody_5923b78a95eedf29: Hn,
       __wbg_setcredentials_c3a22f1cd105a2c6: Jn,
-      __wbg_setheaders_834c0bdb6a8949ad: Kn,
-      __wbg_setmethod_3c5280fe5d890842: Xn,
-      __wbg_setmode_5dc300b865044b65: Yn,
+      __wbg_setheaders_834c0bdb6a8949ad: Zn,
+      __wbg_setmethod_3c5280fe5d890842: Qn,
+      __wbg_setmode_5dc300b865044b65: Xn,
       __wbg_setsignal_75b21ef3a81de905: _t,
-      __wbg_instanceof_Response_f2cc20d9f7dfd644: Ye,
+      __wbg_instanceof_Response_f2cc20d9f7dfd644: Xe,
       __wbg_url_ae10c34ca209681d: wt,
       __wbg_status_f6360336ca686bf0: bt,
-      __wbg_headers_9cb51cfd2ac780a4: Ke,
+      __wbg_headers_9cb51cfd2ac780a4: Ze,
       __wbg_body_0b8fd1fe671660df: we,
       __wbg_arrayBuffer_d1b44c4390db422f: ge,
       __wbg_readyState_7ef6e63c349899ed: On,
       __wbg_setonopen_2da654e1f39745d5: tt,
       __wbg_setonerror_8639efe354b947cd: et,
-      __wbg_setonclose_14fc475a49d488fc: Zn,
+      __wbg_setonclose_14fc475a49d488fc: Yn,
       __wbg_setonmessage_6eccab530a8fb4c7: nt,
       __wbg_setbinaryType_92fa1ffd873b327c: Gn,
       __wbg_new_92c54fc74574ef55: dn,
       __wbg_close_2893b7d056a0627d: Re,
       __wbg_close_e1253d480ed93ce3: Ae,
-      __wbg_send_0293179ba074ffb4: Bn,
-      __wbg_send_fc0c204e8a1757f4: Nn,
-      __wbg_fetch_509096533071c657: Ne,
+      __wbg_send_0293179ba074ffb4: Un,
+      __wbg_send_fc0c204e8a1757f4: Bn,
+      __wbg_fetch_509096533071c657: Be,
       __wbg_setTimeout_592d289a39056aa2: Wn,
       __wbg_clearTimeout_710cb18754e44d88: Te,
       __wbg_queueMicrotask_97d92b4fcc8a61c5: jn,
@@ -1022,7 +1022,7 @@ ${e.stack}` : _;
       __wbg_iterator_9a24c88df860dc65: en,
       __wbg_new_405e22f390576ce2: sn,
       __wbg_set_37837023f3d740e8: Dn,
-      __wbg_instanceof_ArrayBuffer_e14585432e3737fc: Qe,
+      __wbg_instanceof_ArrayBuffer_e14585432e3737fc: Ke,
       __wbg_new_c68d7209be747379: gn,
       __wbg_call_672a4d21634d4a24: xe,
       __wbg_call_7cccdd69e0791ae2: ve,
@@ -1037,7 +1037,7 @@ ${e.stack}` : _;
       __wbg_buffer_609cc3eee51ed158: he,
       __wbg_stringify_f7ed6987935b4a24: ut,
       __wbg_new_23a2665fac83c611: cn,
-      __wbg_resolve_4851785c9c5f573d: Un,
+      __wbg_resolve_4851785c9c5f573d: Nn,
       __wbg_catch_a6e601879b2610e9: Ie,
       __wbg_then_44b73946d2fb3e7d: ft,
       __wbg_then_48b406749878a531: gt,
@@ -1047,7 +1047,7 @@ ${e.stack}` : _;
       __wbg_static_accessor_GLOBAL_88a902d13a557d07: ct,
       __wbg_newwithbyteoffsetandlength_d97e637ebe145a9a: hn,
       __wbg_new_a12002a7f91c75be: fn,
-      __wbg_instanceof_Uint8Array_17156bcf118086a9: Ze,
+      __wbg_instanceof_Uint8Array_17156bcf118086a9: Ye,
       __wbg_newwithlength_a381634e90c276d4: yn,
       __wbg_buffer_09165b52af8c5237: le,
       __wbg_subarray_aa9065fa9dc5df96: dt,
@@ -1057,7 +1057,7 @@ ${e.stack}` : _;
       __wbg_set_65595bdd868b3009: $n,
       __wbindgen_debug_string: At,
       __wbindgen_throw: $t,
-      __wbindgen_memory: Bt,
+      __wbindgen_memory: Ut,
       __wbindgen_closure_wrapper3882: Tt,
       __wbindgen_closure_wrapper3884: Rt,
       __wbindgen_closure_wrapper3886: Ft,
@@ -1066,9 +1066,9 @@ ${e.stack}` : _;
       __wbindgen_closure_wrapper14914: St,
       __wbindgen_init_externref_table: Ot
     }
-  }, Y), Vt = c.memory, Gt = c.start, Ht = c.__wbg_chatnode_free, Jt = c.chatnode_spawn, Kt = c.chatnode_node_id, Qt = c.chatnode_remote_info, Xt = c.chatnode_create, Yt = c.chatnode_join, Zt = c.__wbg_channel_free, e_ = c.channel_sender, n_ = c.channel_receiver, t_ = c.channel_ticket, __ = c.channel_id, r_ = c.channel_neighbors, o_ = c.__wbg_channelsender_free, c_ = c.channelsender_broadcast, s_ = c.__wbg_intounderlyingbytesource_free, i_ = c.intounderlyingbytesource_type, a_ = c.intounderlyingbytesource_autoAllocateChunkSize, b_ = c.intounderlyingbytesource_start, u_ = c.intounderlyingbytesource_pull, d_ = c.intounderlyingbytesource_cancel, f_ = c.__wbg_intounderlyingsource_free, g_ = c.intounderlyingsource_pull, w_ = c.intounderlyingsource_cancel, l_ = c.__wbg_intounderlyingsink_free, h_ = c.intounderlyingsink_write, p_ = c.intounderlyingsink_close, y_ = c.intounderlyingsink_abort, m_ = c.ring_core_0_17_11__bn_mul_mont, x_ = c.__wbindgen_export_0, v_ = c.__wbindgen_export_1, k_ = c.__wbindgen_export_2, I_ = c.__wbindgen_export_3, S_ = c.__wbindgen_export_4, T_ = c.__wbindgen_export_5, R_ = c.__wbindgen_export_6, F_ = c.__wbindgen_export_7, j_ = c.__wbindgen_add_to_stack_pointer, A_ = c.__wbindgen_export_8, C_ = c.closure855_externref_shim, E_ = c.__wbindgen_export_10, O_ = c.closure2790_externref_shim, L_ = c.closure2895_externref_shim, J = c.__wbindgen_start, M_ = Object.freeze(Object.defineProperty({
+  }, X), Vt = c.memory, Gt = c.start, Ht = c.__wbg_chatnode_free, Jt = c.chatnode_spawn, Zt = c.chatnode_node_id, Kt = c.chatnode_remote_info, Qt = c.chatnode_create, Xt = c.chatnode_join, Yt = c.__wbg_channel_free, e_ = c.channel_sender, n_ = c.channel_receiver, t_ = c.channel_ticket, __ = c.channel_id, r_ = c.channel_neighbors, o_ = c.__wbg_channelsender_free, c_ = c.channelsender_broadcast, s_ = c.__wbg_intounderlyingbytesource_free, i_ = c.intounderlyingbytesource_type, a_ = c.intounderlyingbytesource_autoAllocateChunkSize, b_ = c.intounderlyingbytesource_start, u_ = c.intounderlyingbytesource_pull, d_ = c.intounderlyingbytesource_cancel, f_ = c.__wbg_intounderlyingsource_free, g_ = c.intounderlyingsource_pull, w_ = c.intounderlyingsource_cancel, l_ = c.__wbg_intounderlyingsink_free, h_ = c.intounderlyingsink_write, p_ = c.intounderlyingsink_close, y_ = c.intounderlyingsink_abort, m_ = c.ring_core_0_17_11__bn_mul_mont, x_ = c.__wbindgen_export_0, v_ = c.__wbindgen_export_1, k_ = c.__wbindgen_export_2, I_ = c.__wbindgen_export_3, S_ = c.__wbindgen_export_4, T_ = c.__wbindgen_export_5, R_ = c.__wbindgen_export_6, F_ = c.__wbindgen_export_7, j_ = c.__wbindgen_add_to_stack_pointer, A_ = c.__wbindgen_export_8, C_ = c.closure855_externref_shim, E_ = c.__wbindgen_export_10, O_ = c.closure2790_externref_shim, L_ = c.closure2895_externref_shim, J = c.__wbindgen_start, M_ = Object.freeze(Object.defineProperty({
     __proto__: null,
-    __wbg_channel_free: Zt,
+    __wbg_channel_free: Yt,
     __wbg_channelsender_free: o_,
     __wbg_chatnode_free: Ht,
     __wbg_intounderlyingbytesource_free: s_,
@@ -1092,10 +1092,10 @@ ${e.stack}` : _;
     channel_sender: e_,
     channel_ticket: t_,
     channelsender_broadcast: c_,
-    chatnode_create: Xt,
-    chatnode_join: Yt,
-    chatnode_node_id: Kt,
-    chatnode_remote_info: Qt,
+    chatnode_create: Qt,
+    chatnode_join: Xt,
+    chatnode_node_id: Zt,
+    chatnode_remote_info: Kt,
     chatnode_spawn: Jt,
     closure2790_externref_shim: O_,
     closure2895_externref_shim: L_,
@@ -1118,7 +1118,7 @@ ${e.stack}` : _;
   }));
   ee(M_);
   J();
-  K = class {
+  Z = class {
     constructor(n) {
       __publicField(this, "chatNode");
       __publicField(this, "channels", /* @__PURE__ */ new Map());
@@ -1127,7 +1127,7 @@ ${e.stack}` : _;
     static async create() {
       j.info("Spawning iroh node");
       const n = await L.spawn();
-      return j.info(`Iroh node spawned. our node id: ${n.node_id()}`), new K(n);
+      return j.info(`Iroh node spawned. our node id: ${n.node_id()}`), new Z(n);
     }
     async createChannel(n) {
       const t = this.chatNode.create(n);
@@ -1175,14 +1175,14 @@ ${e.stack}` : _;
               status: "online"
             };
             i.peers.set(d.from, m);
-            const N = {
+            const B = {
               id: G(i),
               sender: d.from,
               content: d.text
             };
-            i.messages.push(N);
-            const Q = M(i, N);
-            for (const X of i.subscribers) X(Q);
+            i.messages.push(B);
+            const K = M(i, B);
+            for (const Q of i.subscribers) Q(K);
           } else if (d.type === "presence") {
             const m = {
               id: d.from,
@@ -1298,6 +1298,6 @@ ${e.stack}` : _;
   }
 });
 export {
-  K as IrohAPI,
+  Z as IrohAPI,
   __tla
 };
