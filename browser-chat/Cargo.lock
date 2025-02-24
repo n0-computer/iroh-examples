@@ -1963,7 +1963,7 @@ dependencies = [
 [[package]]
 name = "iroh-gossip"
 version = "0.32.0"
-source = "git+https://github.com/n0-computer/iroh-gossip.git?branch=Frando%2Fwasm#b4871b639b23a7a13a4f017d70d1371190da9002"
+source = "git+https://github.com/n0-computer/iroh-gossip.git?branch=Frando%2Fwasm#910256c51d94d8157b99764ca56f459cf24c0d47"
 dependencies = [
  "anyhow",
  "async-channel",
