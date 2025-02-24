@@ -12,9 +12,9 @@ class LogSystem {
   private logs: LogMessage[] = []
   private subscribers: Set<(log: LogMessage) => void> = new Set()
 
-  error(message: any, error: any) {
+  error(message: any, error?: any) {
     console.error(message, error)
-    this.log(`${message} ${error}`, "error")
+    this.log(`${message} ${error || ""}`, "error")
   }
 
   info(message: string) {
