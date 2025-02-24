@@ -6,8 +6,9 @@ The example has the following parts:
 
 * [`shared`](shared) is a Rust library that exposes a `ChatNode`, which uses iroh and iroh-gossip to power a simple ephemeral gossip chat between peers.
 * [`cli`](cli) uses the `shared` library to create a basic command-line interface to chat with peers
-* [`browser-wasm`] is a WebAssembly wrapper around the shared library which uses [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) to expose the chat node to JavaScript running in web browser. It can be packaged with [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) into a NPM package.
-* [`frontend`] is a web app that uses `browser-wasm`. The web app is a single-page application built with React and shadcn. The UI was mostly built by an AI tool, which we then adapted to use the API exposed by `browser-wasm`.
+* [`browser-wasm`](browser-wasm) is a WebAssembly wrapper around the shared library which uses [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) to expose the chat node to JavaScript running in web browser. It can be packaged with [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) into a NPM package.
+* [`frontend`](frontend) is a web app that uses `browser-wasm`. The web app is a single-page application written [Typescript](https://www.typescriptlang.org/), using [React](https://react.dev/) and [shadcn components](https://ui.shadcn.com/).
+  It is built and bundled with [Vite](https://vite.dev/). The UI was initially mostly written by an AI tool, which we then adapted to use the API exposed by `browser-wasm`.
 
 ## Requirements
 
@@ -27,32 +28,23 @@ To build the chat app in development mode, run these commands:
 ```
 cd frontend
 npm run build:wasm
-npm run install
+npm install
 npm run dev
 ```
 
 And then open [`http://localhost:5173`](http://localhost:5173) in your browser.
 
-Note that you have to run `npm run build:wasm` *before* running `npm run install`.
-`build:wasm` is an alias defined in [`frontend/package.json`](frontend/package.json) that builds and packs the `wasm-browser` crate with [`wasm-pack`](https://rustwasm.github.io/wasm-pack/).
+Note that you have to run `npm run build:wasm` *before* running `npm install`.
+`build:wasm` is an alias defined in [`frontend/package.json`](frontend/package.json) that builds and packs the [`browser-wasm` crate](browser-wasm) with [`wasm-pack`](https://rustwasm.github.io/wasm-pack/).
 Spelled out:
 
 ```
-wasm-pack build ./browser-wasm --dev --weak-refs --reference-types -t bundler -d pkg",
+wasm-pack build ./browser-wasm --dev --weak-refs --reference-types -t bundler -d pkg
 ```
-This builds the `browser-wasm` for the `wasm32-unknown-unknown` target, creates the JavaScript bindings with `wasm-bindgen` and wrap it into an NPM package ready to be used by common frontend bundling tools (like Vite in our chat app frontend).
-
-Now, you can install and build the frontend in development mode:
-
-```
-cd frontend
-npm install
-npm run dev
-```
+This builds the `browser-wasm` for the `wasm32-unknown-unknown` target, creates the JavaScript bindings with `wasm-bindgen`, and wraps it into an NPM package ready to be used by common frontend bundling tools (like Vite in our chat app frontend).
 
 The frontend package has a `file:` dependency onto the Wasm package created by `wasm-pack`.
-Whenever you change something on the rust side, you need to rebuild the Wasm package with the `wasm-pack` command from above.
-To make this easier, the `frontend` package defines an command alias `build:wasm` for this, so you can run `npm run build:wasm` instead.
+Whenever you change something on the rust side, you need to rebuild the Wasm package with `npm run build:wasm` (or the `wasm-pack` command).
 Likely you will have to restart the Vite dev server afterwards, as the Wasm is not properly picked up by Vite's hot module reloader.
 
 ## Production build
