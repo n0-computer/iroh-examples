@@ -1,0 +1,9 @@
+# we specify the profile here, because it is the only way to define
+# different settings for a single crate in a workspace.
+[profile.release]
+codegen-units = 1
+strip = "symbols"
+debug = false
+lto = true
+opt-level = "z"
+panic = 'abort'

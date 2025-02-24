@@ -20,15 +20,3 @@ tracing-subscriber-wasm = "0.1.0"
 wasm-bindgen = "=0.2.100"
 wasm-bindgen-futures = "0.4"
 wasm-streams = "0.4.2"
-# tsify = { version = "0.4.5", default-features = false, features = [
-#     "js",
-#     "wasm-bindgen",
-# ] }
-
-[profile.release]
-codegen-units = 1
-# strip = "symbols"
-debug = false
-lto = true
-opt-level = "z"
-panic = 'abort'

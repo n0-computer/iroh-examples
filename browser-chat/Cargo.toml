@@ -1,3 +1,15 @@
 [workspace]
 resolver = "2"
 members = ["shared", "cli", "browser-wasm"]
+
+[workspace.dependencies]
+# we define iroh dependencies here to make upgrading easier.
+iroh = { version = "0.32", default-features = false }
+iroh-base = { version = "0.32", default-features = false, features = ["ticket"] }
+iroh-gossip = { version = "0.32", default-features = false, features = ["net"] }
+
+[patch.crates-io]
+# patching iroh until release
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "Frando/wasm" }
