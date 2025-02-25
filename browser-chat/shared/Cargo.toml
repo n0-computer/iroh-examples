@@ -1,0 +1,18 @@
+[package]
+name = "chat-shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+blake3 = { version = "1", package = "iroh-blake3" }
+hex = "0.4"
+iroh = { workspace = true }
+iroh-base = { workspace = true, default-features = false, features = ["ticket"] }
+iroh-gossip = { workspace = true, default-features = false, features = ["net"] }
+n0-future = "0.1.2"
+postcard = "1.1.1"
+rand = "0.8"
+serde = "1"
+tokio = { version = "1", default-features = false, features = ["sync"] }
+tracing = "0.1"

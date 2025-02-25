@@ -1,0 +1,22 @@
+[package]
+name = "chat-browser"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1.0.86"
+chat-shared = { version = "0.1.0", path = "../shared" }
+console_error_panic_hook = "0.1.7"
+getrandom = { version = "0.2", features = ["js"] }
+n0-future = "0.1.2"
+serde = "1.0.217"
+serde-wasm-bindgen = "0.6.5"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber-wasm = "0.1.0"
+wasm-bindgen = "=0.2.100"
+wasm-bindgen-futures = "0.4"
+wasm-streams = "0.4.2"

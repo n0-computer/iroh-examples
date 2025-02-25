@@ -1,0 +1,14 @@
+[package]
+name = "chat-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+clap = { version = "4.5.29", features = ["derive"] }
+iroh = { workspace = true, default-features = false }
+n0-future = "0.1.2"
+rand = "0.8"
+chat-shared = { version = "0.1.0", path = "../shared" }
+tokio = { version = "1.43.0", features = ["rt", "macros"] }
+tracing-subscriber = "0.3.19"
