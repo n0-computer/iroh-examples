@@ -2,6 +2,8 @@
 
 This is a chat app that runs in both the browser and the command line. It uses [`iroh-gossip`](https://github.com/n0-computer/iroh-gossip/) to send messages between peers sharing a channel.
 
+We automatically deploy this example, you can **[try it out here](https://n0-computer.github.io/iroh-examples/main/browser-chat/index.html)**.
+
 The example has the following parts:
 
 * [**shared**](shared) is a Rust library that exposes a `ChatNode`, which uses iroh and iroh-gossip to power a simple ephemeral gossip chat between peers.
