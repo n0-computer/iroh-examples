@@ -6,6 +6,9 @@ The protocol and setup code is shared between the browser and the CLI.
 
 ## Run the browser version:
 
+You can try out the **[deployed example](https://n0-computer.github.io/iroh-examples/main/browser-echo/index.html)**.
+To build and run it yourself, follow these steps:
+
 ```sh
 $ cargo install wasm-bindgen-cli
 $ rustup target install wasm32-unknown-unknown
