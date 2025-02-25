@@ -13,7 +13,7 @@ Forward http requests to dumbpipe. Share a local dev server publicly.
 
 # Extism
 
-Use iroh through [extism] 
+Use iroh through [extism]
 
 # Iroh-automerge
 
@@ -30,6 +30,10 @@ Node discovery using the bittorrent [mainline] DHT and [pkarr].
 # Tauri-todos
 
 Todo app using iroh documents and [tauri]
+
+# Browser-echo
+
+Use iroh in the browser, compiled to web assembly.
 
 [iroh-experiments]: https://github.com/n0-computer/iroh-experiments
 [extism]: https://extism.org/
