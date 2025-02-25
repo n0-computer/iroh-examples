@@ -76,6 +76,9 @@ export function InvitePopupContent({ channel, getTicket }: InvitePopupProps) {
 
   const cliCommand = `cargo run -- join ${ticket}`
 
+  const ticketUrlFull = ticketUrl(ticket)
+  const ticketUrlShort = ticketUrl(ticket.substring(0, 16))
+
   return (
     <>
       <div className="mb-4">
@@ -90,9 +93,15 @@ export function InvitePopupContent({ channel, getTicket }: InvitePopupProps) {
       </div>
       <div className="mb-4">
         <p className="font-semibold mb-2">Join link</p>
-        <a href={ticketUrl(ticket)} className="text-blue-500 hover:underline" target="_blank">
-          {ticketUrl(ticket.substring(0, 16))}...
-        </a>
+        <div className="flex items-center space-x-2">
+          <a href={ticketUrlFull} className="text-blue-500 hover:underline" target="_blank">
+            {ticketUrlShort}…
+          </a>
+          <Button variant="outline" size="sm" onClick={() => copyToClipboard(ticketUrlFull)}>
+            <Copy className="w-4 h-4 mr-2" />
+            Copy
+          </Button>
+        </div>
       </div>
       <div className="mb-4">
         <p className="font-semibold mb-2">Join from the command line</p>

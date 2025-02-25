@@ -7,7 +7,6 @@ import Header from "./components/header"
 import Sidebar from "./components/sidebar"
 import { ThemeProvider } from "next-themes"
 import { API, initApi, type ChannelInfo } from "./lib/api"
-import { generate as generateName } from 'yet-another-name-generator'
 import { log } from "./lib/log"
 import { useIsDesktop } from "./hooks/use-media-query"
 
@@ -63,26 +62,27 @@ function App({ api }: AppProps) {
   const [currentView, setCurrentView] = useState<"home" | "chat">("home")
   const [channels, setChannels] = useState<ChannelInfo[]>([])
   const [activeChannel, setActiveChannel] = useState<string | null>(null)
-  const [nickname, setNickname] = useState(generateName())
   const [showSidebar, setShowSidebar] = useState(false)
 
-  const joinChannel = async (ticket: string) => {
+  const joinChannel = (ticket: string, nickname: string) => {
     try {
-      const channel = await api.joinChannel(ticket, nickname)
+      const channel = api.joinChannel(ticket, nickname)
       setChannels((prevChannels) => [...prevChannels, channel])
-      setActiveChannel(channel.id)
       setCurrentView("chat")
+      setActiveChannel(channel.id)
+      setShowSidebar(true)
     } catch (error) {
       log.error("Failed to join channel", error)
     }
   }
 
-  const createChannel = async () => {
+  const createChannel = (nickname: string) => {
     try {
-      const channel = await api.createChannel(nickname)
+      const channel = api.createChannel(nickname)
       setChannels((prevChannels) => [...prevChannels, channel])
       setActiveChannel(channel.id)
       setCurrentView("chat")
+      setShowSidebar(true)
     } catch (error) {
       log.error("Failed to create channel", error)
     }
@@ -117,7 +117,7 @@ function App({ api }: AppProps) {
 
   return (
     <>
-      {isDesktop && (currentView === "chat" || showSidebar) && (
+      {isDesktop && (showSidebar) && (
         <Sidebar
           channels={channels}
           activeChannel={activeChannel}
@@ -134,32 +134,13 @@ function App({ api }: AppProps) {
         />
         {currentView === "home" && (
           <HomeScreen
-            name={nickname}
-            onSetName={setNickname}
-            onJoin={(ticket) => {
-              joinChannel(ticket)
-              setShowSidebar(false)
-            }}
-            onCreate={() => {
-              createChannel()
-              setShowSidebar(false)
-            }}
+            onJoin={joinChannel}
+            onCreate={createChannel}
           />
         )}
         {currentView === "chat" && activeChannel && (
           <ChatView api={api} channel={activeChannel} onClose={() => closeChannel(activeChannel)} />
         )}
-        {/* {showInvitePopup && activeChannel && (
-          <InvitePopup
-            open={showInvitePopup}
-            onOpenChange={(x) => {
-              console.log("openchange", x)
-              setShowInvitePopup(x)
-            }}
-            channel={channels.find((c) => c.id === activeChannel)?.name || ""}
-            getTicket={(opts) => api.getTicket(activeChannel!, opts)}
-          />
-        )} */}
       </div>
     </>
   )
