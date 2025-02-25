@@ -14,7 +14,7 @@ Use iroh in the browser, compiled to web assembly. [Try it here!](https://n0-com
 ### [browser-chat](browser-chat)
 
 A chat app based on iroh-gossip that can run both in the browser and on the command line.
-[Try it here!](https://n0-computer.github.io/iroh-examples/main/browser-echo/index.html)
+[Try it here!](https://n0-computer.github.io/iroh-examples/main/browser-chat/index.html)
 
 ### [dumbpipe-web](dumbpipe-web)
 
