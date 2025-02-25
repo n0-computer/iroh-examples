@@ -312,23 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-server"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "495c05f60d6df0093e8fb6e74aa5846a0ad06abaf96d76166283720bf740f8ab"
-dependencies = [
- "bytes",
- "fs-err",
- "http 1.2.0",
- "http-body",
- "hyper",
- "hyper-util",
- "tokio",
- "tokio-rustls",
- "tower-service",
-]
-
-[[package]]
 name = "backon"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1191,16 +1174,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "fs-err"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f89bda4c2a21204059a977ed3bfe746677dfd137b83c339e702b0ac91d482aa"
-dependencies = [
- "autocfg",
- "tokio",
 ]
 
 [[package]]
@@ -4750,9 +4723,9 @@ dependencies = [
 [[package]]
 name = "tokio-rustls-acme"
 version = "0.6.0"
+source = "git+https://github.com/n0-computer/tokio-rustls-acme?rev=782d5fa3d4768785ce311dc3207bc29c1ad2b69f#782d5fa3d4768785ce311dc3207bc29c1ad2b69f"
 dependencies = [
  "async-trait",
- "axum-server",
  "base64 0.22.1",
  "chrono",
  "futures",
