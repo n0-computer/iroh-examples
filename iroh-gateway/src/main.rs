@@ -9,6 +9,7 @@ use axum::{
     routing::get,
     Extension, Router,
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
@@ -629,7 +630,7 @@ async fn main() -> anyhow::Result<()> {
                 });
             }
         }
-        CertMode::LetsEncryptStaging | CertMode::LetsEncrypt => {
+        CertMode::LetsEncryptStaging | CertMode::LetsEncrypt | CertMode::CustomCA => {
             // Run with letsencrypt certificates
             //
             // Code copied from https://github.com/tokio-rs/axum/tree/main/examples/low-level-rustls/src and adapted
@@ -640,11 +641,19 @@ async fn main() -> anyhow::Result<()> {
             let hostnames = args.hostname;
             let contact = args.contact.context("contact not specified")?;
             let dir = args.cert_path.context("cert_path not specified")?;
-            let state = AcmeConfig::new(hostnames)
+            let mut acme_config = AcmeConfig::new(hostnames.clone())
                 .contact([format!("mailto:{contact}")])
                 .cache_option(Some(DirCache::new(dir)))
-                .directory_lets_encrypt(is_production)
-                .state();
+                .directory_lets_encrypt(is_production);
+
+            if args.cert_mode == CertMode::CustomCA {
+                let eab_key = URL_SAFE_NO_PAD.decode(args.acme_eab_hmac_key.unwrap())?;
+
+                acme_config = acme_config.directory(args.acme_directory.unwrap())
+                    .external_account_binding(args.acme_eab_kid.unwrap(), eab_key);
+            }
+
+            let state = acme_config.state();
             let config = rustls::ServerConfig::builder()
                 .with_no_client_auth()
                 .with_cert_resolver(state.resolver());
@@ -670,6 +679,7 @@ async fn main() -> anyhow::Result<()> {
                 "https with letsencrypt certificates, production = {}",
                 is_production
             );
+            println!( "https hostnames = {}", Vec::from_iter(hostnames.iter().map(|i| i.to_string())).join(", "));
             let tcp_listener = TcpListener::bind(addr).await?;
 
             pin_mut!(tcp_listener);
