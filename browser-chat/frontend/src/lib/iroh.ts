@@ -31,12 +31,12 @@ export class IrohAPI implements API {
     return new IrohAPI(chatNode)
   }
 
-  async createChannel(nickname: string): Promise<ChannelInfo> {
+  createChannel(nickname: string): ChannelInfo {
     const channel = this.chatNode.create(nickname)
     return this.joinInner(channel, nickname)
   }
 
-  async joinChannel(ticket: string, nickname: string): Promise<ChannelInfo> {
+  joinChannel(ticket: string, nickname: string): ChannelInfo {
     const channel = this.chatNode.join(ticket, nickname)
     return this.joinInner(channel, nickname)
   }

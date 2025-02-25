@@ -22,9 +22,9 @@ async function importAndInitOnce() {
 }
 
 export interface API {
-  createChannel(nickname: string): Promise<ChannelInfo>
-  joinChannel(ticket: string, nickname: string): Promise<ChannelInfo>
-  sendMessage(channelId: string, message: string): Promise<void>
+  createChannel(nickname: string): ChannelInfo
+  joinChannel(ticket: string, nickname: string): ChannelInfo
+  sendMessage(channelId: string, message: string): void
   setNickname(channelId: string, nickname: string): void
   getMessages(channelId: string): Message[]
   getPeers(channelId: string): PeerInfo[]
