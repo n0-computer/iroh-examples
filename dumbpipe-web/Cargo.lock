@@ -712,8 +712,9 @@ checksum = "dcbb2bf8e87535c23f7a8a321e364ce21462d0ff10cb6407820e8e96dfff6653"
 
 [[package]]
 name = "dumbpipe"
-version = "0.24.0"
-source = "git+https://github.com/n0-computer/dumbpipe.git?branch=main#921ccb4103c2a3f0caf5ed380b14146801a2fa78"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a08b4d17d3bad38db42c959ecaadcf1d24e1dd11224aec3b3fe3654fd98c5d16"
 dependencies = [
  "anyhow",
  "clap",
@@ -1544,8 +1545,9 @@ checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
 name = "iroh"
-version = "0.32.1"
-source = "git+https://github.com/n0-computer/iroh.git?branch=main#892c767970d8f2e0ff96e437f8c8a7695801ddf3"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4ffd6af2e000f04972068c0318e0d8fa90ee9cfcb2bc6124db38591500e0278"
 dependencies = [
  "aead",
  "anyhow",
@@ -1602,8 +1604,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "0.32.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=main#892c767970d8f2e0ff96e437f8c8a7695801ddf3"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "011d271a95b41218d22bdaf3352f29ef1dd7d6be644ca8543941655bec5f3d35"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",
@@ -1638,8 +1641,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-net-report"
-version = "0.32.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=main#892c767970d8f2e0ff96e437f8c8a7695801ddf3"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d2652f42eadc63458e36c0a422569f338639dc0b5bb469db0eb4a382b4e295c"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1721,8 +1725,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-relay"
-version = "0.32.0"
-source = "git+https://github.com/n0-computer/iroh.git?branch=main#892c767970d8f2e0ff96e437f8c8a7695801ddf3"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c930ccc4dfd0196b531344e3d0f83a0f82c45b170406e04a2491cba571faec5b"
 dependencies = [
  "anyhow",
  "bytes",

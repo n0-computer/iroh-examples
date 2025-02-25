@@ -19,11 +19,11 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.6.1", features = ["api-all"] }
 tokio = { version = "1" }
 quic-rpc = { version = "0.18" }
-iroh = "0.32"
-iroh-docs = { version = "0.32", features = ["rpc"] }
-iroh-blobs = { version = "0.32", features = ["rpc"] }
-iroh-gossip = { version = "0.32", features = ["rpc"] }
-iroh-node-util = "0.32"
+iroh = "0.33"
+iroh-docs = { version = "0.33", features = ["rpc"] }
+iroh-blobs = { version = "0.33", features = ["rpc"] }
+iroh-gossip = { version = "0.33", features = ["rpc"] }
+iroh-node-util = "0.33"
 bytes = "1"
 num_cpus = { version = "1.15.0" }
 tokio-util = { version = "0.7" }
@@ -36,12 +36,3 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
-
-
-[patch.crates-io]
-iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
-iroh-docs= { git = "https://github.com/n0-computer/iroh-docs.git", branch = "main" }
-iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "main" }
-iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "main" }
-iroh-node-util = { git = "https://github.com/n0-computer/iroh-node-util.git", branch = "main" }
-quic-rpc = { git = "https://github.com/n0-computer/quic-rpc.git", branch = "main" }

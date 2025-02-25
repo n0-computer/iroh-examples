@@ -8,11 +8,7 @@ anyhow = "1.0.79"
 dirs-next = "2.0.0"
 extism = "1.0.0"
 futures = "0.3.29"
-iroh = "0.32"
-iroh-blobs = { version = "0.32", features = ["rpc"] }
+iroh = "0.33"
+iroh-blobs = { version = "0.33", features = ["rpc"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec", "io-util", "io", "time"] }
-
-[patch.crates-io]
-iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
-iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "main" }
