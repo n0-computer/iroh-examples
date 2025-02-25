@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as R, P as q, __tla as __tla_0 } from "./index-BcMQiwHc.js";
+import { l as R, P as q, __tla as __tla_0 } from "./index-CVEqp0HV.js";
 let X;
 let __tla = Promise.all([
   (() => {
@@ -1134,11 +1134,11 @@ ${e.stack}` : _;
       const n = await L.spawn();
       return R.info(`Iroh node spawned. our node id: ${n.node_id()}`), new X(n);
     }
-    async createChannel(n) {
+    createChannel(n) {
       const t = this.chatNode.create(n);
       return this.joinInner(t, n);
     }
-    async joinChannel(n, t) {
+    joinChannel(n, t) {
       const _ = this.chatNode.join(n, t);
       return this.joinInner(_, t);
     }
