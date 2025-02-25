@@ -286,7 +286,7 @@ dependencies = [
  "serde_urlencoded",
  "sync_wrapper",
  "tokio",
- "tower 0.5.2",
+ "tower",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -311,26 +311,6 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "axum-server"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56bac90848f6a9393ac03c63c640925c4b7c8ca21654de40d53f55964667c7d8"
-dependencies = [
- "bytes",
- "futures-util",
- "http 1.2.0",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "pin-project-lite",
- "tokio",
- "tokio-rustls",
- "tower 0.4.13",
- "tower-service",
 ]
 
 [[package]]
@@ -4448,9 +4428,9 @@ dependencies = [
 [[package]]
 name = "tokio-rustls-acme"
 version = "0.6.0"
+source = "git+https://github.com/benburkert/tokio-rustls-acme?rev=0a4d2bcbbdfca48af9c9d5fe3a780a89e8c69b84#0a4d2bcbbdfca48af9c9d5fe3a780a89e8c69b84"
 dependencies = [
  "async-trait",
- "axum-server",
  "base64 0.22.1",
  "chrono",
  "futures",
@@ -4545,21 +4525,6 @@ dependencies = [
  "indexmap",
  "toml_datetime",
  "winnow",
-]
-
-[[package]]
-name = "tower"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
-dependencies = [
- "futures-core",
- "futures-util",
- "pin-project",
- "pin-project-lite",
- "tower-layer",
- "tower-service",
- "tracing",
 ]
 
 [[package]]
