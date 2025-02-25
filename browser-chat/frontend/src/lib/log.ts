@@ -49,6 +49,3 @@ class LogSystem {
 }
 
 export const log = new LogSystem()
-while (log.get().length < 30) {
-  log.info("foobar foo baz " + log.get().length)
-}
