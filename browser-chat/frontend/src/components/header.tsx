@@ -1,18 +1,17 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { UserPlus, FileText, Moon, Sun } from "lucide-react"
+import { UserPlus, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { LogViewButton } from "./logview"
 
 interface HeaderProps {
-  onLogsClick: () => void
   onInviteClick?: () => void
   title?: string | null
 }
 
 export default function Header({
-  onLogsClick: onLogsClick,
   onInviteClick,
   title,
 }: HeaderProps) {
@@ -28,10 +27,11 @@ export default function Header({
             Invite
           </Button>
         )}
-        <Button onClick={onLogsClick} variant="secondary">
+        <LogViewButton />
+        {/* <Button onClick={onLogsClick} variant="secondary">
           <FileText className="w-4 h-4 mr-2" />
           Logs
-        </Button>
+        </Button> */}
         <ThemeToggle />
       </div>
     </header>

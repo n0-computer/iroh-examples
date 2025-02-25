@@ -4,13 +4,12 @@ import { useState, useEffect } from "react"
 import HomeScreen from "./components/homescreen"
 import ChatView from "./components/chatview"
 import Header from "./components/header"
-import LogView from "./components/logview"
 import Sidebar from "./components/sidebar"
 import { ThemeProvider } from "next-themes"
-import { InvitePopup } from "./components/invitepopup"
 import { API, initApi, type ChannelInfo } from "./lib/api"
 import { generate as generateName } from 'yet-another-name-generator'
 import { log } from "./lib/log"
+import { useIsDesktop } from "./hooks/use-media-query"
 
 export default function AppWrapper() {
   const [api, setApi] = useState<API | null>(null)
@@ -45,13 +44,9 @@ function Spinner() {
 }
 
 function SplashScreen({ children }: React.PropsWithChildren) {
-  const [showLogView, setShowLogView] = useState(false)
   return (
     <div className="flex flex-col flex-grow">
-      <Header
-        onLogsClick={() => setShowLogView(!showLogView)}
-      />
-      {showLogView && <LogView onClose={() => setShowLogView(false)} />}
+      <Header />
       <div className="flex items-center justify-center">
         {children}
       </div>
@@ -68,9 +63,7 @@ function App({ api }: AppProps) {
   const [currentView, setCurrentView] = useState<"home" | "chat">("home")
   const [channels, setChannels] = useState<ChannelInfo[]>([])
   const [activeChannel, setActiveChannel] = useState<string | null>(null)
-  const [showLogView, setShowLogView] = useState(false)
   const [nickname, setNickname] = useState(generateName())
-  const [showInvitePopup, setShowInvitePopup] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
 
   const joinChannel = async (ticket: string) => {
@@ -115,6 +108,8 @@ function App({ api }: AppProps) {
     setShowSidebar(true)
   }
 
+  const isDesktop = useIsDesktop()
+
   let title
   if (activeChannel) {
     title = '#' + channels.find((c) => c.id === activeChannel)?.name
@@ -122,7 +117,7 @@ function App({ api }: AppProps) {
 
   return (
     <>
-      {(currentView === "chat" || showSidebar) && (
+      {isDesktop && (currentView === "chat" || showSidebar) && (
         <Sidebar
           channels={channels}
           activeChannel={activeChannel}
@@ -135,9 +130,7 @@ function App({ api }: AppProps) {
       )}
       <div className="flex flex-col flex-grow">
         <Header
-          onLogsClick={() => setShowLogView(!showLogView)}
           title={title}
-          onInviteClick={activeChannel ? (() => setShowInvitePopup(true)) : undefined}
         />
         {currentView === "home" && (
           <HomeScreen
@@ -156,8 +149,7 @@ function App({ api }: AppProps) {
         {currentView === "chat" && activeChannel && (
           <ChatView api={api} channel={activeChannel} onClose={() => closeChannel(activeChannel)} />
         )}
-        {showLogView && <LogView onClose={() => setShowLogView(false)} />}
-        {showInvitePopup && activeChannel && (
+        {/* {showInvitePopup && activeChannel && (
           <InvitePopup
             open={showInvitePopup}
             onOpenChange={(x) => {
@@ -167,7 +159,7 @@ function App({ api }: AppProps) {
             channel={channels.find((c) => c.id === activeChannel)?.name || ""}
             getTicket={(opts) => api.getTicket(activeChannel!, opts)}
           />
-        )}
+        )} */}
       </div>
     </>
   )

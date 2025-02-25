@@ -1,14 +1,11 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  AdaptiveDialog,
+  AdaptiveDialogContent,
+  AdaptiveDialogDescription,
+  AdaptiveDialogHeader,
+  AdaptiveDialogTitle,
+  AdaptiveDialogTrigger,
+} from "@/components/ui/adaptive-dialog"
 import { Button } from "@/components/ui/button"
 
 interface LeaveChannelProps {
@@ -16,24 +13,21 @@ interface LeaveChannelProps {
 }
 export function LeaveChannelButton({ onConfirm }: LeaveChannelProps) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
+    <AdaptiveDialog>
+      <AdaptiveDialogTrigger>
         <Button size="sm" variant="destructive">Leave channel</Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
+      </AdaptiveDialogTrigger>
+      <AdaptiveDialogContent>
+        <AdaptiveDialogHeader>
+          <AdaptiveDialogTitle>
             Are you sure?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
+          </AdaptiveDialogTitle>
+          <AdaptiveDialogDescription>
             If you want to rejoin the channel, make sure to save a ticket first by clicking the <em>Invite</em> button.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Leave channel</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </AdaptiveDialogDescription>
+        </AdaptiveDialogHeader>
+        <Button onClick={onConfirm}>Leave channel</Button>
+      </AdaptiveDialogContent>
+    </AdaptiveDialog>
   )
 }

@@ -3,12 +3,12 @@ import { FormEvent, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  AdaptiveDialog,
+  AdaptiveDialogContent,
+  AdaptiveDialogHeader,
+  AdaptiveDialogTitle,
+  AdaptiveDialogTrigger,
+} from "@/components/ui/adaptive-dialog"
 import { API } from "@/lib/api"
 
 interface ChangeNicknameProps {
@@ -33,19 +33,19 @@ export function ChangeNicknameButton({ api, channel }: ChangeNicknameProps) {
     }
   }
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <AdaptiveDialog open={open} onOpenChange={setOpen}>
+      <AdaptiveDialogTrigger>
         <Button variant="secondary" size="sm">Change nickname</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Change nickname</DialogTitle>
-        </DialogHeader>
+      </AdaptiveDialogTrigger>
+      <AdaptiveDialogContent className="sm:max-w-[425px]">
+        <AdaptiveDialogHeader>
+          <AdaptiveDialogTitle>Change nickname</AdaptiveDialogTitle>
+        </AdaptiveDialogHeader>
         <form onSubmit={handleSubmit} className="flex space-x-2">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your nickname" />
           <Button size="sm" type="submit">Save</Button>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AdaptiveDialogContent>
+    </AdaptiveDialog>
   )
 }
