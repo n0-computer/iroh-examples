@@ -506,6 +506,7 @@ async fn forward_range(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
+    rustls::crypto::ring::default_provider().install_default().unwrap();
     let args = args::Args::parse();
     let mut builder = Endpoint::builder().discovery(Box::new(DnsDiscovery::n0_dns()));
     if let Some(addr) = args.iroh_ipv4_addr {
