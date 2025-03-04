@@ -4428,7 +4428,7 @@ dependencies = [
 [[package]]
 name = "tokio-rustls-acme"
 version = "0.6.0"
-source = "git+https://github.com/benburkert/tokio-rustls-acme?rev=0a4d2bcbbdfca48af9c9d5fe3a780a89e8c69b84#0a4d2bcbbdfca48af9c9d5fe3a780a89e8c69b84"
+source = "git+https://github.com/benburkert/tokio-rustls-acme?rev=73750699109a3e1a50001f2b0903bcb77cc2fa52#73750699109a3e1a50001f2b0903bcb77cc2fa52"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
