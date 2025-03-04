@@ -507,7 +507,9 @@ async fn forward_range(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
-    rustls::crypto::ring::default_provider().install_default().unwrap();
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .unwrap();
     let args = args::Args::parse();
     let mut builder = Endpoint::builder().discovery(Box::new(DnsDiscovery::n0_dns()));
     if let Some(addr) = args.iroh_ipv4_addr {
@@ -649,7 +651,8 @@ async fn main() -> anyhow::Result<()> {
             if args.cert_mode == CertMode::CustomCA {
                 let eab_key = URL_SAFE_NO_PAD.decode(args.acme_eab_hmac_key.unwrap())?;
 
-                acme_config = acme_config.directory(args.acme_directory.unwrap())
+                acme_config = acme_config
+                    .directory(args.acme_directory.unwrap())
                     .external_account_binding(args.acme_eab_kid.unwrap(), eab_key);
             }
 
@@ -679,7 +682,10 @@ async fn main() -> anyhow::Result<()> {
                 "https with letsencrypt certificates, production = {}",
                 is_production
             );
-            println!( "https hostnames = {}", Vec::from_iter(hostnames.iter().map(|i| i.to_string())).join(", "));
+            println!(
+                "https hostnames = {}",
+                Vec::from_iter(hostnames.iter().map(|i| i.to_string())).join(", ")
+            );
             let tcp_listener = TcpListener::bind(addr).await?;
 
             pin_mut!(tcp_listener);

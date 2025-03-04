@@ -8,8 +8,7 @@ pub fn load_certs<'a>(filename: impl AsRef<Path>) -> Result<Vec<CertificateDer<'
     println!("loading certs from {}", filename.as_ref().display());
     let certfile = std::fs::File::open(filename).context("cannot open certificate file")?;
     let mut reader = std::io::BufReader::new(certfile);
-    let certs = CertificateDer::pem_reader_iter(&mut reader)
-        .collect::<Result<Vec<_>, _>>()?;
+    let certs = CertificateDer::pem_reader_iter(&mut reader).collect::<Result<Vec<_>, _>>()?;
 
     Ok(certs)
 }
