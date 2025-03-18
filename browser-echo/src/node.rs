@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_channel::Sender;
 use iroh::{
-    endpoint::{Connecting, Connection},
+    endpoint::Connection,
     protocol::{ProtocolHandler, Router},
     Endpoint, NodeId,
 };
@@ -102,21 +102,20 @@ impl Echo {
 }
 
 impl Echo {
-    async fn handle_connecting(self, connecting: Connecting) -> Result<()> {
+    async fn handle_connection(self, connection: Connection) -> Result<()> {
         // Wait for the connection to be fully established.
-        let connection = connecting.await?;
         let node_id = connection.remote_node_id()?;
         self.event_sender
             .send(AcceptEvent::Accepted { node_id })
             .ok();
-        let res = self.handle_connection(&connection).await;
+        let res = self.handle_connection_0(&connection).await;
         let error = res.as_ref().err().map(|err| err.to_string());
         self.event_sender
             .send(AcceptEvent::Closed { node_id, error })
             .ok();
         res
     }
-    async fn handle_connection(&self, connection: &Connection) -> Result<()> {
+    async fn handle_connection_0(&self, connection: &Connection) -> Result<()> {
         // We can get the remote's node id from the connection.
         let node_id = connection.remote_node_id()?;
         info!("Accepted connection from {node_id}");
@@ -151,8 +150,8 @@ impl ProtocolHandler for Echo {
     ///
     /// The returned future runs on a newly spawned tokio task, so it can run as long as
     /// the connection lasts.
-    fn accept(&self, connecting: Connecting) -> BoxFuture<Result<()>> {
-        Box::pin(self.clone().handle_connecting(connecting))
+    fn accept(&self, connection: Connection) -> BoxFuture<Result<()>> {
+        Box::pin(self.clone().handle_connection(connection))
     }
 }
 

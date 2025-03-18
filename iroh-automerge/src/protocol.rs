@@ -6,7 +6,7 @@ use automerge::{
     Automerge,
 };
 use iroh::{
-    endpoint::{Connecting, Connection, RecvStream, SendStream},
+    endpoint::{Connection, RecvStream, SendStream},
     protocol::ProtocolHandler,
 };
 use serde::{Deserialize, Serialize};
@@ -103,8 +103,8 @@ impl IrohAutomergeProtocol {
         Ok(())
     }
 
-    pub async fn respond_sync(&self, conn: Connecting) -> Result<()> {
-        let (mut send, mut recv) = conn.await?.accept_bi().await?;
+    pub async fn respond_sync(&self, conn: Connection) -> Result<()> {
+        let (mut send, mut recv) = conn.accept_bi().await?;
 
         let mut doc = self.fork_doc().await;
         let mut sync_state = sync::State::new();
@@ -146,7 +146,7 @@ impl IrohAutomergeProtocol {
 impl ProtocolHandler for IrohAutomergeProtocol {
     fn accept(
         &self,
-        conn: Connecting,
+        conn: Connection,
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
         let automerge = self.clone();
         Box::pin(async move {
