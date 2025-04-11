@@ -16,6 +16,8 @@ pub enum CertMode {
     LetsEncryptStaging,
     /// Use a letsencrypt certificate, in production mode.
     LetsEncrypt,
+    // Use a non-letsencrypt CA.
+    CustomCA,
 }
 
 #[derive(Parser, Debug)]
@@ -62,4 +64,13 @@ pub struct Args {
     /// In letsencrypt mode, this is the directory used by the acme acceptor.
     #[clap(long, required_if_eq_any([("cert_mode", "LetsEncryptStaging"), ("cert_mode", "LetsEncrypt"), ("cert_mode", "Manual")]))]
     pub cert_path: Option<PathBuf>,
+
+    #[clap(long, required_if_eq_any([("cert_mode", "CustomCA")]))]
+    pub acme_directory: Option<String>,
+
+    #[clap(long, default_value = None)]
+    pub acme_eab_kid: Option<String>,
+
+    #[clap(long, default_value = None)]
+    pub acme_eab_hmac_key: Option<String>,
 }
