@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.80"
-automerge = "0.5.7"
+automerge = "1.0.0-alpha.2"
 clap = { version = "4.5.1", features = ["derive"] }
 iroh = "0.34"
 postcard = "1.0.8"

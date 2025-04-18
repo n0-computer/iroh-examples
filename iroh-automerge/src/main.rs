@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
         // Put some data in the document to sync
         let mut doc = automerge.fork_doc().await;
         let mut t = doc.transaction();
-        for i in 0..5 {
+        for i in 0..100 {
             t.put(automerge::ROOT, format!("key-{i}"), format!("value-{i}"))?;
         }
         t.commit();
