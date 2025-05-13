@@ -40,8 +40,7 @@ impl Iroh {
         // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
-            .spawn()
-            .await?;
+            .spawn();
         Ok(Iroh { router, blobs })
     }
 
