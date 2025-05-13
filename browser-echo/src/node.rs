@@ -29,10 +29,7 @@ impl EchoNode {
             .await?;
         let (event_sender, _event_receiver) = broadcast::channel(128);
         let echo = Echo::new(event_sender.clone());
-        let router = Router::builder(endpoint)
-            .accept(Echo::ALPN, echo)
-            .spawn()
-            .await?;
+        let router = Router::builder(endpoint).accept(Echo::ALPN, echo).spawn();
         Ok(Self {
             router,
             accept_events: event_sender,
