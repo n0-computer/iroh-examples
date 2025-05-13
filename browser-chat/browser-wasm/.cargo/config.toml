@@ -7,3 +7,6 @@ debug = false
 lto = true
 opt-level = "z"
 panic = 'abort'
+
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

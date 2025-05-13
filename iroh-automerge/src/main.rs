@@ -27,8 +27,7 @@ async fn main() -> Result<()> {
     let endpoint = Endpoint::builder().discovery_n0().bind().await?;
     let iroh = Router::builder(endpoint)
         .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
-        .spawn()
-        .await?;
+        .spawn();
 
     let node_id = iroh.endpoint().node_id();
 

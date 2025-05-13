@@ -86,8 +86,7 @@ impl ChatNode {
         info!("gossip spawned");
         let router = Router::builder(endpoint)
             .accept(GOSSIP_ALPN, gossip.clone())
-            .spawn()
-            .await?;
+            .spawn();
         info!("router spawned");
         Ok(Self {
             gossip,
