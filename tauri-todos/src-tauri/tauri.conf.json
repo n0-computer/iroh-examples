@@ -1,52 +1,15 @@
 {
-  "package": {
-    "productName": "tauri-todomvc",
-    "version": "0.1.0"
-  },
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "tauri-todomvc",
+  "version": "0.1.0",
+  "identifier": "com.tauri-todomvc.app",
   "build": {
-    "distDir": "../dist",
-    "devPath": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
-    "withGlobalTauri": true
+    "frontendDist": "../dist"
   },
-  "tauri": {
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.tauri.todomvc",
-      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
-      "resources": [],
-      "externalBin": [],
-      "copyright": "",
-      "category": "DeveloperTool",
-      "shortDescription": "",
-      "longDescription": "",
-      "deb": {
-        "depends": []
-      },
-      "macOS": {
-        "frameworks": [],
-        "exceptionDomain": "",
-        "signingIdentity": null,
-        "providerShortName": null,
-        "entitlements": null
-      },
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": "",
-        "wix": {
-          "language": ["en-US", "zh-CN"]
-        }
-      }
-    },
-    "updater": {
-      "active": false
-    },
-    "allowlist": {
-      "all": true
-    },
+  "app": {
     "windows": [
       {
         "title": "Todo-mvc",
@@ -59,5 +22,19 @@
     "security": {
       "csp": null
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "",
+    "longDescription": "",
+    "icon": [
+      "icons/32x32.png", 
+      "icons/128x128.png", 
+      "icons/128x128@2x.png", 
+      "icons/icon.icns", 
+      "icons/icon.ico"
+    ]
   }
 }
