@@ -4,7 +4,7 @@ import { useState, useCallback, KeyboardEventHandler, useEffect } from 'react'
 import { activeTodoCountAtom, allTodosAtom, anyTodosDone, filterType } from '../store/todos'
 import { Todo } from '../types/todo'
 import TodoItem from './TodoItem'
-import { invoke } from '@tauri-apps/api'
+import { invoke } from '@tauri-apps/api/core'
 
 const TodoList: React.FC<{ todos: Todo[] }> = ({ todos }) => {
   const [ticket, setTicket] = useState('');
@@ -77,7 +77,7 @@ const TodoList: React.FC<{ todos: Todo[] }> = ({ todos }) => {
           onChange={(e) => {
             setNewTodo(e.target.value)
           }}
-          onKeyPress={onAddTodo}
+          onKeyDown={onAddTodo}
           placeholder="What needs to be done?"
         />
       </header>

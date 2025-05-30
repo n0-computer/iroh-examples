@@ -54,7 +54,7 @@ impl Iroh {
             .await?;
         builder = builder.accept(iroh_docs::ALPN, Arc::new(docs.clone()));
 
-        let router = builder.spawn().await?;
+        let router = builder.spawn();
 
         let blobs_client = blobs.client().clone();
         let docs_client = docs.client().clone();

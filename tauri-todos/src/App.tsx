@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api'
+import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useAtom } from 'jotai'
 import { useEffect, useState } from 'react'
@@ -38,7 +38,7 @@ function App() {
   function setTicket(ticket: string) {
     // this is the effect for the modal
     // otherwise just get-todos
-    invoke<Todo[]>('set_ticket', {ticket}).then((res) => {
+    invoke<Todo[]>('set_ticket', {ticket}).then(() => {
       getTodos()
     })
   }
