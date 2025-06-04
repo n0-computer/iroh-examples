@@ -28,6 +28,10 @@ Use iroh through [extism]
 
 Experiment with [FROST] threshold signatures for iroh.
 
+### [gossip-node-discover](gossip-node-discover)
+
+Discover nodes via [iroh-gossip-discovery](https://crates.io/crates/iroh-gossip-discovery).
+
 ### [iroh-automerge](iroh-automerge)
 
 Iroh integration with [automerge]
