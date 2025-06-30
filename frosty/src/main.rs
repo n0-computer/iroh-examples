@@ -8,7 +8,7 @@ use futures::StreamExt;
 use iroh::{
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
     endpoint::{RecvStream, SendStream},
-    PublicKey, SecretKey,
+    PublicKey, SecretKey, Watcher,
 };
 use rand::thread_rng;
 use sha2::{Digest, Sha512};
@@ -335,7 +335,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     let discovery = DnsDiscovery::n0_dns();
     let endpoint = iroh::endpoint::Endpoint::builder()
         .secret_key(secret_key)
-        .discovery(Box::new(discovery))
+        .discovery(discovery)
         .bind()
         .await?;
     // get at least min_cosigners cosigners
@@ -410,14 +410,14 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
             println!("- {} (min {} signers)", key, key_package.min_signers());
         }
     }
-    let discovery = PkarrPublisher::n0_dns(secret_key.clone());
+    let discovery = PkarrPublisher::n0_dns().build(secret_key.clone());
     let endpoint = iroh::endpoint::Endpoint::builder()
         .alpns(vec![COSIGN_ALPN.to_vec()])
         .secret_key(secret_key)
-        .discovery(Box::new(discovery))
+        .discovery(discovery)
         .bind()
         .await?;
-    let addr = endpoint.node_addr().await?;
+    let addr = endpoint.node_addr().initialized().await?;
     println!("\nListening on {}", addr.node_id);
     while let Some(incoming) = endpoint.accept().await {
         let data_path = data_path.clone();
