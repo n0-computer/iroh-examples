@@ -52,7 +52,7 @@ jobs:
       run: rustup target add wasm32-unknown-unknown
 
     - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.4
+      uses: mozilla-actions/sccache-action@v0.0.9
 
     - name: check
       run: |
