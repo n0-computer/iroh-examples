@@ -1,10 +1,4 @@
-import { useAtom } from 'jotai'
-import { v4 as randomUUID } from 'uuid'
-import { useState, useCallback, KeyboardEventHandler } from 'react'
-import { activeTodoCountAtom, allTodosAtom, anyTodosDone, filterType } from '../store/todos'
-import { Todo } from '../types/todo'
-import TodoItem from './TodoItem'
-import { invoke } from '@tauri-apps/api'
+import { useState } from "react";
 
 const OpenList: React.FC<{ createList: () => void, joinList: (ticket: string) => void }> = ({ createList, joinList}) => {
     const [ticket, setTicket] = useState('');

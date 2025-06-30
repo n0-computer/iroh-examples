@@ -5,7 +5,7 @@ import { useDebouncedCallback } from 'use-debounce'
 import { allTodosAtom } from '../store/todos'
 import { Todo } from '../types/todo'
 import { useDoubleClick } from '../hooks/useDoubleClick'
-import { invoke } from '@tauri-apps/api'
+import { invoke } from '@tauri-apps/api/core'
 
 const TodoItem: React.FC<{ todo: Todo }> = ({ todo }) => {
   const [, setTodos] = useAtom(allTodosAtom)
@@ -99,7 +99,7 @@ const TodoItem: React.FC<{ todo: Todo }> = ({ todo }) => {
           value={todo.label}
           onChange={onChange}
           className="edit"
-          onKeyPress={onEnter}
+          onKeyDown={onEnter}
         />
       )}
     </li>
