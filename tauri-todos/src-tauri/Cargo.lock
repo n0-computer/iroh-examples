@@ -3270,6 +3270,7 @@ dependencies = [
  "genawaiter",
  "hex",
  "iroh-base",
+ "iroh-blake3",
  "iroh-blobs",
  "iroh-io",
  "iroh-metrics",
@@ -3279,6 +3280,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_core 0.6.4",
  "redb 2.1.1",
+ "self_cell",
  "serde",
  "sha2",
  "strum 0.26.3",
@@ -7895,7 +7897,7 @@ dependencies = [
 [[package]]
 name = "willow-store"
 version = "0.1.0"
-source = "git+https://github.com/n0-computer/willow-store.git?branch=matheus23/minor-adjustments#286389c1fd318b228d3833435b66d1920aa69d41"
+source = "git+https://github.com/n0-computer/willow-store.git?branch=matheus23/redb-ref#3a29c592fe071ff87fa763bd4650bfed789a53e6"
 dependencies = [
  "anyhow",
  "blake3",

@@ -14,27 +14,28 @@ use tokio::sync::Mutex;
 use self::todos::{Todo, Todos};
 
 // this example uses a persistend iroh node stored in the application data directory
-type IrohNode = iroh::node::Node<iroh::blobs::store::mem::Store>;
+type IrohNode = iroh::node::Node<iroh::blobs::store::fs::Store>;
 
 // setup an iroh node
 async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
-    // let iroh_data_dir = std::env::var("IROH_DATA_DIR")
-    //     .ok()
-    //     .map(std::path::PathBuf::from);
+    let iroh_data_dir = std::env::var("IROH_DATA_DIR")
+        .ok()
+        .map(std::path::PathBuf::from);
 
-    // // get the application data root, join with "iroh_data" to get the data root for the iroh node
-    // let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
-    //     anyhow::Ok(
-    //         handle
-    //             .path_resolver()
-    //             .app_data_dir()
-    //             .ok_or_else(|| anyhow::anyhow!("can't get application data directory"))?
-    //             .join("iroh_data"),
-    //     )
-    // })?;
+    // get the application data root, join with "iroh_data" to get the data root for the iroh node
+    let data_root = iroh_data_dir.map(anyhow::Ok).unwrap_or_else(|| {
+        anyhow::Ok(
+            handle
+                .path_resolver()
+                .app_data_dir()
+                .ok_or_else(|| anyhow::anyhow!("can't get application data directory"))?
+                .join("iroh_data"),
+        )
+    })?;
 
     // create the iroh node
-    let node = iroh::node::Node::memory()
+    let node = iroh::node::Node::persistent(data_root)
+        .await?
         .build()
         .await?
         .accept(
@@ -60,6 +61,7 @@ async fn setup<R: tauri::Runtime>(handle: tauri::AppHandle<R>) -> Result<()> {
         .spawn()
         .await?;
     handle.manage(AppState::new(node));
+    println!("CALLED MANAGE");
 
     Ok(())
 }
