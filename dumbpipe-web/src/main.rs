@@ -42,7 +42,8 @@ fn get_or_create_secret() -> anyhow::Result<SecretKey> {
         Ok(secret) => SecretKey::from_str(&secret).context("invalid secret"),
         Err(_) => {
             let key = SecretKey::generate(rand::thread_rng());
-            eprintln!("using secret key {}", key);
+            let key_str = hex::encode(key.to_bytes());
+            eprintln!("using secret key {}", key_str);
             Ok(key)
         }
     }
