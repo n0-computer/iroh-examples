@@ -2,10 +2,10 @@
 use std::ops::Bound;
 
 use axum::body::Body;
+use bao_tree::ChunkNum;
 use bytes::Bytes;
 use headers::{HeaderMapExt, Range};
 use hyper::Request;
-use iroh_blobs::store::bao_tree::ChunkNum;
 use range_collections::{range_set::RangeSetRange, RangeSet2};
 
 /// Given a range specified as arbitrary range bounds, normalize it into a range

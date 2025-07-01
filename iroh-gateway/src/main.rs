@@ -1,4 +1,9 @@
 mod args;
+use std::{
+    result,
+    sync::{Arc, Mutex},
+};
+
 use anyhow::Context;
 use args::CertMode;
 use axum::{
@@ -9,6 +14,7 @@ use axum::{
     routing::get,
     Extension, Router,
 };
+use bao_tree::{io::fsm::BaoContentItem, ChunkNum};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bytes::Bytes;
 use clap::Parser;
@@ -21,8 +27,7 @@ use iroh_base::ticket::NodeTicket;
 use iroh_blobs::{
     format::collection::Collection,
     get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
-    protocol::{RangeSpecSeq, ALPN},
-    store::bao_tree::{io::fsm::BaoContentItem, ChunkNum},
+    protocol::{ChunkRangesSeq, ALPN},
     ticket::BlobTicket,
     BlobFormat, Hash,
 };
@@ -31,10 +36,6 @@ use mime::Mime;
 use mime_classifier::MimeClassifier;
 use range_collections::RangeSet2;
 use ranges::parse_byte_range;
-use std::{
-    result,
-    sync::{Arc, Mutex},
-};
 use tokio::net::TcpListener;
 use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -124,16 +125,16 @@ async fn get_collection_inner(
     headers: bool,
 ) -> anyhow::Result<(Collection, Vec<(Hash, u64, Vec<u8>)>)> {
     let spec = if headers {
-        RangeSpecSeq::from_ranges_infinite(vec![
+        ChunkRangesSeq::from_ranges_infinite(vec![
             RangeSet2::all(),
             RangeSet2::all(),
             RangeSet2::from(..ChunkNum::chunks(2048)),
         ])
     } else {
-        RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
+        ChunkRangesSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
     };
     let request = iroh_blobs::protocol::GetRequest::new(*hash, spec);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(at_start_root) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -147,7 +148,7 @@ async fn get_collection_inner(
                 break at_closing;
             }
             EndBlobNext::MoreChildren(at_start_child) => {
-                let Some(hash) = hash_seq.get(at_start_child.child_offset() as usize) else {
+                let Some(hash) = hash_seq.get(at_start_child.offset() as usize - 1) else {
                     break at_start_child.finish();
                 };
                 let at_blob_header = at_start_child.next(hash);
@@ -209,9 +210,9 @@ async fn get_mime_type_inner(
     mime_classifier: &MimeClassifier,
 ) -> anyhow::Result<(u64, Mime)> {
     // read 2 KiB.
-    let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
+    let range = ChunkRangesSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
     let request = iroh_blobs::protocol::GetRequest::new(*hash, range);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -427,7 +428,7 @@ async fn forward_range(
     tracing::debug!("got connection");
     let (_size, mime) = get_mime_type(gateway, hash, name, &connection).await?;
     tracing::debug!("mime: {}", mime);
-    let chunk_ranges = RangeSpecSeq::from_ranges(vec![chunk_ranges]);
+    let chunk_ranges = ChunkRangesSeq::from_ranges(vec![chunk_ranges]);
     let request = iroh_blobs::protocol::GetRequest::new(*hash, chunk_ranges.clone());
     let status_code = if byte_ranges.is_all() {
         StatusCode::OK
@@ -438,7 +439,7 @@ async fn forward_range(
     let (send, recv) = flume::bounded::<result::Result<Bytes, DecodeError>>(2);
 
     tracing::trace!("requesting {:?}", request);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -511,7 +512,7 @@ async fn main() -> anyhow::Result<()> {
         .install_default()
         .unwrap();
     let args = args::Args::parse();
-    let mut builder = Endpoint::builder().discovery(Box::new(DnsDiscovery::n0_dns()));
+    let mut builder = Endpoint::builder().discovery(DnsDiscovery::n0_dns());
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr_v4(addr);
     }
