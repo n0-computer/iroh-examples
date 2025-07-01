@@ -283,7 +283,7 @@ async fn handle_local_collection_index(
     Path(hash): Path<Hash>,
 ) -> std::result::Result<impl IntoResponse, AppError> {
     let connection = gateway.get_default_connection().await?;
-    let link_prefix = format!("/collection/{}", hash);
+    let link_prefix = format!("/collection/{hash}");
     let res = collection_index(&gateway, connection, &hash, &link_prefix).await?;
     Ok(res)
 }
@@ -312,7 +312,7 @@ async fn handle_ticket_index(
         .connect(ticket.node_addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
-    let prefix = format!("/ticket/{}", ticket);
+    let prefix = format!("/ticket/{ticket}");
     let res = match ticket.format() {
         BlobFormat::Raw => forward_range(&gateway, connection, &hash, None, byte_range)
             .await?
@@ -358,11 +358,11 @@ async fn collection_index(
     res.push_str("<html>\n<head></head>\n");
 
     for (name, child_hash) in collection.iter() {
-        let url = format!("{}/{}", link_prefix, name);
+        let url = format!("{link_prefix}/{name}");
         let url = encode_relative_url(&url)?;
         let key = (*child_hash, get_extension(name));
         let smo = gateway.mime_cache.lock().unwrap().get(&key).cloned();
-        res.push_str(&format!("<a href=\"{}\">{}</a>", url, name,));
+        res.push_str(&format!("<a href=\"{url}\">{name}</a>",));
         if let Some((size, mime)) = smo {
             res.push_str(&format!(" ({}, {})", mime, indicatif::HumanBytes(size)));
         }
@@ -397,7 +397,7 @@ async fn forward_collection_range(
     }
     Ok((
         StatusCode::NOT_FOUND,
-        format!("entry '{}' not found in collection '{}'", suffix, hash),
+        format!("entry '{suffix}' not found in collection '{hash}'"),
     )
         .into_response())
 }
@@ -561,7 +561,7 @@ async fn main() -> anyhow::Result<()> {
         CertMode::None => {
             // Run our application as just http
             let addr = args.addr;
-            println!("listening on {}, http", addr);
+            println!("listening on {addr}, http");
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, app).await?;
@@ -586,7 +586,7 @@ async fn main() -> anyhow::Result<()> {
                 .with_single_cert(certs, secret_key)?;
             // Run our application with hyper
             let addr = args.addr;
-            println!("listening on {}", addr);
+            println!("listening on {addr}");
             println!("https with manual certificates");
             let tls_acceptor = TlsAcceptor::from(Arc::new(config));
             let tcp_listener = TcpListener::bind(addr).await?;
@@ -678,10 +678,9 @@ async fn main() -> anyhow::Result<()> {
             });
             // Run our application with hyper
             let addr = args.addr;
-            println!("listening on {}", addr);
+            println!("listening on {addr}");
             println!(
-                "https with letsencrypt certificates, production = {}",
-                is_production
+                "https with letsencrypt certificates, production = {is_production}"
             );
             println!(
                 "https hostnames = {}",
@@ -698,7 +697,7 @@ async fn main() -> anyhow::Result<()> {
 
                 // Wait for new tcp connection
                 let (cnx, addr) = tcp_listener.accept().await?;
-                println!("got connection from {}", addr);
+                println!("got connection from {addr}");
 
                 tokio::spawn(async move {
                     // Wait for tls handshake to happen

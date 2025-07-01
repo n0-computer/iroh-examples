@@ -76,7 +76,7 @@ pub fn slice(offset: u64, data: Bytes, ranges: RangeSet2<u64>) -> Vec<Bytes> {
 pub async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
     Ok(match req.headers().typed_get::<Range>() {
         Some(range) => {
-            println!("got range request {:?}", range);
+            println!("got range request {range:?}");
             let ranges = range.satisfiable_ranges(0).collect::<Vec<_>>();
             if ranges.len() > 1 {
                 anyhow::bail!("multiple ranges not supported");
