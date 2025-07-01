@@ -2,13 +2,10 @@ use anyhow::Result;
 use async_channel::Sender;
 use iroh::{
     endpoint::Connection,
-    protocol::{ProtocolHandler, Router},
+    protocol::{AcceptError, ProtocolHandler, Router},
     Endpoint, NodeId,
 };
-use n0_future::{
-    boxed::{BoxFuture, BoxStream},
-    task, Stream, StreamExt,
-};
+use n0_future::{boxed::BoxStream, task, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
@@ -99,7 +96,10 @@ impl Echo {
 }
 
 impl Echo {
-    async fn handle_connection(self, connection: Connection) -> Result<()> {
+    async fn handle_connection(
+        self,
+        connection: Connection,
+    ) -> std::result::Result<(), AcceptError> {
         // Wait for the connection to be fully established.
         let node_id = connection.remote_node_id()?;
         self.event_sender
@@ -112,7 +112,10 @@ impl Echo {
             .ok();
         res
     }
-    async fn handle_connection_0(&self, connection: &Connection) -> Result<()> {
+    async fn handle_connection_0(
+        &self,
+        connection: &Connection,
+    ) -> std::result::Result<(), AcceptError> {
         // We can get the remote's node id from the connection.
         let node_id = connection.remote_node_id()?;
         info!("Accepted connection from {node_id}");
@@ -147,8 +150,8 @@ impl ProtocolHandler for Echo {
     ///
     /// The returned future runs on a newly spawned tokio task, so it can run as long as
     /// the connection lasts.
-    fn accept(&self, connection: Connection) -> BoxFuture<Result<()>> {
-        Box::pin(self.clone().handle_connection(connection))
+    async fn accept(&self, connection: Connection) -> std::result::Result<(), AcceptError> {
+        self.clone().handle_connection(connection).await
     }
 }
 

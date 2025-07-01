@@ -31,9 +31,8 @@ async fn main() -> Result<()> {
         Command::Accept => {
             println!("connect to this node:");
             println!(
-                "cargo run -- connect {} {}",
-                node.endpoint().node_id(),
-                "hello-please-echo-back"
+                "cargo run -- connect {} hello-please-echo-back",
+                node.endpoint().node_id()
             );
             let mut events = node.accept_events();
             while let Some(event) = events.next().await {
