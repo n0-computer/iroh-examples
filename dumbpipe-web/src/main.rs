@@ -43,7 +43,7 @@ fn get_or_create_secret() -> anyhow::Result<SecretKey> {
         Err(_) => {
             let key = SecretKey::generate(rand::thread_rng());
             let key_str = hex::encode(key.to_bytes());
-            eprintln!("using secret key {}", key_str);
+            eprintln!("using secret key {key_str}");
             Ok(key)
         }
     }
@@ -78,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a tokio TCP listener for hyper
     let listener = TcpListener::bind(args.addr).await?;
     let local_addr = listener.local_addr()?;
-    eprintln!("Listening on http://{}", local_addr);
+    eprintln!("Listening on http://{local_addr}");
     tracing::info!("Listening on http://{}", local_addr);
 
     loop {
