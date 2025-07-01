@@ -64,9 +64,9 @@ function App({ api }: AppProps) {
   const [activeChannel, setActiveChannel] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
 
-  const joinChannel = (ticket: string, nickname: string) => {
+  const joinChannel = async (ticket: string, nickname: string) => {
     try {
-      const channel = api.joinChannel(ticket, nickname)
+      const channel = await api.joinChannel(ticket, nickname)
       setChannels((prevChannels) => [...prevChannels, channel])
       setCurrentView("chat")
       setActiveChannel(channel.id)
@@ -76,9 +76,9 @@ function App({ api }: AppProps) {
     }
   }
 
-  const createChannel = (nickname: string) => {
+  const createChannel = async (nickname: string) => {
     try {
-      const channel = api.createChannel(nickname)
+      const channel = await api.createChannel(nickname)
       setChannels((prevChannels) => [...prevChannels, channel])
       setActiveChannel(channel.id)
       setCurrentView("chat")

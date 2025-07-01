@@ -7,8 +7,11 @@ use anyhow::{Context, Result};
 pub use iroh::NodeId;
 use iroh::{endpoint::RemoteInfo, protocol::Router, PublicKey, SecretKey};
 use iroh_base::{ticket::Ticket, Signature};
-use iroh_gossip::net::{Gossip, GossipEvent, GossipSender, GOSSIP_ALPN};
 pub use iroh_gossip::proto::TopicId;
+use iroh_gossip::{
+    api::{Event as GossipEvent, GossipSender},
+    net::{Gossip, GOSSIP_ALPN},
+};
 use n0_future::{
     boxed::BoxStream,
     task::{self, AbortOnDropHandle},
@@ -16,7 +19,7 @@ use n0_future::{
     StreamExt,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::Notify;
+use tokio::sync::{Mutex as TokioMutex, Notify};
 use tracing::{debug, info, warn};
 
 pub const TOPIC_PREFIX: &str = "iroh-example-chat/0:";
@@ -55,7 +58,7 @@ impl Ticket for ChatTicket {
         postcard::to_stdvec(&self).unwrap()
     }
 
-    fn from_bytes(bytes: &[u8]) -> Result<Self, iroh_base::ticket::Error> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, iroh_base::ticket::ParseError> {
         let ticket = postcard::from_bytes(bytes)?;
         Ok(ticket)
     }
@@ -82,7 +85,7 @@ impl ChatNode {
         info!("endpoint bound");
         info!("node id: {node_id:#?}");
 
-        let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
+        let gossip = Gossip::builder().spawn(endpoint.clone());
         info!("gossip spawned");
         let router = Router::builder(endpoint)
             .accept(GOSSIP_ALPN, gossip.clone())
@@ -112,7 +115,7 @@ impl ChatNode {
     ///
     /// Returns a [`ChatSender`] to send messages or change our nickname
     /// and a stream of [`Event`] items for incoming messages and other event.s
-    pub fn join(
+    pub async fn join(
         &self,
         ticket: &ChatTicket,
         nickname: String,
@@ -120,7 +123,7 @@ impl ChatNode {
         let topic_id = ticket.topic_id;
         let bootstrap = ticket.bootstrap.iter().cloned().collect();
         info!(?bootstrap, "joining {topic_id}");
-        let gossip_topic = self.gossip.subscribe(topic_id, bootstrap)?;
+        let gossip_topic = self.gossip.subscribe(topic_id, bootstrap).await?;
         let (sender, receiver) = gossip_topic.split();
 
         let nickname = Arc::new(Mutex::new(nickname));
@@ -128,6 +131,7 @@ impl ChatNode {
 
         // We spawn a task that occasionally sens a Presence message with our nickname.
         // This allows to track which peers are online currently.
+        let sender = Arc::new(TokioMutex::new(sender));
         let presence_task = AbortOnDropHandle::new(task::spawn({
             let secret_key = self.secret_key.clone();
             let sender = sender.clone();
@@ -141,7 +145,7 @@ impl ChatNode {
                     debug!("send presence {message:?}");
                     let signed_message = SignedMessage::sign_and_encode(&secret_key, message)
                         .expect("failed to encode message");
-                    if let Err(err) = sender.broadcast(signed_message.into()).await {
+                    if let Err(err) = sender.lock().await.broadcast(signed_message.into()).await {
                         tracing::warn!("presence task failed to broadcast: {err}");
                         break;
                     }
@@ -214,7 +218,7 @@ impl ChatNode {
 pub struct ChatSender {
     nickname: Arc<Mutex<String>>,
     secret_key: SecretKey,
-    sender: GossipSender,
+    sender: Arc<TokioMutex<GossipSender>>,
     trigger_presence: Arc<Notify>,
     _presence_task: Arc<AbortOnDropHandle<()>>,
 }
@@ -224,7 +228,11 @@ impl ChatSender {
         let nickname = self.nickname.lock().expect("poisened").clone();
         let message = Message::Message { text, nickname };
         let signed_message = SignedMessage::sign_and_encode(&self.secret_key, message)?;
-        self.sender.broadcast(signed_message.into()).await?;
+        self.sender
+            .lock()
+            .await
+            .broadcast(signed_message.into())
+            .await?;
         Ok(())
     }
 
@@ -265,33 +273,30 @@ pub enum Event {
     Lagged,
 }
 
-impl TryFrom<iroh_gossip::net::Event> for Event {
+impl TryFrom<GossipEvent> for Event {
     type Error = anyhow::Error;
-    fn try_from(event: iroh_gossip::net::Event) -> Result<Self, Self::Error> {
+    fn try_from(event: GossipEvent) -> Result<Self, Self::Error> {
         let converted = match event {
-            iroh_gossip::net::Event::Gossip(event) => match event {
-                GossipEvent::Joined(neighbors) => Self::Joined { neighbors },
-                GossipEvent::NeighborUp(node_id) => Self::NeighborUp { node_id },
-                GossipEvent::NeighborDown(node_id) => Self::NeighborDown { node_id },
-                GossipEvent::Received(message) => {
-                    let message = SignedMessage::verify_and_decode(&message.content)
-                        .context("failed to parse and verify signed message")?;
-                    match message.message {
-                        Message::Presence { nickname } => Self::Presence {
-                            from: message.from,
-                            nickname,
-                            sent_timestamp: message.timestamp,
-                        },
-                        Message::Message { text, nickname } => Self::MessageReceived {
-                            from: message.from,
-                            text,
-                            nickname,
-                            sent_timestamp: message.timestamp,
-                        },
-                    }
+            GossipEvent::NeighborUp(node_id) => Self::NeighborUp { node_id },
+            GossipEvent::NeighborDown(node_id) => Self::NeighborDown { node_id },
+            GossipEvent::Received(message) => {
+                let message = SignedMessage::verify_and_decode(&message.content)
+                    .context("failed to parse and verify signed message")?;
+                match message.message {
+                    Message::Presence { nickname } => Self::Presence {
+                        from: message.from,
+                        nickname,
+                        sent_timestamp: message.timestamp,
+                    },
+                    Message::Message { text, nickname } => Self::MessageReceived {
+                        from: message.from,
+                        text,
+                        nickname,
+                        sent_timestamp: message.timestamp,
+                    },
                 }
-            },
-            iroh_gossip::net::Event::Lagged => Self::Lagged,
+            }
+            GossipEvent::Lagged => Self::Lagged,
         };
         Ok(converted)
     }

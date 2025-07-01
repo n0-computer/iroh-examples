@@ -36,7 +36,10 @@ async fn main() -> Result<()> {
         Err(_) => {
             let secret_key = SecretKey::generate(rand::rngs::OsRng);
             println!("* using new secret. to reuse, set this environment variable:");
-            println!("IROH_SECRET={secret_key}");
+            println!(
+                "IROH_SECRET={}",
+                data_encoding::HEXLOWER.encode(&secret_key.to_bytes())
+            );
             secret_key
         }
         Ok(s) => s
@@ -58,7 +61,7 @@ async fn main() -> Result<()> {
     println!("{}", our_ticket.serialize());
 
     println!("* waiting for peers ...");
-    let (sender, mut receiver) = node.join(&ticket, args.nickname)?;
+    let (sender, mut receiver) = node.join(&ticket, args.nickname).await?;
 
     let receive = tokio::task::spawn(async move {
         let mut names = HashMap::new();

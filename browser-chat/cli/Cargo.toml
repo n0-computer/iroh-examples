@@ -12,3 +12,4 @@ rand = "0.8"
 chat-shared = { version = "0.1.0", path = "../shared" }
 tokio = { version = "1.43.0", features = ["rt", "macros"] }
 tracing-subscriber = "0.3.19"
+data-encoding = "2.9"
