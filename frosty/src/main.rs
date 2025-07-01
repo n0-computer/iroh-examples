@@ -162,11 +162,11 @@ fn resplit(args: ReSplitArgs) -> anyhow::Result<()> {
     let mut parts = Vec::new();
     let key = args.key;
     for part in args.directories.iter() {
-        let secret_share_path = PathBuf::from(part).join(format!("{}.secret", key));
+        let secret_share_path = PathBuf::from(part).join(format!("{key}.secret"));
         let secret_share_bytes = fs::read(&secret_share_path)?;
         let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
         let key_package = frost::keys::KeyPackage::try_from(secret_share)?;
-        let public_key_package_path = PathBuf::from(part).join(format!("{}.pub", key));
+        let public_key_package_path = PathBuf::from(part).join(format!("{key}.pub"));
         let public_key_package_bytes = fs::read(&public_key_package_path)?;
         let public_key_package = PublicKeyPackage::deserialize(&public_key_package_bytes)?;
         parts.push((key_package, public_key_package));
@@ -188,7 +188,7 @@ fn resplit(args: ReSplitArgs) -> anyhow::Result<()> {
     for (i, (_, secret_share)) in parts.iter().enumerate() {
         let n = i + 1;
         let secret_share_bytes = secret_share.serialize()?;
-        let dir = args.target.join(format!("{}", n));
+        let dir = args.target.join(format!("{n}"));
         println!("Storing part {} in directory {}", n, dir.display());
         fs::create_dir_all(&dir)?;
         let secret_share_path = dir.join(format!("{}.secret", args.key));
@@ -204,7 +204,7 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     let mut paths = Vec::new();
     let key = args.key;
     for part in args.directories.iter() {
-        let secret_share_path = PathBuf::from(part).join(format!("{}.secret", key));
+        let secret_share_path = PathBuf::from(part).join(format!("{key}.secret"));
         let secret_share_bytes = fs::read(&secret_share_path)?;
         paths.push(secret_share_path);
         let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
@@ -212,7 +212,7 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
         parts.push(key_package);
     }
     let secret = frost::keys::reconstruct(parts.as_slice())?;
-    println!("Reconstructed a signing key from {:?}", paths);
+    println!("Reconstructed a signing key from {paths:?}");
     let msg = args.message.as_bytes();
     let signature = secret.sign(rand::thread_rng(), msg);
     let signature_bytes = signature.serialize()?;
@@ -220,7 +220,7 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     let iroh_signature = iroh_base::Signature::from_slice(&signature_bytes)?;
     let res = key.verify(msg, &iroh_signature);
     if res.is_err() {
-        println!("Verification failed: {:?}", res);
+        println!("Verification failed: {res:?}");
         res?;
     }
     Ok(())
@@ -257,7 +257,7 @@ async fn handle_cosign_request(
     let key_bytes = read_exact_bytes(&mut recv).await?;
     let key = PublicKey::from_bytes(&key_bytes)?;
     info!("Received request to co-sign for key {}", key);
-    let secret_share_path = data_path.join(format!("{}.secret", key));
+    let secret_share_path = data_path.join(format!("{key}.secret"));
     let secret_share_bytes = tokio::fs::read(&secret_share_path).await?;
     let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
     let key_package = KeyPackage::try_from(secret_share)?;
@@ -309,7 +309,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     let data_path = args.data_path.unwrap_or_else(|| PathBuf::from("."));
     let secret_key = get_or_create_key(&data_path.join("keypair"))?;
     let key = args.key;
-    let secret_share_path = data_path.join(format!("{}.secret", key));
+    let secret_share_path = data_path.join(format!("{key}.secret"));
     info!("Reading secret share from {}", secret_share_path.display());
     let secret_share_bytes = fs::read(&secret_share_path)?;
     let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
@@ -320,7 +320,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
             key_package.min_signers() - 1
         );
     }
-    let public_key_package_path = data_path.join(format!("{}.pub", key));
+    let public_key_package_path = data_path.join(format!("{key}.pub"));
     info!(
         "Reading public key package from {}",
         public_key_package_path.display()
@@ -505,7 +505,7 @@ fn example() -> anyhow::Result<()> {
     }
     println!("Key packages generated successfully!");
     for (k, v) in key_packages.iter() {
-        println!("Key package for participant {:?}: {:?}", k, v);
+        println!("Key package for participant {k:?}: {v:?}");
     }
 
     let mut nonces_map = BTreeMap::new();
