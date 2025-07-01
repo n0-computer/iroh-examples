@@ -2,7 +2,6 @@ use anyhow::Result;
 use automerge::{transaction::Transactable, Automerge, ReadDoc};
 use clap::Parser;
 use iroh::{protocol::Router, Endpoint};
-
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;
 
@@ -31,7 +30,7 @@ async fn main() -> Result<()> {
 
     let node_id = iroh.endpoint().node_id();
 
-    println!("Running\nNode Id: {}", node_id,);
+    println!("Running\nNode Id: {node_id}",);
 
     // we distinguish the roles in protocol based on if the --remote-id CLI argument is present
     if let Some(remote_id) = opts.remote_id {
@@ -64,7 +63,7 @@ async fn main() -> Result<()> {
         let keys: Vec<_> = doc.keys(automerge::ROOT).collect();
         for key in keys {
             let (value, _) = doc.get(automerge::ROOT, &key)?.unwrap();
-            println!("{} => {}", key, value);
+            println!("{key} => {value}");
         }
     }
 
