@@ -69,7 +69,9 @@ jobs:
         for i in ${WASM_EXAMPLES_LIST//,/ }
         do
           echo "Checking wasm $i"
-          cargo build --manifest-path $i/Cargo.toml --target wasm32-unknown-unknown
+          cd $i
+          cargo build --target wasm32-unknown-unknown
+          cd ..
         done
       env:
         RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
