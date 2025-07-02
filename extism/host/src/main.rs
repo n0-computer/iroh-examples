@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
         .call::<&str, &str>("print_hai_and_get_ticket", &ticket)
         .unwrap();
 
-    println!("Received iroh data:\n\n{}", res);
+    println!("Received iroh data:\n\n{res}");
 
     Ok(())
 }
