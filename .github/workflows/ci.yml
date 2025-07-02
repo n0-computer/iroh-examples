@@ -70,7 +70,11 @@ jobs:
         do
           echo "Checking wasm $i"
           cd $i
-          cargo build --target wasm32-unknown-unknown
+          # the rust flag should get picked up from the `config.toml` file
+          # but cargo build seems to not be picking it up
+          # this dependency exists for both `browser-chat` and `browser-echo`
+          # so I'm adding the flag to the command
+          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
           cd ..
         done
       env:
