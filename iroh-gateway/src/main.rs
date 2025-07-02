@@ -679,9 +679,7 @@ async fn main() -> anyhow::Result<()> {
             // Run our application with hyper
             let addr = args.addr;
             println!("listening on {addr}");
-            println!(
-                "https with letsencrypt certificates, production = {is_production}"
-            );
+            println!("https with letsencrypt certificates, production = {is_production}");
             println!(
                 "https hostnames = {}",
                 Vec::from_iter(hostnames.iter().map(|i| i.to_string())).join(", ")
