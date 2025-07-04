@@ -20,3 +20,6 @@ tracing-subscriber-wasm = "0.1.0"
 wasm-bindgen = "=0.2.100"
 wasm-bindgen-futures = "0.4"
 wasm-streams = "0.4.2"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["--all-features"]
