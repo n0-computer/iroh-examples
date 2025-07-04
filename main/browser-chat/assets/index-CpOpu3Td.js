@@ -16565,7 +16565,7 @@ Error generating stack: ` + c.message + `
     try {
       an.info("Importing WASM module");
       const { IrohAPI: n } = await Jx(async () => {
-        const { IrohAPI: o } = await import("./iroh-4WgNNTjJ.js").then(async (m) => {
+        const { IrohAPI: o } = await import("./iroh-CisuSq7H.js").then(async (m) => {
           await m.__tla;
           return m;
         });
@@ -19250,9 +19250,9 @@ For more information, see https://radix-ui.com/primitives/docs/components/${o.do
   }
   function NC({ api: n }) {
     var _a;
-    const [o, l] = g.useState("home"), [a, u] = g.useState([]), [d, f] = g.useState(null), [p, v] = g.useState(false), y = (k, P) => {
+    const [o, l] = g.useState("home"), [a, u] = g.useState([]), [d, f] = g.useState(null), [p, v] = g.useState(false), y = async (k, P) => {
       try {
-        const N = n.joinChannel(k, P);
+        const N = await n.joinChannel(k, P);
         u((L) => [
           ...L,
           N
@@ -19260,9 +19260,9 @@ For more information, see https://radix-ui.com/primitives/docs/components/${o.do
       } catch (N) {
         an.error("Failed to join channel", N);
       }
-    }, w = (k) => {
+    }, w = async (k) => {
       try {
-        const P = n.createChannel(k);
+        const P = await n.createChannel(k);
         u((N) => [
           ...N,
           P
