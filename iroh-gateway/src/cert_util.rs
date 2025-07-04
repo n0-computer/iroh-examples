@@ -1,7 +1,7 @@
 //! Utilities for loading certificates and keys.
-use anyhow::{Context, Result};
 use std::path::Path;
 
+use anyhow::{Context, Result};
 use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
 
 pub fn load_certs<'a>(filename: impl AsRef<Path>) -> Result<Vec<CertificateDer<'a>>> {

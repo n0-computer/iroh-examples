@@ -1,4 +1,9 @@
 mod args;
+use std::{
+    result,
+    sync::{Arc, Mutex},
+};
+
 use anyhow::Context;
 use args::CertMode;
 use axum::{
@@ -9,6 +14,7 @@ use axum::{
     routing::get,
     Extension, Router,
 };
+use bao_tree::{io::fsm::BaoContentItem, ChunkNum};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bytes::Bytes;
 use clap::Parser;
@@ -21,8 +27,7 @@ use iroh_base::ticket::NodeTicket;
 use iroh_blobs::{
     format::collection::Collection,
     get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
-    protocol::{RangeSpecSeq, ALPN},
-    store::bao_tree::{io::fsm::BaoContentItem, ChunkNum},
+    protocol::{ChunkRangesSeq, ALPN},
     ticket::BlobTicket,
     BlobFormat, Hash,
 };
@@ -31,10 +36,6 @@ use mime::Mime;
 use mime_classifier::MimeClassifier;
 use range_collections::RangeSet2;
 use ranges::parse_byte_range;
-use std::{
-    result,
-    sync::{Arc, Mutex},
-};
 use tokio::net::TcpListener;
 use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -124,16 +125,16 @@ async fn get_collection_inner(
     headers: bool,
 ) -> anyhow::Result<(Collection, Vec<(Hash, u64, Vec<u8>)>)> {
     let spec = if headers {
-        RangeSpecSeq::from_ranges_infinite(vec![
+        ChunkRangesSeq::from_ranges_infinite(vec![
             RangeSet2::all(),
             RangeSet2::all(),
             RangeSet2::from(..ChunkNum::chunks(2048)),
         ])
     } else {
-        RangeSpecSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
+        ChunkRangesSeq::from_ranges(vec![RangeSet2::all(), RangeSet2::all()])
     };
     let request = iroh_blobs::protocol::GetRequest::new(*hash, spec);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(at_start_root) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -147,7 +148,7 @@ async fn get_collection_inner(
                 break at_closing;
             }
             EndBlobNext::MoreChildren(at_start_child) => {
-                let Some(hash) = hash_seq.get(at_start_child.child_offset() as usize) else {
+                let Some(hash) = hash_seq.get(at_start_child.offset() as usize - 1) else {
                     break at_start_child.finish();
                 };
                 let at_blob_header = at_start_child.next(hash);
@@ -209,9 +210,9 @@ async fn get_mime_type_inner(
     mime_classifier: &MimeClassifier,
 ) -> anyhow::Result<(u64, Mime)> {
     // read 2 KiB.
-    let range = RangeSpecSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
+    let range = ChunkRangesSeq::from_ranges(Some(RangeSet2::from(..ChunkNum::chunks(2048))));
     let request = iroh_blobs::protocol::GetRequest::new(*hash, range);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -282,7 +283,7 @@ async fn handle_local_collection_index(
     Path(hash): Path<Hash>,
 ) -> std::result::Result<impl IntoResponse, AppError> {
     let connection = gateway.get_default_connection().await?;
-    let link_prefix = format!("/collection/{}", hash);
+    let link_prefix = format!("/collection/{hash}");
     let res = collection_index(&gateway, connection, &hash, &link_prefix).await?;
     Ok(res)
 }
@@ -311,7 +312,7 @@ async fn handle_ticket_index(
         .connect(ticket.node_addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
-    let prefix = format!("/ticket/{}", ticket);
+    let prefix = format!("/ticket/{ticket}");
     let res = match ticket.format() {
         BlobFormat::Raw => forward_range(&gateway, connection, &hash, None, byte_range)
             .await?
@@ -357,11 +358,11 @@ async fn collection_index(
     res.push_str("<html>\n<head></head>\n");
 
     for (name, child_hash) in collection.iter() {
-        let url = format!("{}/{}", link_prefix, name);
+        let url = format!("{link_prefix}/{name}");
         let url = encode_relative_url(&url)?;
         let key = (*child_hash, get_extension(name));
         let smo = gateway.mime_cache.lock().unwrap().get(&key).cloned();
-        res.push_str(&format!("<a href=\"{}\">{}</a>", url, name,));
+        res.push_str(&format!("<a href=\"{url}\">{name}</a>",));
         if let Some((size, mime)) = smo {
             res.push_str(&format!(" ({}, {})", mime, indicatif::HumanBytes(size)));
         }
@@ -396,7 +397,7 @@ async fn forward_collection_range(
     }
     Ok((
         StatusCode::NOT_FOUND,
-        format!("entry '{}' not found in collection '{}'", suffix, hash),
+        format!("entry '{suffix}' not found in collection '{hash}'"),
     )
         .into_response())
 }
@@ -427,7 +428,7 @@ async fn forward_range(
     tracing::debug!("got connection");
     let (_size, mime) = get_mime_type(gateway, hash, name, &connection).await?;
     tracing::debug!("mime: {}", mime);
-    let chunk_ranges = RangeSpecSeq::from_ranges(vec![chunk_ranges]);
+    let chunk_ranges = ChunkRangesSeq::from_ranges(vec![chunk_ranges]);
     let request = iroh_blobs::protocol::GetRequest::new(*hash, chunk_ranges.clone());
     let status_code = if byte_ranges.is_all() {
         StatusCode::OK
@@ -438,7 +439,7 @@ async fn forward_range(
     let (send, recv) = flume::bounded::<result::Result<Bytes, DecodeError>>(2);
 
     tracing::trace!("requesting {:?}", request);
-    let req = iroh_blobs::get::fsm::start(connection.clone(), request);
+    let req = iroh_blobs::get::fsm::start(connection.clone(), request, Default::default());
     let connected = req.next().await?;
     let ConnectedNext::StartRoot(x) = connected.next().await? else {
         anyhow::bail!("unexpected response");
@@ -511,7 +512,7 @@ async fn main() -> anyhow::Result<()> {
         .install_default()
         .unwrap();
     let args = args::Args::parse();
-    let mut builder = Endpoint::builder().discovery(Box::new(DnsDiscovery::n0_dns()));
+    let mut builder = Endpoint::builder().discovery(DnsDiscovery::n0_dns());
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr_v4(addr);
     }
@@ -560,7 +561,7 @@ async fn main() -> anyhow::Result<()> {
         CertMode::None => {
             // Run our application as just http
             let addr = args.addr;
-            println!("listening on {}, http", addr);
+            println!("listening on {addr}, http");
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, app).await?;
@@ -585,7 +586,7 @@ async fn main() -> anyhow::Result<()> {
                 .with_single_cert(certs, secret_key)?;
             // Run our application with hyper
             let addr = args.addr;
-            println!("listening on {}", addr);
+            println!("listening on {addr}");
             println!("https with manual certificates");
             let tls_acceptor = TlsAcceptor::from(Arc::new(config));
             let tcp_listener = TcpListener::bind(addr).await?;
@@ -677,11 +678,8 @@ async fn main() -> anyhow::Result<()> {
             });
             // Run our application with hyper
             let addr = args.addr;
-            println!("listening on {}", addr);
-            println!(
-                "https with letsencrypt certificates, production = {}",
-                is_production
-            );
+            println!("listening on {addr}");
+            println!("https with letsencrypt certificates, production = {is_production}");
             println!(
                 "https hostnames = {}",
                 Vec::from_iter(hostnames.iter().map(|i| i.to_string())).join(", ")
@@ -697,7 +695,7 @@ async fn main() -> anyhow::Result<()> {
 
                 // Wait for new tcp connection
                 let (cnx, addr) = tcp_listener.accept().await?;
-                println!("got connection from {}", addr);
+                println!("got connection from {addr}");
 
                 tokio::spawn(async move {
                     // Wait for tls handshake to happen

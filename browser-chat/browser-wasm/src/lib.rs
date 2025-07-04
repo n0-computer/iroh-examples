@@ -59,20 +59,20 @@ impl ChatNode {
     }
 
     /// Opens a chat.
-    pub fn create(&self, nickname: String) -> Result<Channel, JsError> {
+    pub async fn create(&self, nickname: String) -> Result<Channel, JsError> {
         // let ticket = ChatTicket::new(topic);
         let ticket = ChatTicket::new_random();
-        self.join_inner(ticket, nickname)
+        self.join_inner(ticket, nickname).await
     }
 
     /// Joins a chat.
-    pub fn join(&self, ticket: String, nickname: String) -> Result<Channel, JsError> {
+    pub async fn join(&self, ticket: String, nickname: String) -> Result<Channel, JsError> {
         let ticket = ChatTicket::deserialize(&ticket).map_err(to_js_err)?;
-        self.join_inner(ticket, nickname)
+        self.join_inner(ticket, nickname).await
     }
 
-    fn join_inner(&self, ticket: ChatTicket, nickname: String) -> Result<Channel, JsError> {
-        let (sender, receiver) = self.0.join(&ticket, nickname).map_err(to_js_err)?;
+    async fn join_inner(&self, ticket: ChatTicket, nickname: String) -> Result<Channel, JsError> {
+        let (sender, receiver) = self.0.join(&ticket, nickname).await.map_err(to_js_err)?;
         let sender = ChannelSender(sender);
         let neighbors = Arc::new(Mutex::new(BTreeSet::new()));
         let neighbors2 = neighbors.clone();

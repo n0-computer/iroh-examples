@@ -52,7 +52,7 @@ jobs:
       run: rustup target add wasm32-unknown-unknown
 
     - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.4
+      uses: mozilla-actions/sccache-action@v0.0.9
 
     - name: check
       run: |
@@ -69,7 +69,13 @@ jobs:
         for i in ${WASM_EXAMPLES_LIST//,/ }
         do
           echo "Checking wasm $i"
-          cargo build --manifest-path $i/Cargo.toml --target wasm32-unknown-unknown
+          cd $i
+          # the rust flag should get picked up from the `config.toml` file
+          # but cargo build seems to not be picking it up
+          # this dependency exists for both `browser-chat` and `browser-echo`
+          # so I'm adding the flag to the command
+          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
+          cd ..
         done
       env:
         RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}

@@ -2,10 +2,10 @@
 use std::ops::Bound;
 
 use axum::body::Body;
+use bao_tree::ChunkNum;
 use bytes::Bytes;
 use headers::{HeaderMapExt, Range};
 use hyper::Request;
-use iroh_blobs::store::bao_tree::ChunkNum;
 use range_collections::{range_set::RangeSetRange, RangeSet2};
 
 /// Given a range specified as arbitrary range bounds, normalize it into a range
@@ -76,7 +76,7 @@ pub fn slice(offset: u64, data: Bytes, ranges: RangeSet2<u64>) -> Vec<Bytes> {
 pub async fn parse_byte_range(req: Request<Body>) -> anyhow::Result<(Option<u64>, Option<u64>)> {
     Ok(match req.headers().typed_get::<Range>() {
         Some(range) => {
-            println!("got range request {:?}", range);
+            println!("got range request {range:?}");
             let ranges = range.satisfiable_ranges(0).collect::<Vec<_>>();
             if ranges.len() > 1 {
                 anyhow::bail!("multiple ranges not supported");

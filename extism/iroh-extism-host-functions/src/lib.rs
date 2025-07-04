@@ -4,12 +4,7 @@ use anyhow::{anyhow, Result};
 use extism::*;
 use futures::stream::StreamExt;
 use iroh::{protocol::Router, Endpoint, NodeId};
-use iroh_blobs::{
-    net_protocol::{Blobs, DownloadMode},
-    rpc::client::blobs::DownloadOptions,
-    store::fs::Store,
-    util::SetTagOption,
-};
+use iroh_blobs::{api::downloader::Shuffled, net_protocol::Blobs, store::fs::FsStore};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
 
@@ -26,7 +21,7 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 
 pub struct Iroh {
     router: Router,
-    blobs: Blobs<Store>,
+    blobs: Blobs,
 }
 
 impl Iroh {
@@ -35,13 +30,13 @@ impl Iroh {
         let endpoint = Endpoint::builder().discovery_n0().bind().await?;
 
         // create blobs protocol
-        let blobs = Blobs::persistent(path).await?.build(&endpoint);
+        let store = FsStore::load(path).await?;
 
+        let blobs = Blobs::new(&store, endpoint.clone(), None);
         // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
-            .spawn()
-            .await?;
+            .spawn();
         Ok(Iroh { router, blobs })
     }
 
@@ -49,7 +44,7 @@ impl Iroh {
         self.router.endpoint().node_id()
     }
 
-    pub fn blobs(&self) -> Blobs<Store> {
+    pub fn blobs(&self) -> Blobs {
         self.blobs.clone()
     }
 
@@ -74,17 +69,14 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     }
     let router = ctx.iroh.router();
     let blobs = ctx.iroh.blobs();
+    let store = blobs.store();
+    let downloader = store.downloader(router.endpoint());
     let buf = ctx.rt.block_on(async move {
-        let blobs = blobs.client();
-        let mut stream = blobs.download_with_opts(hash, DownloadOptions {
-            format,
-            nodes: vec![node_addr],
-            mode: DownloadMode::Queued,
-            tag: SetTagOption::Auto,
-        }).await?;
+        let blobs = store.blobs();
+        let mut stream = downloader.download(hash, Shuffled::new(vec![node_addr.node_id])).stream().await?;
         while stream.next().await.is_some() {}
 
-        let buffer = blobs.read(hash).await?.read_to_bytes().await?;
+        let buffer = blobs.get_bytes(hash).await?;
         router.shutdown().await?;
 
         anyhow::Ok(buffer.to_vec())

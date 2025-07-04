@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
 use automerge::{
@@ -7,7 +7,7 @@ use automerge::{
 };
 use iroh::{
     endpoint::{Connection, RecvStream, SendStream},
-    protocol::ProtocolHandler,
+    protocol::{AcceptError, ProtocolHandler},
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
@@ -144,19 +144,25 @@ impl IrohAutomergeProtocol {
 }
 
 impl ProtocolHandler for IrohAutomergeProtocol {
-    fn accept(
+    async fn accept(
         &self,
         conn: Connection,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>> {
+    ) -> std::result::Result<(), iroh::protocol::AcceptError> {
         let automerge = self.clone();
-        Box::pin(async move {
-            automerge.respond_sync(conn).await?;
-            automerge
-                .sync_finished
-                .send(automerge.fork_doc().await)
-                .await?;
+        automerge
+            .respond_sync(conn)
+            .await
+            .map_err(|e| AcceptError::User {
+                source: e.into_boxed_dyn_error(),
+            })?;
+        automerge
+            .sync_finished
+            .send(automerge.fork_doc().await)
+            .await
+            .map_err(|e| AcceptError::User {
+                source: Box::new(e),
+            })?;
 
-            Ok(())
-        })
+        Ok(())
     }
 }

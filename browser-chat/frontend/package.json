@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:wasm": "wasm-pack build ../browser-wasm --dev --weak-refs --reference-types -t bundler -d pkg",
-    "build:wasm:release": "wasm-pack build ../browser-wasm --release --weak-refs --reference-types -t bundler -d pkg"
+    "build:wasm:release": "wasm-pack build ../browser-wasm --release -t bundler -d pkg"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
