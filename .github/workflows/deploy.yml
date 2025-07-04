@@ -53,7 +53,10 @@ jobs:
           node-version: 20
 
       - name: Install rust stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+        # must be 1.86.0 for now, it is the latest version that works
+        # well with `wasm-opt@0.116`, and we are forced to use that
+        # version in the `Install tools` action
+        uses: dtolnay/rust-toolchain@1.86.0
 
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "cargo build --target=wasm32-unknown-unknown && wasm-bindgen ./target/wasm32-unknown-unknown/debug/browser_echo.wasm --out-dir=public/wasm --weak-refs --target=web --debug",
-    "build:release": "cargo build --target=wasm32-unknown-unknown --release && wasm-bindgen ./target/wasm32-unknown-unknown/release/browser_echo.wasm --out-dir=public/wasm --weak-refs --target=web && wasm-opt --enable-bulk-memory -Os -o public/wasm/browser_echo_bg.wasm public/wasm/browser_echo_bg.wasm",
+    "build:release": "cargo build --target=wasm32-unknown-unknown --release && wasm-bindgen ./target/wasm32-unknown-unknown/release/browser_echo.wasm --out-dir=public/wasm --weak-refs --target=web && wasm-opt -Os -o public/wasm/browser_echo_bg.wasm public/wasm/browser_echo_bg.wasm",
     "serve": "http-server --cors -a localhost public/"
   },
   "author": "n0 team",
