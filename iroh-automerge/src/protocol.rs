@@ -138,24 +138,15 @@ impl IrohAutomergeProtocol {
 }
 
 impl ProtocolHandler for IrohAutomergeProtocol {
-    async fn accept(
-        &self,
-        conn: Connection,
-    ) -> std::result::Result<(), iroh::protocol::AcceptError> {
-        let automerge = self.clone();
-        automerge
-            .respond_sync(conn)
+    async fn accept(&self, conn: Connection) -> Result<(), iroh::protocol::AcceptError> {
+        self.respond_sync(conn)
             .await
-            .map_err(|e| AcceptError::User {
-                source: e.into_boxed_dyn_error(),
-            })?;
-        automerge
-            .sync_finished
-            .send(automerge.fork_doc().await)
+            .map_err(anyhow::Error::into_boxed_dyn_error)?;
+
+        self.sync_finished
+            .send(self.fork_doc().await)
             .await
-            .map_err(|e| AcceptError::User {
-                source: Box::new(e),
-            })?;
+            .map_err(AcceptError::from_err)?;
 
         Ok(())
     }
