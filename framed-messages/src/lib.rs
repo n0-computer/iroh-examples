@@ -38,6 +38,30 @@ impl Move {
     }
 }
 
+async fn make_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
+    let mv = Move::recv(stream).await?;
+    println!("got move: {mv:?}");
+
+    // Respond with some move
+    let mv = Move {
+        from: (5, 7),
+        to: (5, 6),
+    };
+    mv.send(stream).await?;
+
+    let mv = Move::recv(stream).await?;
+    println!("got move: {mv:?}");
+
+    // And respond with another one
+    let mv = Move {
+        from: (5, 8),
+        to: (5, 7),
+    };
+    mv.send(stream).await?;
+
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct ChessProtocol;
 
@@ -46,7 +70,7 @@ impl ProtocolHandler for ChessProtocol {
     ///
     /// The returned future runs on a newly spawned tokio task, so it can run as long as
     /// the connection lasts.
-    async fn accept(&self, connection: Connection) -> n0_snafu::Result<(), AcceptError> {
+    async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         // We can get the remote's node id from the connection.
         let node_id = connection.remote_node_id()?;
         println!("accepted connection from {node_id}");
@@ -55,17 +79,9 @@ impl ProtocolHandler for ChessProtocol {
         // connecting peer to open a single bi-directional stream.
         let bi_stream = connection.accept_bi().await?;
         let mut stream = FramedBiStream::new(bi_stream);
-        let mv = Move::recv(&mut stream)
-            .await
-            .map_err(anyhow::Error::into_boxed_dyn_error)?;
-        println!("got move: {:?}", mv);
 
-        // Respond with some move
-        let mv = Move {
-            from: (5, 7),
-            to: (5, 6),
-        };
-        mv.send(&mut stream)
+        // make some moves
+        make_moves(&mut stream)
             .await
             .map_err(anyhow::Error::into_boxed_dyn_error)?;
 

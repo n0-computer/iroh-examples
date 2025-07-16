@@ -1,12 +1,10 @@
 // a program that creates two endpoints & sends a ping between them
-use anyhow::Result;
-use iroh::{Endpoint, protocol::Router};
-use n0_watcher::Watcher;
+use iroh::{Endpoint, Watcher, protocol::Router};
 
 use framed_messages::{ALPN as ChessMovesALPN, ChessProtocol, Move, framed::FramedBiStream};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // create the receive side
     let recv_ep = Endpoint::builder().discovery_n0().bind().await?;
     let recv_router = Router::builder(recv_ep)
@@ -20,14 +18,9 @@ async fn main() -> Result<()> {
     let bi_stream = conn.open_bi().await?;
     // We use the `FramedBiStream` to provide us message framing
     let mut stream = FramedBiStream::new(bi_stream);
-    let mv = Move {
-        from: (4, 2),
-        to: (4, 4),
-    };
-    mv.send(&mut stream).await?;
 
-    let mv = Move::recv(&mut stream).await?;
-    println!("received move: {mv:?}");
+    // make some moves
+    make_moves(&mut stream).await?;
 
     // We're done with the connection:
     conn.close(0u32.into(), b"bye!");
@@ -35,6 +28,28 @@ async fn main() -> Result<()> {
     // Close gracefully:
     send_ep.close().await;
     recv_router.shutdown().await?;
+
+    Ok(())
+}
+
+async fn make_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
+    let mv = Move {
+        from: (4, 2),
+        to: (4, 4),
+    };
+    mv.send(stream).await?;
+
+    let mv = Move::recv(stream).await?;
+    println!("received move: {mv:?}");
+
+    let mv = Move {
+        from: (3, 2),
+        to: (3, 3),
+    };
+    mv.send(stream).await?;
+
+    let mv = Move::recv(stream).await?;
+    println!("received move: {mv:?}");
 
     Ok(())
 }
