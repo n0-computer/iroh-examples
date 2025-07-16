@@ -16,6 +16,16 @@ use crate::framed::FramedBiStream;
 /// and the connection is aborted unless both nodes pass the same bytestring.
 pub const ALPN: &[u8] = b"iroh/examples/messages/0";
 
+/// Move is the message type we'll send & receive over the connection.
+///
+/// It represents all possible "frames" in our framed protocol.
+///
+/// We use serde and postcard to serialize it into bytes.
+/// Then we write them, prefixed with a big-endian encoded `u32` denoting their length, to the stream.
+///
+/// The idea is that these denote chess moves, but this wouldn't quite suffice.
+/// In practice you'd either also need to add promotion or just use SAN (Standard Algebraic Notation)
+/// for this, but this is just for demonstration purposes.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Move {
     pub from: (u8, u8),
@@ -38,7 +48,7 @@ impl Move {
     }
 }
 
-async fn make_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
+async fn black_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
     let mv = Move::recv(stream).await?;
     println!("got move: {mv:?}");
 
@@ -62,6 +72,7 @@ async fn make_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// This struct implements the receiving side of the protocol via [`ProtocolHandler`].
 #[derive(Debug, Clone)]
 pub struct ChessProtocol;
 
@@ -81,7 +92,7 @@ impl ProtocolHandler for ChessProtocol {
         let mut stream = FramedBiStream::new(bi_stream);
 
         // make some moves
-        make_moves(&mut stream)
+        black_moves(&mut stream)
             .await
             .map_err(anyhow::Error::into_boxed_dyn_error)?;
 

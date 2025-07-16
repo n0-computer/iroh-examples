@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     let mut stream = FramedBiStream::new(bi_stream);
 
     // make some moves
-    make_moves(&mut stream).await?;
+    white_moves(&mut stream).await?;
 
     // We're done with the connection:
     conn.close(0u32.into(), b"bye!");
@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn make_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
+async fn white_moves(stream: &mut FramedBiStream) -> anyhow::Result<()> {
     let mv = Move {
         from: (4, 2),
         to: (4, 4),
