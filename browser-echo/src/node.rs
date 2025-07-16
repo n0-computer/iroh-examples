@@ -46,7 +46,7 @@ impl EchoNode {
         &self,
         node_id: NodeId,
         payload: String,
-    ) -> impl Stream<Item = ConnectEvent> + Unpin {
+    ) -> impl Stream<Item = ConnectEvent> + Unpin + use<> {
         let (event_sender, event_receiver) = async_channel::bounded(16);
         let endpoint = self.router.endpoint().clone();
         task::spawn(async move {

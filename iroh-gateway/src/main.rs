@@ -345,7 +345,7 @@ async fn collection_index(
     connection: Connection,
     hash: &Hash,
     link_prefix: &str,
-) -> anyhow::Result<impl IntoResponse> {
+) -> anyhow::Result<impl IntoResponse + use<>> {
     fn encode_relative_url(relative_url: &str) -> anyhow::Result<String> {
         let base = Url::parse("http://example.com")?;
         let joined_url = base.join(relative_url)?;
@@ -383,7 +383,7 @@ async fn forward_collection_range(
     hash: &Hash,
     suffix: &str,
     range: (Option<u64>, Option<u64>),
-) -> anyhow::Result<impl IntoResponse> {
+) -> anyhow::Result<impl IntoResponse + use<>> {
     let suffix = suffix.strip_prefix('/').unwrap_or(suffix);
     tracing::trace!("suffix {}", suffix);
     let collection = get_collection(gateway, hash, &connection).await?;

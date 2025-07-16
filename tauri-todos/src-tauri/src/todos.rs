@@ -91,7 +91,7 @@ impl Todos {
         self.ticket.to_string()
     }
 
-    pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<LiveEvent>>> {
+    pub async fn doc_subscribe(&self) -> Result<impl Stream<Item = Result<LiveEvent>> + use<>> {
         self.doc.subscribe().await
     }
 
