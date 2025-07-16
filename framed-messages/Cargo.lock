@@ -703,6 +703,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "futures-util",
  "iroh",
  "iroh-metrics",
  "n0-snafu",
@@ -710,6 +711,7 @@ dependencies = [
  "postcard",
  "serde",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
