@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as C, P as B, __tla as __tla_0 } from "./index-CpOpu3Td.js";
+import { l as C, P as W, __tla as __tla_0 } from "./index-S_SqfK4B.js";
 let ee;
 let __tla = Promise.all([
   (() => {
@@ -11,7 +11,7 @@ let __tla = Promise.all([
     }
   })()
 ]).then(async () => {
-  const _e = "" + new URL("chat_browser_bg-BUzdlZuA.wasm", import.meta.url).href, re = async (e = {}, n) => {
+  const _e = "" + new URL("chat_browser_bg-C0Kyx0l0.wasm", import.meta.url).href, re = async (e = {}, n) => {
     let t;
     if (n.startsWith("data:")) {
       const _ = n.replace(/^data:.*?base64,/, "");
@@ -82,13 +82,13 @@ let __tla = Promise.all([
     return (T === null || T.buffer.detached === true || T.buffer.detached === void 0 && T.buffer !== c.memory.buffer) && (T = new DataView(c.memory.buffer)), T;
   }
   const ie = typeof TextDecoder > "u" ? (0, module.require)("util").TextDecoder : TextDecoder;
-  let Q = new ie("utf-8", {
+  let X = new ie("utf-8", {
     ignoreBOM: true,
     fatal: true
   });
-  Q.decode();
+  X.decode();
   function l(e, n) {
-    return e = e >>> 0, Q.decode(F().subarray(e, e + n));
+    return e = e >>> 0, X.decode(F().subarray(e, e + n));
   }
   let A = k.length;
   function s(e) {
@@ -119,7 +119,7 @@ let __tla = Promise.all([
     for (let o = e; o < e + 4 * n; o += 4) _.push(w(t.getUint32(o, true)));
     return _;
   }
-  function X(e, n) {
+  function Y(e, n) {
     return e = e >>> 0, F().subarray(e / 1, e / 1 + n);
   }
   const N = typeof FinalizationRegistry > "u" ? {
@@ -375,7 +375,7 @@ ${e.stack}` : _;
   }
   typeof FinalizationRegistry > "u" || new FinalizationRegistry((e) => c.__wbg_intounderlyingbytesource_free(e >>> 0, 1));
   typeof FinalizationRegistry > "u" || new FinalizationRegistry((e) => c.__wbg_intounderlyingsink_free(e >>> 0, 1));
-  const Z = typeof FinalizationRegistry > "u" ? {
+  const K = typeof FinalizationRegistry > "u" ? {
     register: () => {
     },
     unregister: () => {
@@ -385,11 +385,11 @@ ${e.stack}` : _;
     static __wrap(n) {
       n = n >>> 0;
       const t = Object.create(V.prototype);
-      return t.__wbg_ptr = n, Z.register(t, t.__wbg_ptr, t), t;
+      return t.__wbg_ptr = n, K.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
       const n = this.__wbg_ptr;
-      return this.__wbg_ptr = 0, Z.unregister(this), n;
+      return this.__wbg_ptr = 0, K.unregister(this), n;
     }
     free() {
       const n = this.__destroy_into_raw();
@@ -485,11 +485,11 @@ ${e.stack}` : _;
       r(e).clearTimeout(w(n));
     }, arguments);
   }
-  function Be(e) {
+  function We(e) {
     const n = clearTimeout(w(e));
     return s(n);
   }
-  function We() {
+  function Be() {
     return d(function(e) {
       r(e).close();
     }, arguments);
@@ -522,15 +522,15 @@ ${e.stack}` : _;
     var t = j(e, n).slice();
     c.__wbindgen_export_3(e, n * 4, 4), console.debug(...t);
   }
-  function Ze(e) {
+  function Ke(e) {
     return r(e).done;
   }
-  function Ke() {
+  function Qe() {
     return d(function(e, n) {
       r(e).enqueue(r(n));
     }, arguments);
   }
-  function Qe(e, n) {
+  function Xe(e, n) {
     let t, _;
     try {
       t = e, _ = n, console.error(l(e, n));
@@ -538,11 +538,11 @@ ${e.stack}` : _;
       c.__wbindgen_export_3(t, _, 1);
     }
   }
-  function Xe(e, n) {
+  function Ye(e, n) {
     var t = j(e, n).slice();
     c.__wbindgen_export_3(e, n * 4, 4), console.error(...t);
   }
-  function Ye(e, n) {
+  function Ze(e, n) {
     const t = r(e).fetch(r(n));
     return s(t);
   }
@@ -552,7 +552,7 @@ ${e.stack}` : _;
   }
   function nn() {
     return d(function(e, n) {
-      globalThis.crypto.getRandomValues(X(e, n));
+      globalThis.crypto.getRandomValues(Y(e, n));
     }, arguments);
   }
   function tn() {
@@ -752,11 +752,11 @@ ${e.stack}` : _;
   function Un() {
     return Date.now();
   }
-  function Bn(e) {
+  function Wn(e) {
     const n = r(e).performance;
     return s(n);
   }
-  function Wn(e) {
+  function Bn(e) {
     const n = r(e).process;
     return s(n);
   }
@@ -786,25 +786,25 @@ ${e.stack}` : _;
     const t = r(n).reason, _ = m(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = p;
     u().setInt32(e + 4 * 1, o, true), u().setInt32(e + 4 * 0, _, true);
   }
-  function Zn(e) {
+  function Kn(e) {
     r(e).releaseLock();
   }
-  function Kn() {
+  function Qn() {
     return d(function(e, n, t, _) {
       r(e).removeEventListener(l(n, t), r(_));
     }, arguments);
   }
-  function Qn() {
+  function Xn() {
     return d(function() {
       const e = module.require;
       return s(e);
     }, arguments);
   }
-  function Xn(e) {
+  function Yn(e) {
     const n = Promise.resolve(r(e));
     return s(n);
   }
-  function Yn() {
+  function Zn() {
     return d(function(e, n) {
       r(e).respond(n >>> 0);
     }, arguments);
@@ -816,7 +816,7 @@ ${e.stack}` : _;
   }
   function nt() {
     return d(function(e, n, t) {
-      r(e).send(X(n, t));
+      r(e).send(Y(n, t));
     }, arguments);
   }
   function tt(e, n) {
@@ -956,11 +956,11 @@ ${e.stack}` : _;
   function Ut(e) {
     return +r(e);
   }
-  function Bt(e) {
+  function Wt(e) {
     const n = BigInt.asUintN(64, e);
     return s(n);
   }
-  function Wt(e) {
+  function Bt(e) {
     const n = r(e);
     return typeof n == "boolean" ? n ? 1 : 0 : 2;
   }
@@ -992,21 +992,21 @@ ${e.stack}` : _;
     const _ = E(e, n, 1682, ge);
     return s(_);
   }
-  function Zt(e, n) {
+  function Kt(e, n) {
     const t = D(r(n)), _ = m(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = p;
     u().setInt32(e + 4 * 1, o, true), u().setInt32(e + 4 * 0, _, true);
   }
-  function Kt(e, n) {
+  function Qt(e, n) {
     const t = new Error(l(e, n));
     return s(t);
   }
-  function Qt(e, n) {
+  function Xt(e, n) {
     return r(e) in r(n);
   }
-  function Xt(e) {
+  function Yt(e) {
     return typeof r(e) == "function";
   }
-  function Yt(e) {
+  function Zt(e) {
     const n = r(e);
     return typeof n == "object" && n !== null;
   }
@@ -1052,13 +1052,13 @@ ${e.stack}` : _;
   URL = globalThis.URL;
   const i = await re({
     "./chat_browser_bg.js": {
-      __wbindgen_error_new: Kt,
+      __wbindgen_error_new: Qt,
       __wbindgen_string_new: a_,
       __wbindgen_object_drop_ref: s_,
       __wbindgen_is_undefined: n_,
-      __wbindgen_in: Qt,
-      __wbindgen_boolean_get: Wt,
-      __wbindgen_is_object: Yt,
+      __wbindgen_in: Xt,
+      __wbindgen_boolean_get: Bt,
+      __wbindgen_is_object: Zt,
       __wbindgen_as_number: Ut,
       __wbindgen_object_clone_ref: c_,
       __wbg_chatnode_new: ze,
@@ -1068,22 +1068,22 @@ ${e.stack}` : _;
       __wbindgen_string_get: i_,
       __wbg_String_8f0eb39a4a4c2f66: xe,
       __wbindgen_number_new: o_,
-      __wbindgen_bigint_from_u64: Bt,
+      __wbindgen_bigint_from_u64: Wt,
       __wbg_getwithrefkey_1dc361bd10053bfe: sn,
       __wbg_set_3f1d0b984ed272ed: ot,
       __wbg_new_8a6f238a6ece86ea: kn,
       __wbg_stack_0ed75d68575b0f3c: vt,
-      __wbg_error_7534b8e9a36f1ab4: Qe,
+      __wbg_error_7534b8e9a36f1ab4: Xe,
       __wbindgen_cb_drop: Dt,
       __wbg_debug_55137df391ebfd29: Je,
-      __wbg_error_91947ba14c44e1c9: Xe,
+      __wbg_error_91947ba14c44e1c9: Ye,
       __wbg_log_e51ef223c244b133: hn,
       __wbg_warn_479b8bbb8337357b: Nt,
       __wbg_getRandomValues_3c9c0d586e575a16: nn,
       __wbindgen_is_string: e_,
       __wbg_fetch_d36a73832f0a45e8: en,
       __wbg_setTimeout_2e707715f8cc9497: tt,
-      __wbg_clearTimeout_86721db0036bea98: Be,
+      __wbg_clearTimeout_86721db0036bea98: We,
       __wbg_getReader_48e00749fe3f6089: _n,
       __wbg_newwithintounderlyingsource_b47f6a6a596a7f24: An,
       __wbg_signal_aaf9ad74119f20a4: xt,
@@ -1097,7 +1097,7 @@ ${e.stack}` : _;
       __wbg_code_cfd8f6868bdaed9b: Pe,
       __wbg_sethandleevent_8454ae22cde5c602: ut,
       __wbg_addEventListener_834c7f05e9c3b98b: ke,
-      __wbg_removeEventListener_709135c542708608: Kn,
+      __wbg_removeEventListener_709135c542708608: Qn,
       __wbg_new_018dcc2d6c8c2f6a: yn,
       __wbg_append_8c7dd8d641a5f01b: Ie,
       __wbg_data_432d9c3df2630942: He,
@@ -1105,11 +1105,11 @@ ${e.stack}` : _;
       __wbg_byobRequest_77d9adf63337edfb: Fe,
       __wbg_close_5ce03e29be453811: $e,
       __wbg_view_fd8a56e8983f448d: qt,
-      __wbg_respond_1f279fa9f8edcb1c: Yn,
+      __wbg_respond_1f279fa9f8edcb1c: Zn,
       __wbg_close_304cc1fef3466669: De,
-      __wbg_enqueue_bb16ba72f537dc9e: Ke,
+      __wbg_enqueue_bb16ba72f537dc9e: Qe,
       __wbg_read_a2434af1186cb56c: Gn,
-      __wbg_releaseLock_091899af97991d2e: Zn,
+      __wbg_releaseLock_091899af97991d2e: Kn,
       __wbg_cancel_8a308660caa6cadf: Me,
       __wbg_getdone_d47073731acd3e74: on,
       __wbg_getvalue_009dcd63692bee1f: cn,
@@ -1135,22 +1135,22 @@ ${e.stack}` : _;
       __wbg_setbinaryType_92fa1ffd873b327c: it,
       __wbg_new_92c54fc74574ef55: In,
       __wbg_newwithstrsequence_6e9d6479e1cf978d: On,
-      __wbg_close_2893b7d056a0627d: We,
+      __wbg_close_2893b7d056a0627d: Be,
       __wbg_send_0293179ba074ffb4: et,
       __wbg_send_fc0c204e8a1757f4: nt,
-      __wbg_fetch_509096533071c657: Ye,
+      __wbg_fetch_509096533071c657: Ze,
       __wbg_setTimeout_4eb823e8b72fbe79: _t,
       __wbg_clearTimeout_15dfc3d1dcb635c6: Ue,
       __wbg_queueMicrotask_97d92b4fcc8a61c5: $n,
       __wbg_queueMicrotask_d3219def82552485: Pn,
-      __wbindgen_is_function: Xt,
-      __wbg_performance_7a3ffd0b17f663ad: Bn,
+      __wbindgen_is_function: Yt,
+      __wbg_performance_7a3ffd0b17f663ad: Wn,
       __wbg_now_2c95c9de01293173: zn,
       __wbg_crypto_ed58b8e10a292839: Ge,
-      __wbg_process_5c1d670bc53614b8: Wn,
+      __wbg_process_5c1d670bc53614b8: Bn,
       __wbg_versions_c71aa1626a93e0a1: Mt,
       __wbg_node_02999533c4ea02e3: Nn,
-      __wbg_require_79b1e9274cde3c87: Qn,
+      __wbg_require_79b1e9274cde3c87: Xn,
       __wbg_msCrypto_0a36e2ec3a343d26: pn,
       __wbg_getRandomValues_bcb4912f16000dc4: tn,
       __wbg_randomFillSync_ab2cfe79ebbf2740: Vn,
@@ -1169,14 +1169,14 @@ ${e.stack}` : _;
       __wbg_call_7cccdd69e0791ae2: Oe,
       __wbg_set_8fc6bf8a5b1071d1: st,
       __wbg_next_6574e1a8a62d1055: qn,
-      __wbg_done_769e5ede4b31c67b: Ze,
+      __wbg_done_769e5ede4b31c67b: Ke,
       __wbg_now_807e54c39636c349: Un,
       __wbg_get_67b2ba62fc30de12: rn,
       __wbg_has_a5ea9117f258a0ec: an,
       __wbg_buffer_609cc3eee51ed158: Ce,
       __wbg_stringify_f7ed6987935b4a24: jt,
       __wbg_new_23a2665fac83c611: mn,
-      __wbg_resolve_4851785c9c5f573d: Xn,
+      __wbg_resolve_4851785c9c5f573d: Yn,
       __wbg_catch_a6e601879b2610e9: qe,
       __wbg_then_44b73946d2fb3e7d: Ft,
       __wbg_then_48b406749878a531: At,
@@ -1194,7 +1194,7 @@ ${e.stack}` : _;
       __wbg_byteLength_e674b853d9c77e1d: Ae,
       __wbg_byteOffset_fd862df290ef848d: Ee,
       __wbg_set_65595bdd868b3009: ct,
-      __wbindgen_debug_string: Zt,
+      __wbindgen_debug_string: Kt,
       __wbindgen_throw: b_,
       __wbindgen_memory: __,
       __wbindgen_closure_wrapper3520: Vt,
@@ -1204,7 +1204,7 @@ ${e.stack}` : _;
       __wbindgen_closure_wrapper13487: $t,
       __wbindgen_closure_wrapper13542: Pt
     }
-  }, _e), u_ = i.memory, d_ = i.start, f_ = i.__wbg_chatnode_free, g_ = i.chatnode_spawn, w_ = i.chatnode_node_id, l_ = i.chatnode_remote_info, h_ = i.chatnode_create, p_ = i.chatnode_join, y_ = i.__wbg_channel_free, m_ = i.channel_sender, x_ = i.channel_receiver, v_ = i.channel_ticket, S_ = i.channel_id, k_ = i.channel_neighbors, I_ = i.__wbg_channelsender_free, R_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, j_ = i.__wbg_intounderlyingbytesource_free, C_ = i.intounderlyingbytesource_type, F_ = i.intounderlyingbytesource_autoAllocateChunkSize, A_ = i.intounderlyingbytesource_start, E_ = i.intounderlyingbytesource_pull, L_ = i.intounderlyingbytesource_cancel, O_ = i.__wbg_intounderlyingsource_free, M_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, N_ = i.__wbg_intounderlyingsink_free, z_ = i.intounderlyingsink_write, U_ = i.intounderlyingsink_close, B_ = i.intounderlyingsink_abort, W_ = i.ring_core_0_17_11__bn_mul_mont, D_ = i.__wbindgen_export_0, $_ = i.__wbindgen_export_1, P_ = i.__wbindgen_export_2, V_ = i.__wbindgen_export_3, G_ = i.__wbindgen_export_4, H_ = i.__wbindgen_add_to_stack_pointer, J_ = i.__wbindgen_export_5, Z_ = i.__wbindgen_export_6, K_ = i.__wbindgen_export_7, Q_ = i.__wbindgen_export_8, X_ = i.__wbindgen_export_9, Y_ = i.__wbindgen_export_10, er = i.__wbindgen_export_11, Y = i.__wbindgen_start, nr = Object.freeze(Object.defineProperty({
+  }, _e), u_ = i.memory, d_ = i.start, f_ = i.__wbg_chatnode_free, g_ = i.chatnode_spawn, w_ = i.chatnode_node_id, l_ = i.chatnode_remote_info, h_ = i.chatnode_create, p_ = i.chatnode_join, y_ = i.__wbg_channel_free, m_ = i.channel_sender, x_ = i.channel_receiver, v_ = i.channel_ticket, S_ = i.channel_id, k_ = i.channel_neighbors, I_ = i.__wbg_channelsender_free, R_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, j_ = i.__wbg_intounderlyingbytesource_free, C_ = i.intounderlyingbytesource_type, F_ = i.intounderlyingbytesource_autoAllocateChunkSize, A_ = i.intounderlyingbytesource_start, E_ = i.intounderlyingbytesource_pull, L_ = i.intounderlyingbytesource_cancel, O_ = i.__wbg_intounderlyingsource_free, M_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, N_ = i.__wbg_intounderlyingsink_free, z_ = i.intounderlyingsink_write, U_ = i.intounderlyingsink_close, W_ = i.intounderlyingsink_abort, B_ = i.ring_core_0_17_11__bn_mul_mont, D_ = i.__wbindgen_export_0, $_ = i.__wbindgen_export_1, P_ = i.__wbindgen_export_2, V_ = i.__wbindgen_export_3, G_ = i.__wbindgen_export_4, H_ = i.__wbindgen_add_to_stack_pointer, J_ = i.__wbindgen_export_5, K_ = i.__wbindgen_export_6, Q_ = i.__wbindgen_export_7, X_ = i.__wbindgen_export_8, Y_ = i.__wbindgen_export_9, Z_ = i.__wbindgen_export_10, er = i.__wbindgen_export_11, Z = i.__wbindgen_start, nr = Object.freeze(Object.defineProperty({
     __proto__: null,
     __wbg_channel_free: y_,
     __wbg_channelsender_free: I_,
@@ -1215,17 +1215,17 @@ ${e.stack}` : _;
     __wbindgen_add_to_stack_pointer: H_,
     __wbindgen_export_0: D_,
     __wbindgen_export_1: $_,
-    __wbindgen_export_10: Y_,
+    __wbindgen_export_10: Z_,
     __wbindgen_export_11: er,
     __wbindgen_export_2: P_,
     __wbindgen_export_3: V_,
     __wbindgen_export_4: G_,
     __wbindgen_export_5: J_,
-    __wbindgen_export_6: Z_,
-    __wbindgen_export_7: K_,
-    __wbindgen_export_8: Q_,
-    __wbindgen_export_9: X_,
-    __wbindgen_start: Y,
+    __wbindgen_export_6: K_,
+    __wbindgen_export_7: Q_,
+    __wbindgen_export_8: X_,
+    __wbindgen_export_9: Y_,
+    __wbindgen_start: Z,
     channel_id: S_,
     channel_neighbors: k_,
     channel_receiver: x_,
@@ -1243,19 +1243,19 @@ ${e.stack}` : _;
     intounderlyingbytesource_pull: E_,
     intounderlyingbytesource_start: A_,
     intounderlyingbytesource_type: C_,
-    intounderlyingsink_abort: B_,
+    intounderlyingsink_abort: W_,
     intounderlyingsink_close: U_,
     intounderlyingsink_write: z_,
     intounderlyingsource_cancel: q_,
     intounderlyingsource_pull: M_,
     memory: u_,
-    ring_core_0_17_11__bn_mul_mont: W_,
+    ring_core_0_17_11__bn_mul_mont: B_,
     start: d_
   }, Symbol.toStringTag, {
     value: "Module"
   }));
   oe(nr);
-  Y();
+  Z();
   ee = class {
     constructor(n) {
       __publicField(this, "chatNode");
@@ -1287,7 +1287,7 @@ ${e.stack}` : _;
         name: t,
         lastSeen: /* @__PURE__ */ new Date(),
         status: "online",
-        role: B.Myself
+        role: W.Myself
       }, g = {
         label: o,
         messages: [],
@@ -1314,16 +1314,16 @@ ${e.stack}` : _;
               name: h.nickname,
               lastSeen: new Date(h.sentTimestamp / 1e3),
               status: "online",
-              role: B.RemoteNode
+              role: W.RemoteNode
             };
             g.peers.set(h.from, S);
             const O = {
-              id: K(g),
+              id: Q(g),
               sender: h.from,
               content: h.text
             };
             g.messages.push(O);
-            const te = W(g, O);
+            const te = B(g, O);
             for (const U of g.subscribers) U(te);
             for (const U of g.peerSubscribers) U();
           } else if (h.type === "presence") {
@@ -1332,7 +1332,7 @@ ${e.stack}` : _;
               name: h.nickname,
               lastSeen: new Date(h.sentTimestamp / 1e3),
               status: "online",
-              role: B.RemoteNode
+              role: W.RemoteNode
             };
             g.peers.set(h.from, S);
             for (const O of g.peerSubscribers) O();
@@ -1393,11 +1393,11 @@ ${e.stack}` : _;
       await _.channel.sender.broadcast(t);
       const a = {
         sender: this.chatNode.node_id(),
-        id: K(_),
+        id: Q(_),
         content: t
       };
       _.messages.push(a);
-      const b = W(_, a);
+      const b = B(_, a);
       for (const f of _.subscribers) f(b);
     }
     setNickname(n, t) {
@@ -1409,7 +1409,7 @@ ${e.stack}` : _;
     getMessages(n) {
       const t = this.channels.get(n);
       if (!t) throw new Error("Channel not found");
-      return t.messages.map((o) => W(t, o));
+      return t.messages.map((o) => B(t, o));
     }
     getPeers(n) {
       const t = this.channels.get(n);
@@ -1442,13 +1442,13 @@ ${e.stack}` : _;
     const t = e.peers.get(n);
     return t && t.name ? t.name : n.substring(0, 8);
   }
-  function W(e, n) {
+  function B(e, n) {
     return {
       ...n,
       nickname: tr(e, n.sender)
     };
   }
-  function K(e) {
+  function Q(e) {
     const n = "" + e.nextId;
     return e.nextId = e.nextId + 1, n;
   }
