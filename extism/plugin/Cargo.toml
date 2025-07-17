@@ -1,10 +1,10 @@
 [package]
 name = "plugin"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 extism-pdk = "1.0.1"

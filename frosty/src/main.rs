@@ -1,14 +1,14 @@
 use clap::Parser;
 use frost_ed25519::{
-    self as frost,
+    self as frost, Ciphersuite, Ed25519ScalarField, Ed25519Sha512, Field, Group, Identifier,
+    SigningPackage,
     keys::{IdentifierList, KeyPackage, PublicKeyPackage, SecretShare},
-    Ciphersuite, Ed25519ScalarField, Ed25519Sha512, Field, Group, Identifier, SigningPackage,
 };
 use futures::StreamExt;
 use iroh::{
+    PublicKey, SecretKey, Watcher,
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
     endpoint::{RecvStream, SendStream},
-    PublicKey, SecretKey, Watcher,
 };
 use rand::thread_rng;
 use sha2::{Digest, Sha512};

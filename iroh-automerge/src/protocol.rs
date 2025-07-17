@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use automerge::{
-    sync::{self, SyncDoc},
     Automerge,
+    sync::{self, SyncDoc},
 };
 use iroh::{
     endpoint::{Connection, RecvStream, SendStream},
     protocol::{AcceptError, ProtocolHandler},
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 #[derive(Debug, Clone)]
 pub struct IrohAutomergeProtocol {
