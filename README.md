@@ -24,6 +24,10 @@ Forward http requests to dumbpipe. Share a local dev server publicly.
 
 Use iroh through [extism]
 
+### [framed messages](framed-messages)
+
+Send chess moves back and forth on the same bi-directional stream by framing it using `tokio-util`'s `codec` feature.
+
 ### [frosty](frosty)
 
 Experiment with [FROST] threshold signatures for iroh.
