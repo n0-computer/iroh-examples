@@ -23,7 +23,6 @@ async fn main() -> anyhow::Result<()> {
     let repo = IrohRepo::new(endpoint.clone());
     let router = iroh::protocol::Router::builder(endpoint)
         .accept(IrohRepo::SYNC_ALPN, repo.clone())
-        // .accept(IrohRepo::API_ALPN, repo.api().expose()?)
         .spawn();
 
     println!("Running as {}", router.endpoint().node_id());

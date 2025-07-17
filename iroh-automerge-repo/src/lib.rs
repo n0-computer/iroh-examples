@@ -1,23 +1,19 @@
-pub mod api;
 pub mod codec;
 pub mod storage;
 
 use automerge_repo::{ConnDirection, Repo, RepoHandle};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::{api::AutomergeRepoClient, codec::Codec, storage::AsyncInMemoryStorage};
+use crate::{codec::Codec, storage::AsyncInMemoryStorage};
 
 #[derive(derive_more::Debug, Clone)]
 pub struct IrohRepo {
     endpoint: iroh::Endpoint,
     repo_handle: RepoHandle,
-    #[debug("AutomergeRepoClient")]
-    api: AutomergeRepoClient,
 }
 
 impl IrohRepo {
     pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
-    pub const API_ALPN: &[u8] = AutomergeRepoClient::ALPN;
 
     pub fn new(endpoint: iroh::Endpoint) -> Self {
         // Create a repo.
@@ -26,11 +22,9 @@ impl IrohRepo {
     }
 
     pub fn with_repo(endpoint: iroh::Endpoint, repo_handle: RepoHandle) -> Self {
-        let api = AutomergeRepoClient::spawn(repo_handle.clone());
         Self {
             endpoint,
             repo_handle,
-            api,
         }
     }
 
@@ -47,10 +41,6 @@ impl IrohRepo {
             .await
             .map_err(|e| anyhow::anyhow!("{e:?}"))?;
         Ok(())
-    }
-
-    pub fn api(&self) -> &AutomergeRepoClient {
-        &self.api
     }
 
     pub fn handle(&self) -> &RepoHandle {
