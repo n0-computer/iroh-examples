@@ -2,7 +2,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
 
 pub fn load_certs<'a>(filename: impl AsRef<Path>) -> Result<Vec<CertificateDer<'a>>> {
     println!("loading certs from {}", filename.as_ref().display());

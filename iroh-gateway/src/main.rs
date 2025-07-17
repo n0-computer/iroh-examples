@@ -7,29 +7,29 @@ use std::{
 use anyhow::Context;
 use args::CertMode;
 use axum::{
+    Extension, Router,
     body::Body,
     extract::Path,
-    http::{header, Method, Request, StatusCode},
+    http::{Method, Request, StatusCode, header},
     response::{IntoResponse, Response},
     routing::get,
-    Extension, Router,
 };
-use bao_tree::{io::fsm::BaoContentItem, ChunkNum};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use bao_tree::{ChunkNum, io::fsm::BaoContentItem};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use bytes::Bytes;
 use clap::Parser;
 use derive_more::Deref;
-use futures::{pin_mut, StreamExt};
+use futures::{StreamExt, pin_mut};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::{discovery::dns::DnsDiscovery, endpoint::Connection, Endpoint, NodeAddr, NodeId};
+use iroh::{Endpoint, NodeAddr, NodeId, discovery::dns::DnsDiscovery, endpoint::Connection};
 use iroh_base::ticket::NodeTicket;
 use iroh_blobs::{
+    BlobFormat, Hash,
     format::collection::Collection,
     get::fsm::{BlobContentNext, ConnectedNext, DecodeError, EndBlobNext},
-    protocol::{ChunkRangesSeq, ALPN},
+    protocol::{ALPN, ChunkRangesSeq},
     ticket::BlobTicket,
-    BlobFormat, Hash,
 };
 use lru::LruCache;
 use mime::Mime;
@@ -37,7 +37,7 @@ use mime_classifier::MimeClassifier;
 use range_collections::RangeSet2;
 use ranges::parse_byte_range;
 use tokio::net::TcpListener;
-use tokio_rustls_acme::{caches::DirCache, tokio_rustls::TlsAcceptor, AcmeConfig};
+use tokio_rustls_acme::{AcmeConfig, caches::DirCache, tokio_rustls::TlsAcceptor};
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use tower_service::Service;
 use url::Url;

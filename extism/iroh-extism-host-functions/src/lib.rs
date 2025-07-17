@@ -1,9 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::{protocol::Router, Endpoint, NodeId};
+use iroh::{Endpoint, NodeId, protocol::Router};
 use iroh_blobs::{api::downloader::Shuffled, net_protocol::Blobs, store::fs::FsStore};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
