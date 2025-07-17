@@ -6,7 +6,7 @@ use bao_tree::ChunkNum;
 use bytes::Bytes;
 use headers::{HeaderMapExt, Range};
 use hyper::Request;
-use range_collections::{range_set::RangeSetRange, RangeSet2};
+use range_collections::{RangeSet2, range_set::RangeSetRange};
 
 /// Given a range specified as arbitrary range bounds, normalize it into a range
 /// that has inclusive start and exclusive end.

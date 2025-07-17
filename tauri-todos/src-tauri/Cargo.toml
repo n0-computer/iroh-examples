@@ -5,7 +5,7 @@ description = "Todos with Iroh"
 license = "MIT OR Apache-2.0"
 authors = ["dignifiedquire <me@dignifiedquire.com>", "n0 team"]
 repository = "https://github.com/n0-computer/iroh-example-todos"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,11 +1,11 @@
 use anyhow::Result;
 use async_channel::Sender;
 use iroh::{
+    Endpoint, NodeId,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler, Router},
-    Endpoint, NodeId,
 };
-use n0_future::{boxed::BoxStream, task, Stream, StreamExt};
+use n0_future::{Stream, StreamExt, boxed::BoxStream, task};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
@@ -46,7 +46,7 @@ impl EchoNode {
         &self,
         node_id: NodeId,
         payload: String,
-    ) -> impl Stream<Item = ConnectEvent> + Unpin {
+    ) -> impl Stream<Item = ConnectEvent> + Unpin + use<> {
         let (event_sender, event_receiver) = async_channel::bounded(16);
         let endpoint = self.router.endpoint().clone();
         task::spawn(async move {

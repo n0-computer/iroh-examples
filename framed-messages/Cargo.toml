@@ -1,0 +1,17 @@
+[package]
+name = "framed-messages"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+bytes = "1.10.1"
+futures-util = { version = "0.3.31", features = ["sink"] }
+iroh = "0.90.0"
+iroh-metrics = "0.35.0"
+n0-snafu = "0.2.1"
+n0-watcher = "0.2.0"
+postcard = "1.1.2"
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.46.1", features = ["full"] }
+tokio-util = { version = "0.7.15", features = ["codec"] }
