@@ -1,0 +1,21 @@
+[package]
+name = "iroh-automerge-repo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+automerge = "0.6.1"
+automerge_repo = { version = "0.2.2", features = ["tokio"] }
+bytes = "1.10.1"
+clap = { version = "4.5.41", features = ["derive"] }
+iroh = "0.90.0"
+irpc = "0.5.0"
+irpc-iroh = "0.5.0"
+n0-future = "0.1.3"
+serde = "1.0.219"
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+tokio = { version = "1.46.1", features = ["sync", "net"] }
+tokio-util = { version = "0.7.15", features = ["codec"] }
+tracing = "0.1.41"
