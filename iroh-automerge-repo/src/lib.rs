@@ -1,10 +1,15 @@
-pub mod codec;
-pub mod storage;
+use std::path::Path;
 
-use automerge_repo::{ConnDirection, Repo, RepoHandle};
+use anyhow::Result;
+use automerge_repo::{
+    ConnDirection, Repo, RepoHandle, SharePolicy, Storage, share_policy, tokio::FsStorage,
+};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{codec::Codec, storage::AsyncInMemoryStorage};
+
+pub mod codec;
+pub mod storage;
 
 #[derive(derive_more::Debug, Clone)]
 pub struct IrohRepo {
@@ -12,19 +17,58 @@ pub struct IrohRepo {
     repo_handle: RepoHandle,
 }
 
+#[derive(derive_more::Debug)]
+pub struct IrohRepoBuilder {
+    endpoint: iroh::Endpoint,
+    repo_id: Option<String>,
+    #[debug("Box<dyn Storage>")]
+    storage: Box<dyn Storage>,
+    #[debug("Box<dyn SharePolicy>")]
+    share_policy: Box<dyn SharePolicy>,
+}
+
+impl IrohRepoBuilder {
+    pub fn repo_id(mut self, repo_id: String) -> Self {
+        self.repo_id = Some(repo_id);
+        self
+    }
+
+    pub fn storage(mut self, storage: Box<dyn Storage>) -> Self {
+        self.storage = storage;
+        self
+    }
+
+    pub fn fs_storage(mut self, root: impl AsRef<Path>) -> Result<Self> {
+        self.storage = Box::new(FsStorage::open(root)?);
+        Ok(self)
+    }
+
+    pub fn share_policy(mut self, share_policy: Box<dyn SharePolicy>) -> Self {
+        self.share_policy = share_policy;
+        self
+    }
+
+    pub fn build(self) -> IrohRepo {
+        // Create a repo.
+        let repo_handle = Repo::new(self.repo_id, self.storage)
+            .with_share_policy(self.share_policy)
+            .run();
+        IrohRepo {
+            endpoint: self.endpoint,
+            repo_handle,
+        }
+    }
+}
+
 impl IrohRepo {
     pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
 
-    pub fn new(endpoint: iroh::Endpoint) -> Self {
-        // Create a repo.
-        let repo_handle = Repo::new(None, Box::new(AsyncInMemoryStorage::new())).run();
-        Self::with_repo(endpoint, repo_handle)
-    }
-
-    pub fn with_repo(endpoint: iroh::Endpoint, repo_handle: RepoHandle) -> Self {
-        Self {
+    pub fn builder(endpoint: iroh::Endpoint) -> IrohRepoBuilder {
+        IrohRepoBuilder {
             endpoint,
-            repo_handle,
+            repo_id: None,
+            storage: Box::new(AsyncInMemoryStorage::new()),
+            share_policy: Box::new(share_policy::Permissive),
         }
     }
 
