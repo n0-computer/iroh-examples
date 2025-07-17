@@ -1,64 +1,91 @@
-use automerge_repo::{Message, NetworkError};
-use bytes::{Buf, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
+pub mod api;
+pub mod codec;
+pub mod storage;
 
-/// A simple length prefixed codec over `crate::Message` for use over stream oriented transports
-#[derive(Debug, Clone, Copy)]
-pub struct Codec;
+use automerge_repo::{ConnDirection, Repo, RepoHandle};
+use tokio_util::codec::{FramedRead, FramedWrite};
 
-#[derive(Debug, thiserror::Error)]
-pub enum CodecError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error("Failed to decode: {0}")]
-    DecodeError(String),
-    #[error(transparent)]
-    Network(#[from] NetworkError),
+use crate::{api::AutomergeRepoClient, codec::Codec, storage::AsyncInMemoryStorage};
+
+#[derive(derive_more::Debug, Clone)]
+pub struct IrohRepo {
+    endpoint: iroh::Endpoint,
+    repo_handle: RepoHandle,
+    #[debug("AutomergeRepoClient")]
+    api: AutomergeRepoClient,
 }
 
-impl From<CodecError> for NetworkError {
-    fn from(err: CodecError) -> Self {
-        NetworkError::Error(err.to_string())
+impl IrohRepo {
+    pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
+    pub const API_ALPN: &[u8] = AutomergeRepoClient::ALPN;
+
+    pub fn new(endpoint: iroh::Endpoint) -> Self {
+        // Create a repo.
+        let repo_handle = Repo::new(None, Box::new(AsyncInMemoryStorage::new())).run();
+        Self::with_repo(endpoint, repo_handle)
     }
-}
 
-impl Decoder for Codec {
-    type Item = Message;
-
-    type Error = CodecError;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if src.len() < 4 {
-            return Ok(None);
+    pub fn with_repo(endpoint: iroh::Endpoint, repo_handle: RepoHandle) -> Self {
+        let api = AutomergeRepoClient::spawn(repo_handle.clone());
+        Self {
+            endpoint,
+            repo_handle,
+            api,
         }
-
-        // Read the length prefix
-        let len = src.get_u32() as usize;
-
-        // Check if we have enough data for this message
-        if src.len() < len {
-            src.reserve(len - src.len());
-            return Ok(None);
-        }
-
-        // Parse the message
-        let data = &src[..len];
-        Message::decode(data)
-            .map(Some)
-            .map_err(|e| CodecError::DecodeError(e.to_string()))
     }
-}
 
-impl Encoder<Message> for Codec {
-    type Error = CodecError;
+    pub async fn sync_with(&self, addr: impl Into<iroh::NodeAddr>) -> anyhow::Result<()> {
+        let conn = self.endpoint.connect(addr, IrohRepo::SYNC_ALPN).await?;
+        let (send, recv) = conn.open_bi().await?;
 
-    fn encode(&mut self, msg: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let encoded = msg.encode();
-        let len = encoded.len() as u32;
-        let len_slice = len.to_be_bytes();
-        dst.reserve(4 + len as usize);
-        dst.extend_from_slice(&len_slice);
-        dst.extend_from_slice(&encoded);
+        self.repo_handle
+            .connect_stream(
+                FramedRead::new(recv, Codec),
+                FramedWrite::new(send, Codec),
+                ConnDirection::Outgoing,
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
         Ok(())
+    }
+
+    pub fn api(&self) -> &AutomergeRepoClient {
+        &self.api
+    }
+
+    pub fn handle(&self) -> &RepoHandle {
+        &self.repo_handle
+    }
+}
+
+impl iroh::protocol::ProtocolHandler for IrohRepo {
+    async fn accept(
+        &self,
+        connection: iroh::endpoint::Connection,
+    ) -> Result<(), iroh::protocol::AcceptError> {
+        println!(
+            "Accepted incoming repo connection from {}",
+            connection.remote_node_id()?
+        );
+
+        let (send, recv) = connection.accept_bi().await?;
+
+        self.repo_handle
+            .connect_stream(
+                FramedRead::new(recv, Codec),
+                FramedWrite::new(send, Codec),
+                ConnDirection::Incoming,
+            )
+            .await
+            .map_err(iroh::protocol::AcceptError::from_err)?;
+
+        Ok(())
+    }
+
+    async fn shutdown(&self) {
+        let repo_handle = self.repo_handle.clone();
+        if let Err(e) = tokio::task::spawn_blocking(|| repo_handle.stop()).await {
+            tracing::warn!(?e, "Error shutting down automerge repo");
+        }
     }
 }

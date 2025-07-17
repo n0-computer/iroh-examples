@@ -9,6 +9,7 @@ automerge = "0.6.1"
 automerge_repo = { version = "0.2.2", features = ["tokio"] }
 bytes = "1.10.1"
 clap = { version = "4.5.41", features = ["derive"] }
+derive_more = { version = "2.0.1", features = ["debug"] }
 iroh = "0.90.0"
 irpc = "0.5.0"
 irpc-iroh = "0.5.0"
@@ -19,3 +20,4 @@ thiserror = "2.0.12"
 tokio = { version = "1.46.1", features = ["sync", "net"] }
 tokio-util = { version = "0.7.15", features = ["codec"] }
 tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
