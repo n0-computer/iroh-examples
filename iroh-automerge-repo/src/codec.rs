@@ -1,68 +1,56 @@
-use automerge_repo::{Message, NetworkError};
-use bytes::{Buf, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
+use bytes::Bytes;
+use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-/// A simple length prefixed codec over `crate::Message` for use over stream oriented transports
-#[derive(Debug, Clone, Copy)]
-pub struct Codec;
-
-#[derive(Debug, thiserror::Error)]
-pub enum CodecError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error("Failed to decode: {0}")]
-    DecodeError(String),
-    #[error(transparent)]
-    Network(#[from] NetworkError),
+#[derive(Clone)]
+pub(crate) struct Codec {
+    remote_node_id: iroh::NodeId,
+    inner: LengthDelimitedCodec,
 }
 
-impl From<CodecError> for NetworkError {
-    fn from(err: CodecError) -> Self {
-        NetworkError::Error(err.to_string())
+impl Codec {
+    pub(crate) fn new(remote_node_id: iroh::NodeId) -> Self {
+        Self {
+            remote_node_id,
+            inner: LengthDelimitedCodec::new(), // using default values
+        }
+    }
+}
+
+impl Encoder<Vec<u8>> for Codec {
+    type Error = std::io::Error;
+
+    fn encode(&mut self, bytes: Vec<u8>, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
+        let len = bytes.len();
+        let result = self.inner.encode(Bytes::from(bytes), dst);
+        if let Ok(_) = &result {
+            tracing::trace!(len, %self.remote_node_id, "encoded msg");
+        }
+        result
     }
 }
 
 impl Decoder for Codec {
-    type Item = Message;
+    type Item = Vec<u8>;
 
-    type Error = CodecError;
+    type Error = std::io::Error;
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if src.len() < 4 {
+    fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        let Some(bytes) = self.inner.decode(src)? else {
             return Ok(None);
-        }
+        };
 
-        // Read the length prefix
-        let mut len_bytes = [0u8; 4];
-        len_bytes.copy_from_slice(&src[..4]);
-        let len = u32::from_be_bytes(len_bytes) as usize;
+        tracing::trace!(len = bytes.len(), %self.remote_node_id, "decoded msg");
 
-        // Check if we have enough data for this message
-        if src.len() < len + 4 {
-            src.reserve(len + 4 - src.len());
-            return Ok(None);
-        }
-
-        // Parse the message
-        let data = src[4..len + 4].to_vec();
-        src.advance(len + 4);
-        let msg = Message::decode(&data).map_err(|e| CodecError::DecodeError(e.to_string()))?;
-        println!("Decoded {msg:?}");
-        Ok(Some(msg))
+        Ok(Some(Vec::from(bytes)))
     }
-}
 
-impl Encoder<Message> for Codec {
-    type Error = CodecError;
+    fn decode_eof(&mut self, buf: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        let Some(bytes) = self.inner.decode_eof(buf)? else {
+            return Ok(None);
+        };
 
-    fn encode(&mut self, msg: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        println!("Encoding {msg:?}");
-        let encoded = msg.encode();
-        let len = encoded.len() as u32;
-        let len_slice = len.to_be_bytes();
-        dst.reserve(4 + len as usize);
-        dst.extend_from_slice(&len_slice);
-        dst.extend_from_slice(&encoded);
-        Ok(())
+        tracing::trace!(len = bytes.len(), %self.remote_node_id, "decoded msg");
+
+        Ok(Some(Vec::from(bytes)))
     }
 }

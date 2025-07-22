@@ -1,94 +1,49 @@
-use std::path::Path;
-
 use anyhow::Result;
-use automerge_repo::{
-    ConnDirection, Repo, RepoHandle, SharePolicy, Storage, share_policy, tokio::FsStorage,
-};
+use automerge_repo::{ConnDirection, ConnFinishedReason, Samod as Repo};
+use codec::Codec;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::{codec::Codec, storage::AsyncInMemoryStorage};
-
-pub mod codec;
-pub mod storage;
+mod codec;
 
 #[derive(derive_more::Debug, Clone)]
 pub struct IrohRepo {
     endpoint: iroh::Endpoint,
-    repo_handle: RepoHandle,
-}
-
-#[derive(derive_more::Debug)]
-pub struct IrohRepoBuilder {
-    endpoint: iroh::Endpoint,
-    repo_id: Option<String>,
-    #[debug("Box<dyn Storage>")]
-    storage: Box<dyn Storage>,
-    #[debug("Box<dyn SharePolicy>")]
-    share_policy: Box<dyn SharePolicy>,
-}
-
-impl IrohRepoBuilder {
-    pub fn repo_id(mut self, repo_id: String) -> Self {
-        self.repo_id = Some(repo_id);
-        self
-    }
-
-    pub fn storage(mut self, storage: Box<dyn Storage>) -> Self {
-        self.storage = storage;
-        self
-    }
-
-    pub fn fs_storage(mut self, root: impl AsRef<Path>) -> Result<Self> {
-        self.storage = Box::new(FsStorage::open(root)?);
-        Ok(self)
-    }
-
-    pub fn share_policy(mut self, share_policy: Box<dyn SharePolicy>) -> Self {
-        self.share_policy = share_policy;
-        self
-    }
-
-    pub fn build(self) -> IrohRepo {
-        // Create a repo.
-        let repo_handle = Repo::new(self.repo_id, self.storage)
-            .with_share_policy(self.share_policy)
-            .run();
-        IrohRepo {
-            endpoint: self.endpoint,
-            repo_handle,
-        }
-    }
+    #[debug("Repo")]
+    repo: Repo,
 }
 
 impl IrohRepo {
     pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
 
-    pub fn builder(endpoint: iroh::Endpoint) -> IrohRepoBuilder {
-        IrohRepoBuilder {
-            endpoint,
-            repo_id: None,
-            storage: Box::new(AsyncInMemoryStorage::new()),
-            share_policy: Box::new(share_policy::Permissive),
-        }
+    pub fn new(endpoint: iroh::Endpoint, repo: Repo) -> Self {
+        IrohRepo { endpoint, repo }
     }
 
-    pub async fn sync_with(&self, addr: impl Into<iroh::NodeAddr>) -> anyhow::Result<()> {
+    pub async fn sync_with(
+        &self,
+        addr: impl Into<iroh::NodeAddr>,
+    ) -> anyhow::Result<ConnFinishedReason> {
+        let addr = addr.into();
+        let node_id = addr.node_id;
         let conn = self.endpoint.connect(addr, IrohRepo::SYNC_ALPN).await?;
         let (send, recv) = conn.open_bi().await?;
 
-        self.repo_handle
-            .connect_stream(
-                FramedRead::new(recv, Codec),
-                FramedWrite::new(send, Codec),
+        let conn_finished = self
+            .repo
+            .connect(
+                FramedRead::new(recv, Codec::new(node_id)),
+                FramedWrite::new(send, Codec::new(node_id)),
                 ConnDirection::Outgoing,
             )
-            .await
-            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
-        Ok(())
+            .await;
+
+        tracing::debug!(%node_id, ?conn_finished, "Connection we initiated shut down");
+
+        Ok(conn_finished)
     }
 
-    pub fn handle(&self) -> &RepoHandle {
-        &self.repo_handle
+    pub fn repo(&self) -> &Repo {
+        &self.repo
     }
 }
 
@@ -97,29 +52,25 @@ impl iroh::protocol::ProtocolHandler for IrohRepo {
         &self,
         connection: iroh::endpoint::Connection,
     ) -> Result<(), iroh::protocol::AcceptError> {
-        println!(
-            "Accepted incoming repo connection from {}",
-            connection.remote_node_id()?
-        );
+        let node_id = connection.remote_node_id()?;
 
         let (send, recv) = connection.accept_bi().await?;
 
-        self.repo_handle
-            .connect_stream(
-                FramedRead::new(recv, Codec),
-                FramedWrite::new(send, Codec),
+        let conn_finished = self
+            .repo
+            .connect(
+                FramedRead::new(recv, Codec::new(node_id)),
+                FramedWrite::new(send, Codec::new(node_id)),
                 ConnDirection::Incoming,
             )
-            .await
-            .map_err(iroh::protocol::AcceptError::from_err)?;
+            .await;
+
+        tracing::debug!(%node_id, ?conn_finished, "Connection we accepted shut down");
 
         Ok(())
     }
 
     async fn shutdown(&self) {
-        let repo_handle = self.repo_handle.clone();
-        if let Err(e) = tokio::task::spawn_blocking(|| repo_handle.stop()).await {
-            tracing::warn!(?e, "Error shutting down automerge repo");
-        }
+        self.repo.stop().await
     }
 }
