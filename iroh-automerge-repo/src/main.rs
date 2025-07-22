@@ -1,8 +1,8 @@
 use automerge::{Automerge, transaction::Transactable};
-use automerge_repo::{PeerId, Samod as Repo};
 use clap::Parser;
 use iroh::NodeId;
 use iroh_automerge_repo::IrohRepo;
+use samod::{PeerId, Samod as Repo};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

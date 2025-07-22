@@ -1,6 +1,6 @@
 use anyhow::Result;
-use automerge_repo::{ConnDirection, ConnFinishedReason, Samod as Repo};
 use codec::Codec;
+use samod::{ConnDirection, ConnFinishedReason, Samod};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 mod codec;
@@ -9,13 +9,13 @@ mod codec;
 pub struct IrohRepo {
     endpoint: iroh::Endpoint,
     #[debug("Repo")]
-    repo: Repo,
+    repo: Samod,
 }
 
 impl IrohRepo {
     pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
 
-    pub fn new(endpoint: iroh::Endpoint, repo: Repo) -> Self {
+    pub fn new(endpoint: iroh::Endpoint, repo: Samod) -> Self {
         IrohRepo { endpoint, repo }
     }
 
@@ -42,7 +42,7 @@ impl IrohRepo {
         Ok(conn_finished)
     }
 
-    pub fn repo(&self) -> &Repo {
+    pub fn repo(&self) -> &Samod {
         &self.repo
     }
 }
