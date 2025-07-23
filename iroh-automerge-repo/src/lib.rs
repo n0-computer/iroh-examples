@@ -1,5 +1,5 @@
 //! Combines [`iroh`] with automerge's [`samod`] library, a library to create "automerge repositories"
-//! in rust ´that speak the automerge repo protocol.
+//! in rust that speak the automerge repo protocol.
 use anyhow::Result;
 use codec::Codec;
 use samod::{ConnDirection, ConnFinishedReason, Samod};

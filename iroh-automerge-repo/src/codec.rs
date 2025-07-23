@@ -1,9 +1,16 @@
+//! A simple implementation of a tokio-util codec (the [`Encoder`] and [`Decoder`] traits)
+//! that wraps [`LengthDelimitedCodec`] and works on `Vec<u8>` instead of [`Bytes`].
+//!
+//! Also adds a bit of tracing to the encoding and decoding.
+//!
+//! This codec allows turning things that implement `AsyncRead` or `AsyncWrite`
+//! into `Stream`s and `Sink`s that work on whole messages instead of individual bytes.
 use bytes::Bytes;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 #[derive(Clone)]
 pub(crate) struct Codec {
-    remote_node_id: iroh::NodeId,
+    remote_node_id: iroh::NodeId, // used for tracing
     inner: LengthDelimitedCodec,
 }
 
