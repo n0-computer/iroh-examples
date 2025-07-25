@@ -22,4 +22,4 @@ wasm-bindgen-futures = "0.4"
 wasm-streams = "0.4.2"
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["--all-features"]
+wasm-opt = ["--enable-nontrapping-float-to-int", "--enable-bulk-memory"]
