@@ -1,11 +1,11 @@
 [package]
 name = "iroh-automerge"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow = "1.0.80"
-automerge = "0.5.7"
+automerge = "0.6.1"
 clap = { version = "4.5.1", features = ["derive"] }
 iroh = "0.90"
 postcard = "1.0.8"

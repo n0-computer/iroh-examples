@@ -1,7 +1,7 @@
 use anyhow::Result;
-use automerge::{transaction::Transactable, Automerge, ReadDoc};
+use automerge::{Automerge, ReadDoc, transaction::Transactable};
 use clap::Parser;
-use iroh::{protocol::Router, Endpoint};
+use iroh::{Endpoint, protocol::Router};
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;
 
