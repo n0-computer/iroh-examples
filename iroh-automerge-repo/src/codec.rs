@@ -29,7 +29,7 @@ impl Encoder<Vec<u8>> for Codec {
     fn encode(&mut self, bytes: Vec<u8>, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
         let len = bytes.len();
         let result = self.inner.encode(Bytes::from(bytes), dst);
-        if let Ok(_) = &result {
+        if result.is_ok() {
             tracing::trace!(len, %self.remote_node_id, "encoded msg");
         }
         result
