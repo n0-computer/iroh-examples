@@ -22,7 +22,7 @@ To build the example, you need a Rust toolchain for `wasm32-unknown-unknown`, [`
 
 ```
 rustup target install wasm32-unknown-unknown
-cargo binstall wasm-bindgen wasm-pack
+cargo binstall wasm-bindgen-cli wasm-pack
 ```
 `cargo binstall` is a nifty little tool that downloads binaries from Github releases matching your system architecture. If you don't have it yet, first [install it](https://github.com/cargo-bins/cargo-binstall?tab=readme-ov-file#quickly).
 
