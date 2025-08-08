@@ -1,15 +1,13 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use anyhow::Context;
 use automerge::{Automerge, ReadDoc, transaction::Transactable};
 use clap::Parser;
-use hex::{decode, encode};
+use hex::encode;
 use iroh::NodeId;
 use iroh_automerge_repo::IrohRepo;
 
 use samod::{DocumentId, PeerId, Samod, storage::TokioFilesystemStorage};
-use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -20,7 +18,7 @@ struct Args {
 
     /// Path where storage files will be created
     #[clap(long, default_value = ".")]
-    config_path: String,
+    storage_path: String,
 
     /// Print the secret key
     #[clap(long)]
@@ -86,23 +84,11 @@ async fn main() -> anyhow::Result<()> {
     // This key is the public Node ID used to identify the node in the network
     // If not provided, a random key will be generated, and a new Node ID will
     // be assigned each time the app is started
-    let secret_key = match std::env::var("IROH_NODE_SECRET_KEY") {
-        Ok(key_hex) => match decode(&key_hex) {
-            Ok(key_bytes) => {
-                if key_bytes.len() == 32 {
-                    let mut bytes = [0u8; 32];
-                    bytes.copy_from_slice(&key_bytes);
-                    Some(iroh::SecretKey::from_bytes(&bytes))
-                } else {
-                    println!(
-                        "invalid IROH_NODE_SECRET_KEY provided: expected 32 bytes, got {}",
-                        key_bytes.len()
-                    );
-                    None
-                }
-            }
+    let secret_key = match std::env::var("IROH_SECRET") {
+        Ok(key_hex) => match iroh::SecretKey::from_str(&key_hex) {
+            Ok(key) => Some(key),
             Err(_) => {
-                println!("invalid IROH_NODE_SECRET_KEY provided: not valid hex");
+                println!("invalid IROH_SECRET provided: not valid hex");
                 None
             }
         },
@@ -118,19 +104,17 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let mut rng = rand::rngs::OsRng;
-    let _key = iroh::SecretKey::generate(&mut rng);
-
-    let secret_key = secret_key.unwrap_or_else(|| _key);
+    let secret_key = secret_key.unwrap_or_else(|| {
+        let mut rng = rand::rngs::OsRng;
+        iroh::SecretKey::generate(&mut rng)
+    });
 
     if args.print_secret_key {
-        println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         println!("Secret Key: {}", encode(secret_key.to_bytes()));
         println!(
-            "Set env var for persistent Node ID: export IROH_NODE_SECRET_KEY={}",
+            "Set env var for persistent Node ID: export IROH_SECRET={}",
             encode(secret_key.to_bytes())
         );
-        println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     }
 
     let endpoint = iroh::Endpoint::builder()
@@ -145,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
         .with_peer_id(PeerId::from_string(endpoint.node_id().to_string()))
         .with_storage(TokioFilesystemStorage::new(format!(
             "{}/{}",
-            args.config_path,
+            args.storage_path,
             endpoint.node_id()
         )))
         .load()
@@ -235,53 +219,35 @@ async fn main() -> anyhow::Result<()> {
                 anyhow::Ok(())
             })?;
 
-            // Track the last known heads to detect changes
-            let last_heads = Arc::new(Mutex::new(Vec::new()));
-
             // Get initial heads
             let initial_heads = doc.with_document(|doc| anyhow::Ok(doc.get_heads()))?;
 
-            // Initialize the last_heads tracker
-            *last_heads.lock().await = initial_heads;
-
-            // Set up polling for changes
-            let doc_clone = doc.clone();
-            let last_heads_clone = last_heads.clone();
-
+            // Set up polling for changes (no push available yet)
             tokio::spawn(async move {
+                // Track the last known heads to detect changes
+                let mut last_heads = initial_heads;
                 loop {
                     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-                    // Get current heads from document
-                    let current_heads_result =
-                        doc_clone.with_document(|current_doc| anyhow::Ok(current_doc.get_heads()));
+                    let current_heads = doc.with_document(|doc| doc.get_heads());
+                    {
+                        if current_heads != last_heads {
+                            println!("Document changed! New state:");
 
-                    match current_heads_result {
-                        Ok(current_heads) => {
-                            let mut last_heads_guard = last_heads_clone.lock().await;
-
-                            // Check if heads have changed (indicating document updates)
-                            if current_heads != *last_heads_guard {
-                                println!("Document changed! New state:");
-
-                                // Get the updated document content
-                                if let Err(e) = doc_clone.with_document(|current_doc| {
-                                    for key in current_doc.keys(automerge::ROOT) {
-                                        let (value, _) = current_doc
-                                            .get(automerge::ROOT, &key)?
-                                            .expect("missing value");
-                                        println!("  {key}={value}");
-                                    }
-                                    anyhow::Ok(())
-                                }) {
-                                    eprintln!("Error reading document content: {e}");
+                            // When changes are detected, print the updated document contents...
+                            if let Err(e) = doc.with_document(|current_doc| {
+                                for key in current_doc.keys(automerge::ROOT) {
+                                    let (value, _) = current_doc
+                                        .get(automerge::ROOT, &key)?
+                                        .expect("missing value");
+                                    println!("  {key}={value}");
                                 }
-
-                                *last_heads_guard = current_heads;
+                                anyhow::Ok(())
+                            }) {
+                                eprintln!("Error reading document content: {e}");
                             }
-                        }
-                        Err(e) => {
-                            eprintln!("Error getting document heads: {e}");
+
+                            last_heads = current_heads;
                         }
                     }
                 }
