@@ -18,3 +18,5 @@ tracing = "0.1.41"
 automerge = "0.6.1"
 clap = { version = "4.5.41", features = ["derive"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+rand = "0.8.5"
+hex = "0.4.3"
