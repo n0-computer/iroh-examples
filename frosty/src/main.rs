@@ -392,16 +392,14 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
             .extension()
             .map(|ext| ext == "secret")
             .unwrap_or_default()
+            && let Some(stem) = path.file_stem()
+            && let Some(text) = stem.to_str()
         {
-            if let Some(stem) = path.file_stem() {
-                if let Some(text) = stem.to_str() {
-                    let key = iroh::PublicKey::from_str(text)?;
-                    let secret_share_bytes = fs::read(&path)?;
-                    let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
-                    let key_package = frost::keys::KeyPackage::try_from(secret_share)?;
-                    keys.push((key, key_package));
-                }
-            }
+            let key = iroh::PublicKey::from_str(text)?;
+            let secret_share_bytes = fs::read(&path)?;
+            let secret_share = SecretShare::deserialize(&secret_share_bytes)?;
+            let key_package = frost::keys::KeyPackage::try_from(secret_share)?;
+            keys.push((key, key_package));
         }
     }
     if !keys.is_empty() {
