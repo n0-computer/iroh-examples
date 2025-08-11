@@ -95,19 +95,17 @@ async fn main() -> anyhow::Result<()> {
         Err(_) => None,
     };
 
-    match secret_key {
-        Some(ref key) => {
+    let secret_key = match secret_key {
+        Some(key) => {
             println!("Using existing key: {}", key.public());
+            key
         }
         None => {
             println!("Generating new key");
+            let mut rng = rand::rngs::OsRng;
+            iroh::SecretKey::generate(&mut rng)
         }
-    }
-
-    let secret_key = secret_key.unwrap_or_else(|| {
-        let mut rng = rand::rngs::OsRng;
-        iroh::SecretKey::generate(&mut rng)
-    });
+    };
 
     if args.print_secret_key {
         println!("Secret Key: {}", encode(secret_key.to_bytes()));
@@ -219,36 +217,33 @@ async fn main() -> anyhow::Result<()> {
                 anyhow::Ok(())
             })?;
 
-            // Get initial heads
-            let initial_heads = doc.with_document(|doc| anyhow::Ok(doc.get_heads()))?;
-
             // Set up polling for changes (no push available yet)
             tokio::spawn(async move {
                 // Track the last known heads to detect changes
-                let mut last_heads = initial_heads;
+                let mut last_heads = doc.with_document(|doc| doc.get_heads());
                 loop {
                     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
                     let current_heads = doc.with_document(|doc| doc.get_heads());
-                    {
-                        if current_heads != last_heads {
-                            println!("Document changed! New state:");
+                    if current_heads == last_heads {
+                        continue;
+                    }
 
-                            // When changes are detected, print the updated document contents...
-                            if let Err(e) = doc.with_document(|current_doc| {
-                                for key in current_doc.keys(automerge::ROOT) {
-                                    let (value, _) = current_doc
-                                        .get(automerge::ROOT, &key)?
-                                        .expect("missing value");
-                                    println!("  {key}={value}");
-                                }
-                                anyhow::Ok(())
-                            }) {
-                                eprintln!("Error reading document content: {e}");
-                            }
+                    last_heads = current_heads;
 
-                            last_heads = current_heads;
+                    println!("Document changed! New state:");
+
+                    // When changes are detected, print the updated document contents...
+                    if let Err(e) = doc.with_document(|current_doc| {
+                        for key in current_doc.keys(automerge::ROOT) {
+                            let (value, _) = current_doc
+                                .get(automerge::ROOT, &key)?
+                                .expect("missing value");
+                            println!("  {key}={value}");
                         }
+                        anyhow::Ok(())
+                    }) {
+                        eprintln!("Error reading document content: {e}");
                     }
                 }
             });
