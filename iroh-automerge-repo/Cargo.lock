@@ -3086,9 +3086,9 @@ dependencies = [
 
 [[package]]
 name = "samod"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb28dafe8f85737e97e2597ac57f3ea2ed2e9cb09b4782c3d35808efeec96b9e"
+checksum = "ecd2e176d6f533e87d4967befa3f34da76aae233a0db77a5bf260bc21443b9ce"
 dependencies = [
  "automerge",
  "bytes",
