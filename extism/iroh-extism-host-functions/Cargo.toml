@@ -8,7 +8,7 @@ anyhow = "1.0.79"
 dirs-next = "2.0.0"
 extism = "1.0.0"
 futures = "0.3.29"
-iroh = "0.90"
-iroh-blobs = { version = "0.90" }
+iroh = "0.91"
+iroh-blobs = { version = "0.93" }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec", "io-util", "io", "time"] }
