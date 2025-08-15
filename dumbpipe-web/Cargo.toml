@@ -10,13 +10,13 @@ license = "Apache-2.0/MIT"
 anyhow = "1.0.75"
 bytes = "1.5.0"
 clap = { version = "4.4.11", features = ["derive"] }
-dumbpipe = "0.28"
+dumbpipe = "0.29"
 hex = "0.4.3"
 http = "1.0.0"
 http-body-util = "0.1.0"
 hyper = { version = "1.0.1", features = ["full"] }
 hyper-util = { version = "0.1.1", features = ["full"] }
-iroh = "0.90"
+iroh = "0.91"
 rand = "0.8.5"
 tokio = { version = "1.34.0", features = ["full"] }
 tracing = "0.1.40"
