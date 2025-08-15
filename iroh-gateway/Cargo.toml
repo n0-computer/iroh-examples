@@ -10,9 +10,9 @@ tokio = { version = "1", features = ["full"] }
 headers = { version = "0.4" }
 hyper = "1"
 bytes = "1.1"
-iroh = "0.90"
-iroh-base = "0.90"
-iroh-blobs = "0.90"
+iroh = "0.91"
+iroh-base = "0.91"
+iroh-blobs = "0.93"
 range-collections = "0.4.5"
 anyhow = "1.0.75"
 flume = "0.11.0"
@@ -20,7 +20,7 @@ tracing = "0.1.40"
 tower-http = { version = "0.5.0", features = ["cors"] }
 clap = { version = "4.4.7", features = ["derive"] }
 mime_classifier = "0.0.1"
-derive_more = { version = "1.0.0-beta.1", features = ["debug"] }
+derive_more = { version = "1.0.0-beta.1", features = ["debug", "deref"] }
 mime = "0.3.17"
 url = "2.4.1"
 futures = "0.3.29"
