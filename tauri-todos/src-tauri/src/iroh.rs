@@ -1,22 +1,19 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use iroh::SecretKey;
 use iroh::protocol::Router;
-use quic_rpc::transport::flume::FlumeConnector;
-
-pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
-    FlumeConnector<iroh_blobs::rpc::proto::Response, iroh_blobs::rpc::proto::Request>,
->;
-pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
-    FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>,
->;
+use iroh_blobs::{ALPN as BLOBS_ALPN, BlobsProtocol, api::blobs::Blobs, store::fs::FsStore};
+use iroh_docs::{ALPN as DOCS_ALPN, protocol::Docs};
+use iroh_gossip::{ALPN as GOSSIP_ALPN, net::Gossip};
+use tokio::io::AsyncWriteExt;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Iroh {
     #[allow(dead_code)]
     router: Router,
-    pub(crate) blobs: BlobsClient,
-    pub(crate) docs: DocsClient,
+    store: FsStore,
+    docs: Docs,
 }
 
 impl Iroh {
@@ -24,7 +21,7 @@ impl Iroh {
         // create dir if it doesn't already exist
         tokio::fs::create_dir_all(&path).await?;
 
-        let key = iroh_blobs::util::fs::load_secret_key(path.clone().join("keypair")).await?;
+        let key = load_secret_key(path.clone().join("keypair")).await?;
 
         // create endpoint
         let endpoint = iroh::Endpoint::builder()
@@ -33,41 +30,82 @@ impl Iroh {
             .bind()
             .await?;
 
-        // build the protocol router
-        let mut builder = iroh::protocol::Router::builder(endpoint);
-
         // add iroh gossip
-        let gossip = iroh_gossip::net::Gossip::builder()
-            .spawn(builder.endpoint().clone())
-            .await?;
-        builder = builder.accept(iroh_gossip::ALPN, Arc::new(gossip.clone()));
+        let gossip = Gossip::builder().spawn(endpoint.clone());
 
-        // add iroh blobs
-        let blobs = iroh_blobs::net_protocol::Blobs::persistent(&path)
-            .await?
-            .build(builder.endpoint());
-        builder = builder.accept(iroh_blobs::ALPN, blobs.clone());
+        let blobs = FsStore::load(&path).await?;
 
         // add docs
-        let docs = iroh_docs::protocol::Docs::persistent(path)
-            .spawn(&blobs, &gossip)
+        let docs = Docs::persistent(path)
+            .spawn(endpoint.clone(), (*blobs).clone(), gossip.clone())
             .await?;
-        builder = builder.accept(iroh_docs::ALPN, Arc::new(docs.clone()));
 
-        let router = builder.spawn();
+        // build the protocol router
+        let builder = iroh::protocol::Router::builder(endpoint.clone());
 
-        let blobs_client = blobs.client().clone();
-        let docs_client = docs.client().clone();
+        let router = builder
+            .accept(
+                BLOBS_ALPN,
+                BlobsProtocol::new(&blobs, endpoint.clone(), None),
+            )
+            .accept(GOSSIP_ALPN, gossip)
+            .accept(DOCS_ALPN, docs.clone())
+            .spawn();
 
         Ok(Self {
             router,
-            blobs: blobs_client,
-            docs: docs_client,
+            docs,
+            store: blobs,
         })
+    }
+
+    pub fn blobs(&self) -> &Blobs {
+        self.store.blobs()
+    }
+
+    pub fn docs(&self) -> &Docs {
+        &self.docs
     }
 
     #[allow(dead_code)]
     pub(crate) async fn shutdown(self) -> Result<()> {
-        self.router.shutdown().await
+        self.router.shutdown().await?;
+        Ok(())
+    }
+}
+
+pub async fn load_secret_key(key_path: PathBuf) -> Result<SecretKey> {
+    if key_path.exists() {
+        let key_bytes = tokio::fs::read(key_path).await?;
+
+        let secret_key = SecretKey::try_from(&key_bytes[0..32])?;
+        Ok(secret_key)
+    } else {
+        let secret_key = SecretKey::generate(rand::rngs::OsRng);
+
+        // Try to canonicalize if possible
+        let key_path = key_path.canonicalize().unwrap_or(key_path);
+        let key_path_parent = key_path.parent().ok_or_else(|| {
+            anyhow::anyhow!("no parent directory found for '{}'", key_path.display())
+        })?;
+        tokio::fs::create_dir_all(&key_path_parent).await?;
+
+        // write to tempfile
+        let (file, temp_file_path) = tempfile::NamedTempFile::new_in(key_path_parent)
+            .context("unable to create tempfile")?
+            .into_parts();
+        let mut file = tokio::fs::File::from_std(file);
+        file.write_all(&secret_key.to_bytes())
+            .await
+            .context("unable to write keyfile")?;
+        file.flush().await?;
+        drop(file);
+
+        // move file
+        tokio::fs::rename(temp_file_path, key_path)
+            .await
+            .context("failed to rename keyfile")?;
+
+        Ok(secret_key)
     }
 }
