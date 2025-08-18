@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as C, P as W, __tla as __tla_0 } from "./index-S_SqfK4B.js";
+import { l as C, P as W, __tla as __tla_0 } from "./index-DoK8On4A.js";
 let ee;
 let __tla = Promise.all([
   (() => {
@@ -11,7 +11,7 @@ let __tla = Promise.all([
     }
   })()
 ]).then(async () => {
-  const _e = "" + new URL("chat_browser_bg-C0Kyx0l0.wasm", import.meta.url).href, re = async (e = {}, n) => {
+  const _e = "" + new URL("chat_browser_bg-CGvYwoVr.wasm", import.meta.url).href, re = async (e = {}, n) => {
     let t;
     if (n.startsWith("data:")) {
       const _ = n.replace(/^data:.*?base64,/, "");
@@ -82,13 +82,13 @@ let __tla = Promise.all([
     return (T === null || T.buffer.detached === true || T.buffer.detached === void 0 && T.buffer !== c.memory.buffer) && (T = new DataView(c.memory.buffer)), T;
   }
   const ie = typeof TextDecoder > "u" ? (0, module.require)("util").TextDecoder : TextDecoder;
-  let X = new ie("utf-8", {
+  let Q = new ie("utf-8", {
     ignoreBOM: true,
     fatal: true
   });
-  X.decode();
+  Q.decode();
   function l(e, n) {
-    return e = e >>> 0, X.decode(F().subarray(e, e + n));
+    return e = e >>> 0, Q.decode(F().subarray(e, e + n));
   }
   let A = k.length;
   function s(e) {
@@ -119,7 +119,7 @@ let __tla = Promise.all([
     for (let o = e; o < e + 4 * n; o += 4) _.push(w(t.getUint32(o, true)));
     return _;
   }
-  function Y(e, n) {
+  function X(e, n) {
     return e = e >>> 0, F().subarray(e / 1, e / 1 + n);
   }
   const N = typeof FinalizationRegistry > "u" ? {
@@ -375,7 +375,7 @@ ${e.stack}` : _;
   }
   typeof FinalizationRegistry > "u" || new FinalizationRegistry((e) => c.__wbg_intounderlyingbytesource_free(e >>> 0, 1));
   typeof FinalizationRegistry > "u" || new FinalizationRegistry((e) => c.__wbg_intounderlyingsink_free(e >>> 0, 1));
-  const K = typeof FinalizationRegistry > "u" ? {
+  const Y = typeof FinalizationRegistry > "u" ? {
     register: () => {
     },
     unregister: () => {
@@ -385,11 +385,11 @@ ${e.stack}` : _;
     static __wrap(n) {
       n = n >>> 0;
       const t = Object.create(V.prototype);
-      return t.__wbg_ptr = n, K.register(t, t.__wbg_ptr, t), t;
+      return t.__wbg_ptr = n, Y.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
       const n = this.__wbg_ptr;
-      return this.__wbg_ptr = 0, K.unregister(this), n;
+      return this.__wbg_ptr = 0, Y.unregister(this), n;
     }
     free() {
       const n = this.__destroy_into_raw();
@@ -522,15 +522,15 @@ ${e.stack}` : _;
     var t = j(e, n).slice();
     c.__wbindgen_export_3(e, n * 4, 4), console.debug(...t);
   }
-  function Ke(e) {
+  function Ye(e) {
     return r(e).done;
   }
-  function Qe() {
+  function Ke() {
     return d(function(e, n) {
       r(e).enqueue(r(n));
     }, arguments);
   }
-  function Xe(e, n) {
+  function Qe(e, n) {
     let t, _;
     try {
       t = e, _ = n, console.error(l(e, n));
@@ -538,7 +538,7 @@ ${e.stack}` : _;
       c.__wbindgen_export_3(t, _, 1);
     }
   }
-  function Ye(e, n) {
+  function Xe(e, n) {
     var t = j(e, n).slice();
     c.__wbindgen_export_3(e, n * 4, 4), console.error(...t);
   }
@@ -552,7 +552,7 @@ ${e.stack}` : _;
   }
   function nn() {
     return d(function(e, n) {
-      globalThis.crypto.getRandomValues(Y(e, n));
+      globalThis.crypto.getRandomValues(X(e, n));
     }, arguments);
   }
   function tn() {
@@ -786,21 +786,21 @@ ${e.stack}` : _;
     const t = r(n).reason, _ = m(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = p;
     u().setInt32(e + 4 * 1, o, true), u().setInt32(e + 4 * 0, _, true);
   }
-  function Kn(e) {
+  function Yn(e) {
     r(e).releaseLock();
   }
-  function Qn() {
+  function Kn() {
     return d(function(e, n, t, _) {
       r(e).removeEventListener(l(n, t), r(_));
     }, arguments);
   }
-  function Xn() {
+  function Qn() {
     return d(function() {
       const e = module.require;
       return s(e);
     }, arguments);
   }
-  function Yn(e) {
+  function Xn(e) {
     const n = Promise.resolve(r(e));
     return s(n);
   }
@@ -816,7 +816,7 @@ ${e.stack}` : _;
   }
   function nt() {
     return d(function(e, n, t) {
-      r(e).send(Y(n, t));
+      r(e).send(X(n, t));
     }, arguments);
   }
   function tt(e, n) {
@@ -969,41 +969,41 @@ ${e.stack}` : _;
     return n.cnt-- == 1 ? (n.a = 0, true) : false;
   }
   function $t(e, n, t) {
-    const _ = E(e, n, 2589, we);
+    const _ = E(e, n, 2615, we);
     return s(_);
   }
   function Pt(e, n, t) {
-    const _ = E(e, n, 2598, le);
+    const _ = E(e, n, 2624, le);
     return s(_);
   }
   function Vt(e, n, t) {
-    const _ = E(e, n, 712, ue);
+    const _ = E(e, n, 719, ue);
     return s(_);
   }
   function Gt(e, n, t) {
-    const _ = be(e, n, 1500, de);
+    const _ = be(e, n, 1519, de);
     return s(_);
   }
   function Ht(e, n, t) {
-    const _ = E(e, n, 1603, fe);
+    const _ = E(e, n, 1630, fe);
     return s(_);
   }
   function Jt(e, n, t) {
-    const _ = E(e, n, 1682, ge);
+    const _ = E(e, n, 1709, ge);
     return s(_);
   }
-  function Kt(e, n) {
+  function Yt(e, n) {
     const t = D(r(n)), _ = m(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = p;
     u().setInt32(e + 4 * 1, o, true), u().setInt32(e + 4 * 0, _, true);
   }
-  function Qt(e, n) {
+  function Kt(e, n) {
     const t = new Error(l(e, n));
     return s(t);
   }
-  function Xt(e, n) {
+  function Qt(e, n) {
     return r(e) in r(n);
   }
-  function Yt(e) {
+  function Xt(e) {
     return typeof r(e) == "function";
   }
   function Zt(e) {
@@ -1052,11 +1052,11 @@ ${e.stack}` : _;
   URL = globalThis.URL;
   const i = await re({
     "./chat_browser_bg.js": {
-      __wbindgen_error_new: Qt,
+      __wbindgen_error_new: Kt,
       __wbindgen_string_new: a_,
       __wbindgen_object_drop_ref: s_,
       __wbindgen_is_undefined: n_,
-      __wbindgen_in: Xt,
+      __wbindgen_in: Qt,
       __wbindgen_boolean_get: Bt,
       __wbindgen_is_object: Zt,
       __wbindgen_as_number: Ut,
@@ -1073,10 +1073,10 @@ ${e.stack}` : _;
       __wbg_set_3f1d0b984ed272ed: ot,
       __wbg_new_8a6f238a6ece86ea: kn,
       __wbg_stack_0ed75d68575b0f3c: vt,
-      __wbg_error_7534b8e9a36f1ab4: Xe,
+      __wbg_error_7534b8e9a36f1ab4: Qe,
       __wbindgen_cb_drop: Dt,
       __wbg_debug_55137df391ebfd29: Je,
-      __wbg_error_91947ba14c44e1c9: Ye,
+      __wbg_error_91947ba14c44e1c9: Xe,
       __wbg_log_e51ef223c244b133: hn,
       __wbg_warn_479b8bbb8337357b: Nt,
       __wbg_getRandomValues_3c9c0d586e575a16: nn,
@@ -1097,7 +1097,7 @@ ${e.stack}` : _;
       __wbg_code_cfd8f6868bdaed9b: Pe,
       __wbg_sethandleevent_8454ae22cde5c602: ut,
       __wbg_addEventListener_834c7f05e9c3b98b: ke,
-      __wbg_removeEventListener_709135c542708608: Qn,
+      __wbg_removeEventListener_709135c542708608: Kn,
       __wbg_new_018dcc2d6c8c2f6a: yn,
       __wbg_append_8c7dd8d641a5f01b: Ie,
       __wbg_data_432d9c3df2630942: He,
@@ -1107,9 +1107,9 @@ ${e.stack}` : _;
       __wbg_view_fd8a56e8983f448d: qt,
       __wbg_respond_1f279fa9f8edcb1c: Zn,
       __wbg_close_304cc1fef3466669: De,
-      __wbg_enqueue_bb16ba72f537dc9e: Qe,
+      __wbg_enqueue_bb16ba72f537dc9e: Ke,
       __wbg_read_a2434af1186cb56c: Gn,
-      __wbg_releaseLock_091899af97991d2e: Kn,
+      __wbg_releaseLock_091899af97991d2e: Yn,
       __wbg_cancel_8a308660caa6cadf: Me,
       __wbg_getdone_d47073731acd3e74: on,
       __wbg_getvalue_009dcd63692bee1f: cn,
@@ -1143,14 +1143,14 @@ ${e.stack}` : _;
       __wbg_clearTimeout_15dfc3d1dcb635c6: Ue,
       __wbg_queueMicrotask_97d92b4fcc8a61c5: $n,
       __wbg_queueMicrotask_d3219def82552485: Pn,
-      __wbindgen_is_function: Yt,
+      __wbindgen_is_function: Xt,
       __wbg_performance_7a3ffd0b17f663ad: Wn,
       __wbg_now_2c95c9de01293173: zn,
       __wbg_crypto_ed58b8e10a292839: Ge,
       __wbg_process_5c1d670bc53614b8: Bn,
       __wbg_versions_c71aa1626a93e0a1: Mt,
       __wbg_node_02999533c4ea02e3: Nn,
-      __wbg_require_79b1e9274cde3c87: Xn,
+      __wbg_require_79b1e9274cde3c87: Qn,
       __wbg_msCrypto_0a36e2ec3a343d26: pn,
       __wbg_getRandomValues_bcb4912f16000dc4: tn,
       __wbg_randomFillSync_ab2cfe79ebbf2740: Vn,
@@ -1169,14 +1169,14 @@ ${e.stack}` : _;
       __wbg_call_7cccdd69e0791ae2: Oe,
       __wbg_set_8fc6bf8a5b1071d1: st,
       __wbg_next_6574e1a8a62d1055: qn,
-      __wbg_done_769e5ede4b31c67b: Ke,
+      __wbg_done_769e5ede4b31c67b: Ye,
       __wbg_now_807e54c39636c349: Un,
       __wbg_get_67b2ba62fc30de12: rn,
       __wbg_has_a5ea9117f258a0ec: an,
       __wbg_buffer_609cc3eee51ed158: Ce,
       __wbg_stringify_f7ed6987935b4a24: jt,
       __wbg_new_23a2665fac83c611: mn,
-      __wbg_resolve_4851785c9c5f573d: Yn,
+      __wbg_resolve_4851785c9c5f573d: Xn,
       __wbg_catch_a6e601879b2610e9: qe,
       __wbg_then_44b73946d2fb3e7d: Ft,
       __wbg_then_48b406749878a531: At,
@@ -1194,17 +1194,17 @@ ${e.stack}` : _;
       __wbg_byteLength_e674b853d9c77e1d: Ae,
       __wbg_byteOffset_fd862df290ef848d: Ee,
       __wbg_set_65595bdd868b3009: ct,
-      __wbindgen_debug_string: Kt,
+      __wbindgen_debug_string: Yt,
       __wbindgen_throw: b_,
       __wbindgen_memory: __,
-      __wbindgen_closure_wrapper3520: Vt,
-      __wbindgen_closure_wrapper6498: Gt,
-      __wbindgen_closure_wrapper6985: Ht,
-      __wbindgen_closure_wrapper7774: Jt,
-      __wbindgen_closure_wrapper13487: $t,
-      __wbindgen_closure_wrapper13542: Pt
+      __wbindgen_closure_wrapper3534: Vt,
+      __wbindgen_closure_wrapper6506: Gt,
+      __wbindgen_closure_wrapper7035: Ht,
+      __wbindgen_closure_wrapper7822: Jt,
+      __wbindgen_closure_wrapper13535: $t,
+      __wbindgen_closure_wrapper13590: Pt
     }
-  }, _e), u_ = i.memory, d_ = i.start, f_ = i.__wbg_chatnode_free, g_ = i.chatnode_spawn, w_ = i.chatnode_node_id, l_ = i.chatnode_remote_info, h_ = i.chatnode_create, p_ = i.chatnode_join, y_ = i.__wbg_channel_free, m_ = i.channel_sender, x_ = i.channel_receiver, v_ = i.channel_ticket, S_ = i.channel_id, k_ = i.channel_neighbors, I_ = i.__wbg_channelsender_free, R_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, j_ = i.__wbg_intounderlyingbytesource_free, C_ = i.intounderlyingbytesource_type, F_ = i.intounderlyingbytesource_autoAllocateChunkSize, A_ = i.intounderlyingbytesource_start, E_ = i.intounderlyingbytesource_pull, L_ = i.intounderlyingbytesource_cancel, O_ = i.__wbg_intounderlyingsource_free, M_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, N_ = i.__wbg_intounderlyingsink_free, z_ = i.intounderlyingsink_write, U_ = i.intounderlyingsink_close, W_ = i.intounderlyingsink_abort, B_ = i.ring_core_0_17_11__bn_mul_mont, D_ = i.__wbindgen_export_0, $_ = i.__wbindgen_export_1, P_ = i.__wbindgen_export_2, V_ = i.__wbindgen_export_3, G_ = i.__wbindgen_export_4, H_ = i.__wbindgen_add_to_stack_pointer, J_ = i.__wbindgen_export_5, K_ = i.__wbindgen_export_6, Q_ = i.__wbindgen_export_7, X_ = i.__wbindgen_export_8, Y_ = i.__wbindgen_export_9, Z_ = i.__wbindgen_export_10, er = i.__wbindgen_export_11, Z = i.__wbindgen_start, nr = Object.freeze(Object.defineProperty({
+  }, _e), u_ = i.memory, d_ = i.start, f_ = i.__wbg_chatnode_free, g_ = i.chatnode_spawn, w_ = i.chatnode_node_id, l_ = i.chatnode_remote_info, h_ = i.chatnode_create, p_ = i.chatnode_join, y_ = i.__wbg_channel_free, m_ = i.channel_sender, x_ = i.channel_receiver, v_ = i.channel_ticket, S_ = i.channel_id, k_ = i.channel_neighbors, I_ = i.__wbg_channelsender_free, R_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, j_ = i.__wbg_intounderlyingbytesource_free, C_ = i.intounderlyingbytesource_type, F_ = i.intounderlyingbytesource_autoAllocateChunkSize, A_ = i.intounderlyingbytesource_start, E_ = i.intounderlyingbytesource_pull, L_ = i.intounderlyingbytesource_cancel, O_ = i.__wbg_intounderlyingsource_free, M_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, N_ = i.__wbg_intounderlyingsink_free, z_ = i.intounderlyingsink_write, U_ = i.intounderlyingsink_close, W_ = i.intounderlyingsink_abort, B_ = i.ring_core_0_17_11__bn_mul_mont, D_ = i.__wbindgen_export_0, $_ = i.__wbindgen_export_1, P_ = i.__wbindgen_export_2, V_ = i.__wbindgen_export_3, G_ = i.__wbindgen_export_4, H_ = i.__wbindgen_add_to_stack_pointer, J_ = i.__wbindgen_export_5, Y_ = i.__wbindgen_export_6, K_ = i.__wbindgen_export_7, Q_ = i.__wbindgen_export_8, X_ = i.__wbindgen_export_9, Z_ = i.__wbindgen_export_10, er = i.__wbindgen_export_11, Z = i.__wbindgen_start, nr = Object.freeze(Object.defineProperty({
     __proto__: null,
     __wbg_channel_free: y_,
     __wbg_channelsender_free: I_,
@@ -1221,10 +1221,10 @@ ${e.stack}` : _;
     __wbindgen_export_3: V_,
     __wbindgen_export_4: G_,
     __wbindgen_export_5: J_,
-    __wbindgen_export_6: K_,
-    __wbindgen_export_7: Q_,
-    __wbindgen_export_8: X_,
-    __wbindgen_export_9: Y_,
+    __wbindgen_export_6: Y_,
+    __wbindgen_export_7: K_,
+    __wbindgen_export_8: Q_,
+    __wbindgen_export_9: X_,
     __wbindgen_start: Z,
     channel_id: S_,
     channel_neighbors: k_,
@@ -1318,7 +1318,7 @@ ${e.stack}` : _;
             };
             g.peers.set(h.from, S);
             const O = {
-              id: Q(g),
+              id: K(g),
               sender: h.from,
               content: h.text
             };
@@ -1393,7 +1393,7 @@ ${e.stack}` : _;
       await _.channel.sender.broadcast(t);
       const a = {
         sender: this.chatNode.node_id(),
-        id: Q(_),
+        id: K(_),
         content: t
       };
       _.messages.push(a);
@@ -1448,7 +1448,7 @@ ${e.stack}` : _;
       nickname: tr(e, n.sender)
     };
   }
-  function Q(e) {
+  function K(e) {
     const n = "" + e.nextId;
     return e.nextId = e.nextId + 1, n;
   }
