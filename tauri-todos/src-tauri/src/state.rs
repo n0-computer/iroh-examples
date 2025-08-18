@@ -1,10 +1,10 @@
 use anyhow::Result;
-use futures_lite::StreamExt;
-use iroh_docs::{rpc::client::docs::LiveEvent, ContentStatus};
+use iroh_docs::{engine::LiveEvent, sync::ContentStatus};
+use n0_future::StreamExt;
 use tauri::Emitter as _;
 use tokio::sync::Mutex;
 
-use crate::{todos::Todos, Iroh};
+use crate::{Iroh, todos::Todos};
 
 pub struct AppState {
     pub todos: Mutex<Option<(Todos, tokio::task::JoinHandle<()>)>>,

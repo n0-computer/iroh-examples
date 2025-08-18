@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     let recv_router = Router::builder(recv_ep)
         .accept(ChessMovesALPN, ChessProtocol)
         .spawn();
-    let addr = recv_router.endpoint().node_addr().initialized().await?;
+    let addr = recv_router.endpoint().node_addr().initialized().await;
 
     // create a send side & send a ping
     let send_ep = Endpoint::builder().discovery_n0().bind().await?;

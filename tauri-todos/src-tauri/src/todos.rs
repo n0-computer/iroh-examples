@@ -1,13 +1,15 @@
 use std::str::FromStr;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use bytes::Bytes;
-use futures_lite::{Stream, StreamExt};
-use iroh_docs::rpc::client::docs::Doc;
-use iroh_docs::rpc::client::docs::{Entry, LiveEvent, ShareMode};
-use iroh_docs::{store::Query, AuthorId, DocTicket};
-
-use quic_rpc::transport::flume::FlumeConnector;
+use iroh_docs::{
+    AuthorId, DocTicket,
+    api::{Doc, protocol::ShareMode},
+    engine::LiveEvent,
+    store::Query,
+    sync::Entry,
+};
+use n0_future::{Stream, StreamExt};
 // use iroh::ticket::DocTicket;
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +61,7 @@ const MAX_LABEL_LEN: usize = 2 * 1000;
 /// List of todos, including completed todos that have not been archived
 pub struct Todos {
     iroh: Iroh,
-    doc: Doc<FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>>,
+    doc: Doc,
 
     ticket: DocTicket,
     author: AuthorId,
@@ -67,13 +69,13 @@ pub struct Todos {
 
 impl Todos {
     pub async fn new(ticket: Option<String>, iroh: Iroh) -> anyhow::Result<Self> {
-        let author = iroh.docs.authors().create().await?;
+        let author = iroh.docs().author_create().await?;
 
         let doc = match ticket {
-            None => iroh.docs.create().await?,
+            None => iroh.docs().create().await?,
             Some(ticket) => {
                 let ticket = DocTicket::from_str(&ticket)?;
-                iroh.docs.import(ticket).await?
+                iroh.docs().import(ticket).await?
             }
         };
 
@@ -135,11 +137,11 @@ impl Todos {
     }
 
     pub async fn get_todos(&self) -> anyhow::Result<Vec<Todo>> {
-        let mut entries = self.doc.get_many(Query::single_latest_per_key()).await?;
-
+        let entries = self.doc.get_many(Query::single_latest_per_key()).await?;
+        let mut entries = entries.collect::<Vec<Result<Entry>>>().await;
+        let mut entries = entries.iter_mut();
         let mut todos = Vec::new();
-        while let Some(entry) = entries.next().await {
-            let entry = entry?;
+        while let Some(Ok(entry)) = entries.next() {
             let todo = self.todo_from_entry(&entry).await?;
             if !todo.is_delete {
                 todos.push(todo);
@@ -164,18 +166,16 @@ impl Todos {
     async fn get_todo(&self, id: String) -> anyhow::Result<Todo> {
         let entry = self
             .doc
-            .get_many(Query::single_latest_per_key().key_exact(id))
+            .get_one(Query::single_latest_per_key().key_exact(id))
             .await?
-            .next()
-            .await
-            .ok_or_else(|| anyhow::anyhow!("no todo found"))??;
+            .ok_or_else(|| anyhow::anyhow!("no todo found"))?;
 
         self.todo_from_entry(&entry).await
     }
 
     async fn todo_from_entry(&self, entry: &Entry) -> anyhow::Result<Todo> {
         let id = String::from_utf8(entry.key().to_owned()).context("invalid key")?;
-        match self.iroh.blobs.read_to_bytes(entry.content_hash()).await {
+        match self.iroh.blobs().get_bytes(entry.content_hash()).await {
             Ok(b) => Todo::from_bytes(b),
             Err(_) => Ok(Todo::missing_todo(id)),
         }

@@ -4,6 +4,6 @@ members = ["shared", "cli", "browser-wasm"]
 
 [workspace.dependencies]
 # we define iroh dependencies here to make upgrading easier.
-iroh = { version = "0.90", default-features = false }
-iroh-base = { version = "0.90", default-features = false, features = ["ticket"] }
-iroh-gossip = { version = "0.90", default-features = false, features = ["net"] }
+iroh = { version = "0.91", default-features = false }
+iroh-base = { version = "0.91", default-features = false, features = ["ticket"] }
+iroh-gossip = { version = "0.91", default-features = false, features = ["net"] }

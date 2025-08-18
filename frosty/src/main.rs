@@ -415,7 +415,7 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
         .discovery(discovery)
         .bind()
         .await?;
-    let addr = endpoint.node_addr().initialized().await?;
+    let addr = endpoint.node_addr().initialized().await;
     println!("\nListening on {}", addr.node_id);
     while let Some(incoming) = endpoint.accept().await {
         let data_path = data_path.clone();

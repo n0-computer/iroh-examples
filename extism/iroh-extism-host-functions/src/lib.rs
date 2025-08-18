@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use extism::*;
 use futures::stream::StreamExt;
 use iroh::{Endpoint, NodeId, protocol::Router};
-use iroh_blobs::{api::downloader::Shuffled, net_protocol::Blobs, store::fs::FsStore};
+use iroh_blobs::{BlobsProtocol, api::downloader::Shuffled, store::fs::FsStore};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
 
@@ -21,7 +21,7 @@ pub async fn default_iroh_extism_data_root() -> Result<PathBuf> {
 
 pub struct Iroh {
     router: Router,
-    blobs: Blobs,
+    blobs: BlobsProtocol,
 }
 
 impl Iroh {
@@ -32,7 +32,7 @@ impl Iroh {
         // create blobs protocol
         let store = FsStore::load(path).await?;
 
-        let blobs = Blobs::new(&store, endpoint.clone(), None);
+        let blobs = BlobsProtocol::new(&store, endpoint.clone(), None);
         // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
@@ -44,7 +44,7 @@ impl Iroh {
         self.router.endpoint().node_id()
     }
 
-    pub fn blobs(&self) -> Blobs {
+    pub fn blobs(&self) -> BlobsProtocol {
         self.blobs.clone()
     }
 

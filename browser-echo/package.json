@@ -9,6 +9,10 @@
   "author": "n0 team",
   "license": "Apache-2.0 OR MIT",
   "dependencies": {
-    "http-server": "^14.1.1"
+    "build": "^0.1.4",
+    "http-server": "^14.1.1",
+    "npm": "^10.9.3",
+    "run": "^1.5.0",
+    "serve": "^14.2.4"
   }
 }
