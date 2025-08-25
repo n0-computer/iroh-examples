@@ -7,7 +7,7 @@ use hex::encode;
 use iroh::NodeId;
 use iroh_automerge_repo::IrohRepo;
 
-use samod::{DocumentId, PeerId, Samod, storage::TokioFilesystemStorage};
+use samod::{storage::TokioFilesystemStorage, DocumentId, PeerId, Repo};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -122,8 +122,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     println!("Node ID: {}", endpoint.node_id());
-
-    let samod = Samod::build_tokio()
+    
+    let samod = Repo::build_tokio()
         .with_peer_id(PeerId::from_string(endpoint.node_id().to_string()))
         .with_storage(TokioFilesystemStorage::new(format!(
             "{}/{}",
