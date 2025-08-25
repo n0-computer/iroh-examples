@@ -3086,9 +3086,9 @@ dependencies = [
 
 [[package]]
 name = "samod"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecd2e176d6f533e87d4967befa3f34da76aae233a0db77a5bf260bc21443b9ce"
+checksum = "daba364daaf5347a0be2e6d34553c818e88a01cb6a14e9fd1c4b1a73632f0db6"
 dependencies = [
  "automerge",
  "bytes",
@@ -3104,14 +3104,13 @@ dependencies = [
 
 [[package]]
 name = "samod-core"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d03a96b4b6b3a61c5dda07b7fd31c9d367182e8b16cc62b9b2f2267eb7e257a1"
+checksum = "84f1292c4f196552753b3be6ccdbcaee772f8cbdbb7397db9a7233dc2f9bda3b"
 dependencies = [
  "automerge",
  "base64 0.21.7",
  "bs58",
- "futures",
  "hex",
  "minicbor",
  "rand 0.9.1",
