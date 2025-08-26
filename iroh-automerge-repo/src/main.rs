@@ -7,7 +7,7 @@ use hex::encode;
 use iroh::NodeId;
 use iroh_automerge_repo::IrohRepo;
 
-use samod::{storage::TokioFilesystemStorage, DocumentId, PeerId, Repo};
+use samod::{DocumentId, PeerId, Repo, storage::TokioFilesystemStorage};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -122,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     println!("Node ID: {}", endpoint.node_id());
-    
+
     let samod = Repo::build_tokio()
         .with_peer_id(PeerId::from_string(endpoint.node_id().to_string()))
         .with_storage(TokioFilesystemStorage::new(format!(
@@ -220,7 +220,7 @@ async fn main() -> anyhow::Result<()> {
             // Listen for change events and print latest document contents
             tokio::spawn(async move {
                 use n0_future::StreamExt;
-                let mut changes =  doc.changes();
+                let mut changes = doc.changes();
                 while let Some(_change) = changes.next().await {
                     if let Err(e) = doc.with_document(|current_doc| {
                         for key in current_doc.keys(automerge::ROOT) {
