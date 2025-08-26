@@ -217,23 +217,11 @@ async fn main() -> anyhow::Result<()> {
                 anyhow::Ok(())
             })?;
 
-            // Set up polling for changes (no push available yet)
+            // Listen for change events and print latest document contents
             tokio::spawn(async move {
-                // Track the last known heads to detect changes
-                let mut last_heads = doc.with_document(|doc| doc.get_heads());
-                loop {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-
-                    let current_heads = doc.with_document(|doc| doc.get_heads());
-                    if current_heads == last_heads {
-                        continue;
-                    }
-
-                    last_heads = current_heads;
-
-                    println!("Document changed! New state:");
-
-                    // When changes are detected, print the updated document contents...
+                use n0_future::StreamExt;
+                let mut changes =  doc.changes();
+                while let Some(_change) = changes.next().await {
                     if let Err(e) = doc.with_document(|current_doc| {
                         for key in current_doc.keys(automerge::ROOT) {
                             let (value, _) = current_doc
