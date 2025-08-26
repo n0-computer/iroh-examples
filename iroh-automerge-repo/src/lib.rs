@@ -2,32 +2,32 @@
 //! in rust that speak the automerge repo protocol.
 use anyhow::Result;
 use codec::Codec;
-use samod::{ConnDirection, ConnFinishedReason, Samod};
+use samod::{ConnDirection, ConnFinishedReason, Repo};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 mod codec;
 
-/// Combines an [`iroh::Endpoint`] with a [`Samod`] (automerge repository) and
+/// Combines an [`iroh::Endpoint`] with a [`Repo`] (automerge repository) and
 /// implements [`iroh::protocol::ProtocolHandler`] to accept incoming connections
 /// in an [`iroh::protocol::Router`].
 #[derive(derive_more::Debug, Clone)]
 pub struct IrohRepo {
     endpoint: iroh::Endpoint,
     #[debug(skip)]
-    repo: Samod,
+    repo: Repo,
 }
 
 impl IrohRepo {
     pub const SYNC_ALPN: &[u8] = b"iroh/automerge-repo/1";
 
     /// Constructs a new [`IrohRepo`].
-    pub fn new(endpoint: iroh::Endpoint, repo: Samod) -> Self {
+    pub fn new(endpoint: iroh::Endpoint, repo: Repo) -> Self {
         IrohRepo { endpoint, repo }
     }
 
     /// Attempts to continuously sync with a peer at given address.
     ///
-    /// To wait for the connection to be established use [`Samod::when_connected`]
+    /// To wait for the connection to be established use [`Repo::when_connected`]
     /// (accessible via [`Self::repo`]: `iroh_repo.repo().when_connected(..)`).
     /// with the other node's string-encoded [`NodeId`] as the [`PeerId`].
     ///
@@ -56,8 +56,8 @@ impl IrohRepo {
         Ok(conn_finished)
     }
 
-    /// Returns a reference to the stored [`Samod`] instance inside.
-    pub fn repo(&self) -> &Samod {
+    /// Returns a reference to the stored [`Repo`] instance inside.
+    pub fn repo(&self) -> &Repo {
         &self.repo
     }
 }
