@@ -36,6 +36,10 @@ Experiment with [FROST] threshold signatures for iroh.
 
 Iroh integration with [automerge]
 
+### [iroh-loro](iroh-loro)
+
+Iroh integration with [Loro]
+
 ### [iroh-gateway](iroh-gateway)
 
 A http gateway for iroh-blobs data, written using iroh-blobs.
@@ -48,6 +52,7 @@ Todo app using iroh documents and [tauri].
 [iroh-experiments]: https://github.com/n0-computer/iroh-experiments
 [extism]: https://extism.org/
 [automerge]: https://automerge.org/
+[Loro]: https://loro.dev/
 [mainline]: https://en.wikipedia.org/wiki/Mainline_DHT
 [pkarr]: https://pkarr.org/
 [tauri]: https://tauri.app/
