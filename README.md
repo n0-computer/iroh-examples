@@ -38,7 +38,11 @@ Iroh integration with [automerge]
 
 ### [iroh-loro](iroh-loro)
 
-Iroh integration with [Loro]
+Collaborative CRDT synchronization using [Loro](https://loro.dev) and iroh.
+
+### [iroh-loro-realtime](iroh-loro-realtime)
+
+Real-time collaborative CRDT synchronization with presence awareness, conflict resolution, and TUI editor support.
 
 ### [iroh-gateway](iroh-gateway)
 
