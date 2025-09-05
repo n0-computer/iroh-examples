@@ -1,0 +1,14 @@
+[package]
+name = "iroh-loro"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.80"
+loro = "1.0"
+clap = { version = "4.5.1", features = ["derive"] }
+iroh = "0.91"
+postcard = "1.0.8"
+serde = { version = "1.0.197", features = ["derive"] }
+tokio = { version = "1.36.0", features = ["full"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
