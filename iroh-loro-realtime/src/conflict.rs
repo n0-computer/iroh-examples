@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
+use iroh::NodeId;
 use crate::events::{ConflictingOperation, TextRange};
 
 /// Manages conflict detection and resolution for concurrent edits
@@ -67,7 +68,7 @@ pub enum ConflictResolution {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextOperation {
     pub id: String,
-    pub author: iroh::NodeId,
+    pub author: NodeId,
     pub timestamp: u64,
     pub operation_type: TextOperationType,
     pub position: usize,
@@ -315,7 +316,7 @@ impl Default for ConflictResolver {
 impl TextOperation {
     /// Create a new text insert operation
     pub fn insert(
-        author: iroh::NodeId,
+        author: NodeId,
         position: usize,
         content: String,
         container_id: String,
@@ -336,7 +337,7 @@ impl TextOperation {
 
     /// Create a new text delete operation
     pub fn delete(
-        author: iroh::NodeId,
+        author: NodeId,
         position: usize,
         content: String,
         container_id: String,

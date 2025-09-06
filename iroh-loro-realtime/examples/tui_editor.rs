@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use anyhow::Result;
 use clap::Parser;
 use tokio::sync::broadcast;
@@ -8,7 +7,6 @@ use loro::LoroDoc;
 use iroh_loro_realtime::{
     RealtimeLoroProtocol,
     presence::UserInfo,
-    events::{DocumentEvent, PresenceEvent},
     tui::TuiEditor,
 };
 
@@ -38,24 +36,22 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     
     // Initialize logging
-    let log_level = if args.verbose { "debug" } else { "info" };
-    tracing_subscriber::fmt()
-        .with_env_filter(format!("iroh_loro_realtime={},tui_editor={}", log_level, log_level))
-        .init();
+    let _log_level = if args.verbose { "debug" } else { "info" };
+    tracing_subscriber::fmt().init();
 
     info!("Starting collaborative TUI editor");
 
     // Create iroh endpoint
     let endpoint = Endpoint::builder()
         .discovery_n0()
-        .spawn()
+        .bind()
         .await?;
     
     let local_node_id = endpoint.node_id();
     info!("Local node ID: {}", local_node_id);
 
     // Create Loro document
-    let mut doc = LoroDoc::new();
+    let doc = LoroDoc::new();
     
     // Initialize with welcome message
     let text = doc.get_text("main");
@@ -84,9 +80,9 @@ async fn main() -> Result<()> {
     ).await?;
 
     // Register protocol with endpoint
-    let mut router = iroh::protocol::Router::builder(endpoint.clone());
-    router.accept(RealtimeLoroProtocol::ALPN, protocol.clone());
-    let _router = router.spawn().await?;
+    let _router = iroh::protocol::Router::builder(endpoint.clone())
+        .accept(RealtimeLoroProtocol::ALPN, protocol.clone())
+        .spawn();
 
     info!("Protocol registered and listening for connections");
 
@@ -96,7 +92,7 @@ async fn main() -> Result<()> {
         match endpoint.connect(peer_id, RealtimeLoroProtocol::ALPN).await {
             Ok(conn) => {
                 info!("Connected to peer successfully");
-                protocol.connect_to_peer(peer_id, conn).await?;
+                protocol.add_peer(peer_id, conn).await?;
             }
             Err(e) => {
                 eprintln!("Failed to connect to peer: {}", e);

@@ -193,7 +193,7 @@ impl ConnectionManager {
         let peers = self.peers.read().await;
         let serialized = bincode::serialize(&message)?;
 
-        for (peer_id, peer) in peers.iter() {
+        for (_peer_id, peer) in peers.iter() {
             if peer.state == ConnectionState::Connected {
                 if let Ok((mut send, _)) = peer.connection.open_bi().await {
                     // Send length prefix

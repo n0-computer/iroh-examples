@@ -89,7 +89,7 @@ impl PresenceManager {
         *self.local_cursor.write().await = Some(position.clone());
 
         // Create presence update message
-        let message = ProtocolMessage::PresenceUpdate {
+        let _message = ProtocolMessage::PresenceUpdate {
             user_id: self.user_id,
             cursor: Some(position.clone()),
             selection: None,
@@ -108,7 +108,7 @@ impl PresenceManager {
 
     /// Update local selection and broadcast to peers
     pub async fn update_selection(&self, selection: Option<Selection>) -> anyhow::Result<()> {
-        let message = ProtocolMessage::PresenceUpdate {
+        let _message = ProtocolMessage::PresenceUpdate {
             user_id: self.user_id,
             cursor: self.local_cursor.read().await.clone(),
             selection: selection.clone(),
@@ -127,7 +127,7 @@ impl PresenceManager {
 
     /// Update typing status
     pub async fn set_typing(&self, typing: bool) -> anyhow::Result<()> {
-        let message = ProtocolMessage::PresenceUpdate {
+        let _message = ProtocolMessage::PresenceUpdate {
             user_id: self.user_id,
             cursor: self.local_cursor.read().await.clone(),
             selection: None,

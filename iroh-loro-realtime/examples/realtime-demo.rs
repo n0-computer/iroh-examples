@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use anyhow::Result;
 use clap::Parser;
 use tokio::sync::broadcast;
@@ -37,24 +36,22 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     
     // Initialize logging
-    let log_level = if args.verbose { "debug" } else { "info" };
-    tracing_subscriber::fmt()
-        .with_env_filter(format!("iroh_loro_realtime={},demo={}", log_level, log_level))
-        .init();
+    let _log_level = if args.verbose { "debug" } else { "info" };
+    tracing_subscriber::fmt().init();
 
     info!("Starting real-time Loro collaboration demo");
 
     // Create iroh endpoint
     let endpoint = Endpoint::builder()
         .discovery_n0()
-        .spawn()
+        .bind()
         .await?;
     
     let local_node_id = endpoint.node_id();
     info!("Local node ID: {}", local_node_id);
 
     // Create Loro document
-    let mut doc = LoroDoc::new();
+    let doc = LoroDoc::new();
     
     // Initialize with some sample content
     let text = doc.get_text("main");
@@ -69,7 +66,7 @@ async fn main() -> Result<()> {
     // Create user info
     let user_info = UserInfo {
         name: args.name.clone(),
-        color: args.color,
+        color: args.color.clone(),
         avatar_url: None,
     };
 
@@ -83,9 +80,9 @@ async fn main() -> Result<()> {
     ).await?;
 
     // Register protocol with endpoint
-    let mut router = iroh::protocol::Router::builder(endpoint.clone());
-    router.accept(RealtimeLoroProtocol::ALPN, protocol.clone());
-    let _router = router.spawn().await?;
+    let _router = iroh::protocol::Router::builder(endpoint.clone())
+        .accept(RealtimeLoroProtocol::ALPN, protocol.clone())
+        .spawn();
 
     info!("Protocol registered and listening for connections");
 
@@ -95,7 +92,7 @@ async fn main() -> Result<()> {
         match endpoint.connect(peer_id, RealtimeLoroProtocol::ALPN).await {
             Ok(conn) => {
                 info!("Connected to peer successfully");
-                protocol.connect_to_peer(peer_id, conn).await?;
+                protocol.add_peer(peer_id, conn).await?;
             }
             Err(e) => {
                 warn!("Failed to connect to peer: {}", e);
@@ -192,7 +189,7 @@ async fn main() -> Result<()> {
                 let map = doc.get_map("kv");
                 
                 if let Some(value) = map.get(key) {
-                    println!("{} = {}", key, value);
+                    println!("{} = {:?}", key, value);
                 } else {
                     println!("Key '{}' not found", key);
                 }
@@ -202,8 +199,11 @@ async fn main() -> Result<()> {
                 let map = doc.get_map("kv");
                 
                 println!("Key-value pairs:");
-                for (key, value) in map.iter() {
-                    println!("  {} = {}", key, value);
+                let map_value = map.get_deep_value();
+                if let loro::LoroValue::Map(map_data) = map_value {
+                    for (key, value) in map_data.iter() {
+                        println!("  {} = {:?}", key, value);
+                    }
                 }
             }
             Some(&"text") if parts.len() >= 2 => {
@@ -211,7 +211,7 @@ async fn main() -> Result<()> {
                 
                 protocol.apply_local_change(|doc| {
                     let text = doc.get_text("main");
-                    let current_len = text.len();
+                    let current_len = text.to_string().len();
                     text.insert(current_len, &format!("\n{}", content))?;
                     Ok(())
                 }).await?;

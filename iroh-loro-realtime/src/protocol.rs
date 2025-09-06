@@ -3,10 +3,10 @@ use std::time::Duration;
 use tokio::sync::{broadcast, RwLock};
 use anyhow::Result;
 use loro::LoroDoc;
-use iroh::{NodeId, Endpoint, endpoint::Connection, protocol::{AcceptError, ProtocolHandler}};
+use iroh::{NodeId, endpoint::{Connection, RecvStream, SendStream}, protocol::{AcceptError, ProtocolHandler}};
 
 use crate::{
-    connection::{ConnectionManager, PeerConnection},
+    connection::ConnectionManager,
     presence::{PresenceManager, UserInfo},
     conflict::ConflictResolver,
     events::{DocumentEvent, PresenceEvent, ProtocolMessage},
@@ -98,7 +98,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Connect to a remote peer and initiate sync
-    pub async fn connect_to_peer(&self, peer_id: NodeId, connection: Connection) -> Result<()> {
+    pub async fn add_peer(&self, peer_id: NodeId, connection: Connection) -> Result<()> {
         // Add peer to connection manager
         self.connection_manager.add_peer(peer_id, connection.clone()).await?;
 
@@ -157,7 +157,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Handle incoming sync from a peer
-    async fn handle_sync_request(&self, peer_id: NodeId, conn: Connection) -> Result<()> {
+    async fn handle_peer_message(&self, peer_id: NodeId, conn: Connection) -> Result<()> {
         let (mut send, mut recv) = conn.accept_bi().await?;
 
         // Receive their sync request
@@ -165,7 +165,7 @@ impl RealtimeLoroProtocol {
 
         match their_message {
             ProtocolMessage::SyncRequest { our_version: their_version } => {
-                let mut doc = self.doc.write().await;
+                let doc = self.doc.write().await;
                 let our_version = doc.oplog_vv();
 
                 // Send our version back
@@ -203,7 +203,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Broadcast an update to all connected peers
-    pub async fn broadcast_update(&self, operation_type: &str) -> Result<()> {
+    pub async fn broadcast_update(&self, _operation_type: &str) -> Result<()> {
         let doc = self.doc.read().await;
         let peers = self.connection_manager.get_connected_peers().await;
 
@@ -230,10 +230,10 @@ impl RealtimeLoroProtocol {
     }
 
     /// Handle incoming update from a peer
-    pub async fn handle_update(&self, from_peer: NodeId, message: ProtocolMessage) -> Result<()> {
+    pub async fn handle_protocol_message(&self, from_peer: NodeId, message: ProtocolMessage) -> Result<()> {
         match message {
             ProtocolMessage::UpdateBatch { updates, to_version, .. } => {
-                let mut doc = self.doc.write().await;
+                let doc = self.doc.write().await;
                 
                 // Apply updates
                 doc.import(&updates)?;
@@ -272,7 +272,7 @@ impl RealtimeLoroProtocol {
     /// Send a protocol message over a stream
     async fn send_message(
         &self,
-        send: &mut iroh::endpoint::SendStream,
+        send: &mut SendStream,
         message: ProtocolMessage,
     ) -> Result<()> {
         let serialized = bincode::serialize(&message)?;
@@ -288,7 +288,7 @@ impl RealtimeLoroProtocol {
     /// Receive a protocol message from a stream
     async fn receive_message(
         &self,
-        recv: &mut iroh::endpoint::RecvStream,
+        recv: &mut RecvStream,
     ) -> Result<ProtocolMessage> {
         // Read length prefix
         let mut len_bytes = [0u8; 8];
@@ -346,15 +346,16 @@ impl ProtocolHandler for RealtimeLoroProtocol {
         let remote_node_id = conn.remote_node_id();
         
         // Add the peer connection
+        let remote_node_id = remote_node_id?;
         if let Err(e) = self.connection_manager.add_peer(remote_node_id, conn.clone()).await {
             tracing::error!("Failed to add peer {}: {}", remote_node_id, e);
-            return Err(AcceptError::from_err(e));
+            return Err(AcceptError::from_err(std::io::Error::new(std::io::ErrorKind::Other, e)));
         }
 
         // Handle the sync request
-        if let Err(e) = self.handle_sync_request(remote_node_id, conn).await {
+        if let Err(e) = self.handle_peer_message(remote_node_id, conn).await {
             tracing::error!("Failed to handle sync request from {}: {}", remote_node_id, e);
-            return Err(AcceptError::from_err(e));
+            return Err(AcceptError::from_err(std::io::Error::new(std::io::ErrorKind::Other, e)));
         }
 
         Ok(())

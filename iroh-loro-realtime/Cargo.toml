@@ -12,7 +12,7 @@ categories = ["network-programming", "data-structures"]
 [dependencies]
 # Core dependencies
 loro = "1.0"
-iroh = "0.28"
+iroh = "0.91"
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -36,9 +36,9 @@ crossterm = { version = "0.28", optional = true }
 default = []
 tui = ["ratatui", "crossterm"]
 
-[[bin]]
+[[example]]
 name = "realtime-demo"
-path = "src/bin/demo.rs"
+path = "examples/realtime-demo.rs"
 
 [[example]]
 name = "tui-editor"

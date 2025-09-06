@@ -46,4 +46,5 @@ pub use connection::{ConnectionManager, PeerConnection};
 
 /// Re-export commonly used types
 pub use loro::{LoroDoc, VersionVector};
+// Re-export iroh types - NodeId is available at crate root
 pub use iroh::NodeId;
