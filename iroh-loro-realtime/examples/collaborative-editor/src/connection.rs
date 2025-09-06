@@ -21,7 +21,7 @@ pub struct ConnectionManager {
     local_node_id: NodeId,
 }
 
-/// Information about a connected peer
+/// Information about a peer connection with metadata
 #[derive(Debug, Clone)]
 pub struct PeerConnection {
     /// The underlying iroh connection
@@ -33,7 +33,8 @@ pub struct PeerConnection {
     /// Peer's last known version vector
     pub version_vector: VersionVector,
     
-    /// Peer's presence information
+    /// Presence information for this peer
+    #[allow(dead_code)]
     pub presence: Option<PresenceInfo>,
     
     /// Connection state
@@ -41,6 +42,16 @@ pub struct PeerConnection {
     
     /// Number of failed heartbeats
     pub failed_heartbeats: u32,
+}
+
+/// Connection statistics for monitoring
+#[allow(dead_code)]
+pub struct ConnectionStats {
+    pub total_peers: usize,
+    pub connected_peers: usize,
+    pub syncing_peers: usize,
+    pub unstable_peers: usize,
+    pub average_latency: Duration,
 }
 
 /// State of a peer connection
@@ -58,7 +69,8 @@ pub enum ConnectionState {
     /// Connection is experiencing issues
     Unstable,
     
-    /// Connection is being closed
+    /// Disconnecting from peer
+    #[allow(dead_code)]
     Disconnecting,
     
     /// Connection is closed
@@ -67,6 +79,7 @@ pub enum ConnectionState {
 
 impl ConnectionManager {
     /// Create a new connection manager
+    #[allow(dead_code)]
     pub fn new(
         local_node_id: NodeId,
         event_tx: broadcast::Sender<DocumentEvent>,
@@ -140,16 +153,19 @@ impl ConnectionManager {
         }
     }
 
-    /// Update peer's presence information
-    pub async fn update_peer_presence(&self, peer_id: NodeId, presence: PresenceInfo) {
+    /// Update presence information for a peer
+    #[allow(dead_code)]
+    pub async fn update_peer_presence(&self, peer_id: NodeId, presence: PresenceInfo) -> anyhow::Result<()> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(&peer_id) {
             peer.presence = Some(presence);
             peer.last_seen = Instant::now();
         }
+        Ok(())
     }
 
     /// Get all connected peers
+    #[allow(dead_code)]
     pub async fn get_connected_peers(&self) -> Vec<NodeId> {
         let peers = self.peers.read().await;
         peers
@@ -159,13 +175,15 @@ impl ConnectionManager {
             .collect()
     }
 
-    /// Get peer connection info
+    /// Get a specific peer connection
+    #[allow(dead_code)]
     pub async fn get_peer(&self, peer_id: NodeId) -> Option<PeerConnection> {
         let peers = self.peers.read().await;
         peers.get(&peer_id).cloned()
     }
 
     /// Send a message to a specific peer
+    #[allow(dead_code)]
     pub async fn send_to_peer(
         &self,
         peer_id: NodeId,
@@ -190,6 +208,7 @@ impl ConnectionManager {
     }
 
     /// Broadcast a message to all connected peers
+    #[allow(dead_code)]
     pub async fn broadcast_message(&self, message: ProtocolMessage) -> anyhow::Result<()> {
         let peers = self.peers.read().await;
         let serialized = bincode::serialize(&message)?;
@@ -210,7 +229,8 @@ impl ConnectionManager {
         Ok(())
     }
 
-    /// Start heartbeat monitoring for all peers
+    /// Start monitoring peer connections with heartbeats
+    #[allow(dead_code)]
     pub async fn start_heartbeat_monitor(&self) -> anyhow::Result<()> {
         let peers = self.peers.clone();
         let event_tx = self.event_tx.clone();
@@ -281,6 +301,7 @@ impl ConnectionManager {
     }
 
     /// Get connection statistics
+    #[allow(dead_code)]
     pub async fn get_stats(&self) -> ConnectionStats {
         let peers = self.peers.read().await;
         
@@ -318,18 +339,10 @@ impl ConnectionManager {
     }
 }
 
-/// Statistics about peer connections
-#[derive(Debug, Clone)]
-pub struct ConnectionStats {
-    pub total_peers: usize,
-    pub connected_peers: usize,
-    pub syncing_peers: usize,
-    pub unstable_peers: usize,
-    pub average_latency: Duration,
-}
 
 impl PeerConnection {
     /// Check if this connection is healthy
+    #[allow(dead_code)]
     pub fn is_healthy(&self) -> bool {
         matches!(self.state, ConnectionState::Connected | ConnectionState::Syncing) &&
         self.failed_heartbeats < 2 &&
@@ -337,6 +350,7 @@ impl PeerConnection {
     }
 
     /// Get the age of this connection
+    #[allow(dead_code)]
     pub fn age(&self) -> Duration {
         self.last_seen.elapsed()
     }

@@ -10,6 +10,7 @@ use crate::events::{PresenceEvent, ProtocolMessage};
 #[derive(Debug, Clone)]
 pub struct PresenceManager {
     /// Local user's cursor position
+    #[allow(dead_code)]
     local_cursor: Arc<RwLock<Option<CursorPosition>>>,
     
     /// Remote users' presence information
@@ -23,6 +24,7 @@ pub struct PresenceManager {
     user_info: UserInfo,
     
     /// User ID for this instance
+    #[allow(dead_code)]
     user_id: NodeId,
 }
 
@@ -70,6 +72,7 @@ pub struct UserInfo {
 
 impl PresenceManager {
     /// Create a new presence manager
+    #[allow(dead_code)]
     pub fn new(
         user_id: NodeId,
         user_info: UserInfo,
@@ -84,7 +87,8 @@ impl PresenceManager {
         }
     }
 
-    /// Update local cursor position and broadcast to peers
+    /// Update cursor position for a user
+    #[allow(dead_code)]
     pub async fn update_cursor(&self, position: CursorPosition) -> anyhow::Result<()> {
         // Update local state
         *self.local_cursor.write().await = Some(position.clone());
@@ -107,26 +111,28 @@ impl PresenceManager {
         Ok(())
     }
 
-    /// Update local selection and broadcast to peers
-    pub async fn update_selection(&self, selection: Option<Selection>) -> anyhow::Result<()> {
+    /// Update selection for a user
+    #[allow(dead_code)]
+    pub async fn update_selection(&self, selection: Selection) -> anyhow::Result<()> {
         let _message = ProtocolMessage::PresenceUpdate {
             user_id: self.user_id,
             cursor: self.local_cursor.read().await.clone(),
-            selection: selection.clone(),
+            selection: Some(selection.clone()),
             typing: false,
         };
 
         // Emit local event
         let event = PresenceEvent::SelectionChanged {
             user_id: self.user_id,
-            selection,
+            selection: Some(selection),
         };
         let _ = self.presence_tx.send(event);
 
         Ok(())
     }
 
-    /// Update typing status
+    /// Set typing indicator for a user
+    #[allow(dead_code)]
     pub async fn set_typing(&self, typing: bool) -> anyhow::Result<()> {
         let _message = ProtocolMessage::PresenceUpdate {
             user_id: self.user_id,
@@ -224,17 +230,20 @@ impl PresenceManager {
         let _ = self.presence_tx.send(event);
     }
 
-    /// Get all current remote presence information
+    /// Get remote user presence information
+    #[allow(dead_code)]
     pub async fn get_remote_presence(&self) -> HashMap<NodeId, PresenceInfo> {
         self.remote_presence.read().await.clone()
     }
 
     /// Get local cursor position
+    #[allow(dead_code)]
     pub async fn get_local_cursor(&self) -> Option<CursorPosition> {
         self.local_cursor.read().await.clone()
     }
 
     /// Clean up stale presence information
+    #[allow(dead_code)]
     pub async fn cleanup_stale_presence(&self, timeout: Duration) {
         let mut presence_map = self.remote_presence.write().await;
         let now = SystemTime::now();
@@ -273,16 +282,18 @@ impl PresenceManager {
 
 impl CursorPosition {
     /// Create a new cursor position
-    pub fn new(line: u32, column: u32, container_id: String, offset: usize) -> Self {
+    #[allow(dead_code)]
+    pub fn new(line: u32, column: u32, offset: usize) -> Self {
         Self {
             line,
             column,
-            container_id,
             offset,
+            container_id: "text".to_string(),
         }
     }
 
     /// Convert to a simple offset for text operations
+    #[allow(dead_code)]
     pub fn offset(&self) -> usize {
         self.offset
     }
@@ -290,6 +301,7 @@ impl CursorPosition {
 
 impl Selection {
     /// Create a new selection
+    #[allow(dead_code)]
     pub fn new(start: CursorPosition, end: CursorPosition) -> Self {
         let direction = if start.offset <= end.offset {
             SelectionDirection::Forward
@@ -305,6 +317,7 @@ impl Selection {
     }
 
     /// Get the range of this selection as (start_offset, end_offset)
+    #[allow(dead_code)]
     pub fn range(&self) -> (usize, usize) {
         match self.direction {
             SelectionDirection::Forward => (self.start.offset, self.end.offset),
@@ -313,6 +326,7 @@ impl Selection {
     }
 
     /// Check if this selection is empty (cursor only)
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.start.offset == self.end.offset
     }

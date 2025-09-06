@@ -37,10 +37,6 @@ default = []
 tui = ["ratatui", "crossterm"]
 
 [[example]]
-name = "realtime-demo"
-path = "examples/realtime-demo.rs"
-
-[[example]]
-name = "tui-editor"
-path = "examples/tui_editor.rs"
+name = "collaborative-editor"
+path = "examples/collaborative-editor.rs"
 required-features = ["tui"]

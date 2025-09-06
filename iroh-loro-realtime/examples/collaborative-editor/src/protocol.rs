@@ -8,14 +8,13 @@ use iroh::{NodeId, endpoint::{Connection, RecvStream, SendStream}, protocol::{Ac
 use crate::{
     connection::ConnectionManager,
     presence::{PresenceManager, UserInfo},
-    conflict::ConflictResolver,
     events::{DocumentEvent, PresenceEvent, ProtocolMessage},
 };
 
 /// Real-time collaborative protocol for Loro documents over iroh P2P network
 #[derive(Debug, Clone)]
 pub struct RealtimeLoroProtocol {
-    /// The shared Loro document
+    /// The Loro document
     doc: Arc<RwLock<LoroDoc>>,
     
     /// Connection manager for peer connections
@@ -24,24 +23,29 @@ pub struct RealtimeLoroProtocol {
     /// Presence manager for user awareness
     presence_manager: PresenceManager,
     
-    /// Conflict resolver for handling concurrent edits
-    conflict_resolver: ConflictResolver,
-    
-    /// Event broadcasting channels
+    /// Channel for broadcasting document events
     update_tx: broadcast::Sender<DocumentEvent>,
+    
+    /// Channel for broadcasting presence events
     #[allow(dead_code)]
     presence_tx: broadcast::Sender<PresenceEvent>,
+    
+    /// Local node ID
     #[allow(dead_code)]
     local_node_id: NodeId,
+    
+    /// Local user information
     #[allow(dead_code)]
     local_user_info: UserInfo,
 }
 
 impl RealtimeLoroProtocol {
     /// Protocol identifier for iroh
+    #[allow(dead_code)]
     pub const ALPN: &'static [u8] = b"iroh/loro-realtime/1";
 
     /// Create a new real-time Loro protocol instance
+    #[allow(dead_code)]
     pub async fn new(
         doc: LoroDoc,
         local_node_id: NodeId,
@@ -51,13 +55,11 @@ impl RealtimeLoroProtocol {
     ) -> Result<Arc<Self>> {
         let connection_manager = ConnectionManager::new(local_node_id, update_tx.clone());
         let presence_manager = PresenceManager::new(local_node_id, local_user_info.clone(), presence_tx.clone());
-        let conflict_resolver = ConflictResolver::new();
 
         let protocol = Arc::new(Self {
             doc: Arc::new(RwLock::new(doc)),
             connection_manager,
             presence_manager,
-            conflict_resolver,
             update_tx,
             presence_tx,
             local_node_id,
@@ -71,6 +73,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Start background maintenance tasks
+    #[allow(dead_code)]
     async fn start_background_tasks(&self) -> Result<()> {
         // Start heartbeat monitoring
         self.connection_manager.start_heartbeat_monitor().await?;
@@ -85,13 +88,12 @@ impl RealtimeLoroProtocol {
             }
         });
 
-        // Start conflict cleanup task
-        let conflict_resolver = self.conflict_resolver.clone();
+        // Start background tasks for this protocol instance
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(300));
             loop {
                 interval.tick().await;
-                conflict_resolver.cleanup_old_conflicts(Duration::from_secs(3600)).await;
+                // Add code here to perform tasks specific to this protocol instance
             }
         });
 
@@ -99,6 +101,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Connect to a remote peer and initiate sync
+    #[allow(dead_code)]
     pub async fn add_peer(&self, peer_id: NodeId, connection: Connection) -> Result<()> {
         // Add peer to connection manager
         self.connection_manager.add_peer(peer_id, connection.clone()).await?;
@@ -110,6 +113,7 @@ impl RealtimeLoroProtocol {
     }
 
     /// Initiate synchronization with a peer
+    #[allow(dead_code)]
     async fn initiate_sync(&self, peer_id: NodeId, conn: Connection) -> Result<()> {
         let (mut send, mut recv) = conn.open_bi().await?;
 
@@ -151,6 +155,7 @@ impl RealtimeLoroProtocol {
         let event = DocumentEvent::SyncCompleted {
             peer_id,
             operations_applied: 0, // TODO: count actual operations
+            sync_time: 0,
         };
         let _ = self.update_tx.send(event);
 
@@ -204,7 +209,8 @@ impl RealtimeLoroProtocol {
     }
 
     /// Broadcast an update to all connected peers
-    pub async fn broadcast_update(&self, _operation_type: &str) -> Result<()> {
+    #[allow(dead_code)]
+    pub async fn broadcast_update(&self, _change_description: &str) -> Result<()> {
         let doc = self.doc.read().await;
         let peers = self.connection_manager.get_connected_peers().await;
         
@@ -319,12 +325,14 @@ impl RealtimeLoroProtocol {
     }
 
     /// Get a copy of the current document
+    #[allow(dead_code)]
     pub async fn get_document(&self) -> LoroDoc {
         let doc = self.doc.read().await;
         doc.fork()
     }
 
     /// Apply a local change to the document
+    #[allow(dead_code)]
     pub async fn apply_local_change<F>(&self, change_fn: F) -> Result<()>
     where
         F: FnOnce(&mut LoroDoc) -> Result<()>,
@@ -341,16 +349,13 @@ impl RealtimeLoroProtocol {
     }
 
     /// Get presence manager for cursor/selection updates
+    #[allow(dead_code)]
     pub fn presence_manager(&self) -> &PresenceManager {
         &self.presence_manager
     }
 
-    /// Get conflict resolver for handling conflicts
-    pub fn conflict_resolver(&self) -> &ConflictResolver {
-        &self.conflict_resolver
-    }
-
     /// Get connection statistics
+    #[allow(dead_code)]
     pub async fn get_connection_stats(&self) -> crate::connection::ConnectionStats {
         self.connection_manager.get_stats().await
     }
