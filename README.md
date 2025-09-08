@@ -36,6 +36,14 @@ Experiment with [FROST] threshold signatures for iroh.
 
 Iroh integration with [automerge]
 
+### [iroh-loro](iroh-loro)
+
+Collaborative CRDT synchronization using [Loro](https://loro.dev) and iroh.
+
+### [iroh-loro-realtime](iroh-loro-realtime)
+
+Real-time collaborative CRDT synchronization with presence awareness, conflict resolution, and TUI editor support.
+
 ### [iroh-gateway](iroh-gateway)
 
 A http gateway for iroh-blobs data, written using iroh-blobs.
@@ -48,6 +56,7 @@ Todo app using iroh documents and [tauri].
 [iroh-experiments]: https://github.com/n0-computer/iroh-experiments
 [extism]: https://extism.org/
 [automerge]: https://automerge.org/
+[Loro]: https://loro.dev/
 [mainline]: https://en.wikipedia.org/wiki/Mainline_DHT
 [pkarr]: https://pkarr.org/
 [tauri]: https://tauri.app/

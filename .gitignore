@@ -2,3 +2,4 @@ target/
 *iroh-data
 */.sendme*
 /deploy-out
+.idea/

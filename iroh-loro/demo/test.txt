@@ -1,0 +1,5 @@
+Iroh is amazing for P2P networking!
+The connection system is so elegant and reliable.
+NAT traversal works like magic!
+
+
