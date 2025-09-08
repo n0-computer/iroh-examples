@@ -1,132 +1,125 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use loro::LoroDoc;
-use iroh::{
-    endpoint::{Connection, RecvStream, SendStream},
-    protocol::{AcceptError, ProtocolHandler},
-};
-use tokio::sync::{Mutex, mpsc};
+use iroh::{endpoint::RecvStream, protocol::{AcceptError, ProtocolHandler}};
+use loro::{ExportMode, LoroDoc, UpdateOptions};
+use n0_future::{FuturesUnorderedBounded, StreamExt};
+use tokio::{select, sync::mpsc};
 
 #[derive(Debug, Clone)]
 pub struct IrohLoroProtocol {
-    inner: Arc<Mutex<LoroDoc>>,
-    sync_finished: mpsc::Sender<LoroDoc>,
+    doc: Arc<LoroDoc>,
+    sender: mpsc::Sender<String>,
 }
 
 impl IrohLoroProtocol {
     pub const ALPN: &'static [u8] = b"iroh/loro/1";
 
-    pub fn new(doc: LoroDoc, sync_finished: mpsc::Sender<LoroDoc>) -> Arc<Self> {
-        Arc::new(Self {
-            inner: Arc::new(Mutex::new(doc)),
-            sync_finished,
-        })
+    pub fn new(doc: LoroDoc, sender: mpsc::Sender<String>) -> Self {
+        Self {
+            doc: Arc::new(doc),
+            sender,
+        }
     }
 
-    pub async fn fork_doc(&self) -> LoroDoc {
-        let loro = self.inner.lock().await;
-        loro.fork()
-    }
-
-    pub async fn merge_doc(&self, doc: &mut LoroDoc) -> Result<()> {
-        let loro = self.inner.lock().await;
-        let updates = doc.export(loro::ExportMode::Updates { from: std::borrow::Cow::Borrowed(&loro.oplog_vv()) })?;
-        loro.import(&updates)?;
-        Ok(())
-    }
-
-    async fn send_updates(updates: Vec<u8>, send: &mut SendStream) -> Result<()> {
-        if !updates.is_empty() {
-            // prefix with the length
-            send.write_all(&(updates.len() as u64).to_le_bytes())
-                .await?;
-            // write the updates
-            send.write_all(&updates).await?;
+    pub fn update_doc(&self, new_doc: &str) -> Result<()> {
+        println!(
+            "📝 Local file changed. Updating doc... (length={})",
+            new_doc.len()
+        );
+        let mut opts = UpdateOptions::default();
+        if new_doc.len() > 50_000 {
+            opts.use_refined_diff = false;
+            self.doc.get_text("text").update_by_line(new_doc, opts)?;
         } else {
-            // write length == 0 to indicate no updates
-            send.write_all(&0u64.to_le_bytes()).await?;
+            self.doc.get_text("text").update(new_doc, opts)?;
         }
-        Ok(())
-    }
-
-    async fn recv_updates(recv: &mut RecvStream) -> Result<Vec<u8>> {
-        // read the length prefix
-        let mut incoming_len = [0u8; 8];
-        recv.read_exact(&mut incoming_len).await?;
-        let len = u64::from_le_bytes(incoming_len);
-
-        if len == 0 {
-            // zero length indicates no updates this round
-            return Ok(Vec::new());
-        }
-
-        // read the updates
-        let mut buffer = vec![0u8; len as usize];
-        recv.read_exact(&mut buffer).await?;
-
-        Ok(buffer)
-    }
-
-    pub async fn initiate_sync(self: Arc<Self>, conn: Connection) -> Result<()> {
-        let (mut send, mut recv) = conn.open_bi().await?;
-
-        let mut doc = self.fork_doc().await;
-        // Send all our updates (export everything)
-        let our_updates = doc.export(loro::ExportMode::Snapshot)?;
-        Self::send_updates(our_updates, &mut send).await?;
-
-        // Receive their snapshot
-        let their_updates = Self::recv_updates(&mut recv).await?;
-
-        if !their_updates.is_empty() {
-            // Import the updates from remote
-            doc.import(&their_updates)?;
-            self.merge_doc(&mut doc).await?;
-        }
-
-        // we're done, close the connection
-        conn.close(0u32.into(), b"thanks, bye!");
+        self.doc.commit();
+        println!("✅ Local update committed");
 
         Ok(())
     }
 
-    pub async fn respond_sync(&self, conn: Connection) -> Result<()> {
-        let (mut send, mut recv) = conn.accept_bi().await?;
+    pub async fn initiate_sync(&self, conn: iroh::endpoint::Connection) -> Result<()> {
+        let (tx, rx) = async_channel::bounded(128);
+        let _sub = self.doc.subscribe_local_update(Box::new(move |u| {
+            tx.send_blocking(u.clone()).unwrap();
+            true
+        }));
 
-        let mut doc = self.fork_doc().await;
+        let sync = self.doc.export(ExportMode::all_updates())?;
 
-        // Receive their snapshot
-        let their_updates = Self::recv_updates(&mut recv).await?;
+        // Initial sync
+        let mut stream = conn.open_uni().await?;
+        stream.write_all(&sync).await?;
+        stream.finish()?;
 
-        if !their_updates.is_empty() {
-            // Import the updates from remote
-            doc.import(&their_updates)?;
-            self.merge_doc(&mut doc).await?;
+        const MAX_CONCURRENT_SYNCS: usize = 20;
+        let mut running_syncs = FuturesUnorderedBounded::new(MAX_CONCURRENT_SYNCS);
+
+        // Wait for changes & sync
+        loop {
+            select! {
+                close = conn.closed() => {
+                    println!("🔌 Peer disconnected: {close:?}");
+                    return Ok(());
+                },
+                // Accept incoming messages via uni-direction streams, if we have capacities to handle them
+                stream = conn.accept_uni(), if running_syncs.len() < running_syncs.capacity() => {
+                    // capacity checked in precondition above
+                    running_syncs.push(self.handle_sync_message(stream?));
+                },
+                // Work on current syncs
+                Some(result) = running_syncs.next() => {
+                    if let Err(e) = result {
+                        eprintln!("Sync failed: {e}");
+                    }
+                }
+                // Responses to local document changes
+                msg = rx.recv() => {
+                    let msg = msg?;
+                    println!("📤 Sending update to peer (size={})", msg.len());
+                    let mut stream = conn.open_uni().await?;
+                    stream.write_all(&msg).await?;
+                    stream.finish()?;
+                    println!("✅ Successfully sent update to peer");
+                }
+            }
         }
+    }
 
-        // Send our snapshot back
-        let our_updates = doc.export(loro::ExportMode::Snapshot)?;
-        Self::send_updates(our_updates, &mut send).await?;
+    async fn handle_sync_message(&self, mut stream: RecvStream) -> Result<()> {
+        let msg = stream.read_to_end(10_000_000).await?; // 10 MB limit for now
 
-        // We were the last to send, so we wait on the other side to close
-        conn.closed().await;
+        println!("📥 Received sync message from peer (size={})", msg.len());
+        if let Err(e) = self.doc.import(&msg) {
+            println!("❌ Failed to import sync message: {}", e);
+        };
+        println!("✅ Successfully imported sync message");
+
+        self.sender
+            .send(self.doc.get_text("text").to_string())
+            .await?;
+
+        println!("✅ Successfully sent update to local");
 
         Ok(())
     }
 }
 
 impl ProtocolHandler for IrohLoroProtocol {
-    async fn accept(&self, conn: Connection) -> Result<(), iroh::protocol::AcceptError> {
-        self.respond_sync(conn)
-            .await
-            .map_err(anyhow::Error::into_boxed_dyn_error)?;
-
-        self.sync_finished
-            .send(self.fork_doc().await)
-            .await
-            .map_err(AcceptError::from_err)?;
-
-        Ok(())
+    #[allow(refining_impl_trait)]
+    fn accept(&self, conn: iroh::endpoint::Connection) -> n0_future::boxed::BoxFuture<Result<(), AcceptError>> {
+        let this = self.clone();
+        Box::pin(async move {
+            println!("🔌 Peer connected");
+            let result = this.initiate_sync(conn).await;
+            println!("🔌 Peer disconnected");
+            if let Err(e) = result {
+                println!("❌ Error: {}", e);
+                return Err(AcceptError::User { source: e.into() });
+            }
+            Ok(())
+        })
     }
 }
