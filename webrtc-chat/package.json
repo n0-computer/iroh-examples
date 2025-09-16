@@ -1,0 +1,20 @@
+{
+  "name": "webrtc-chat",
+  "version": "0.1.0",
+  "scripts": {
+    "setup": "rustup target add wasm32-unknown-unknown",
+    "build": "cargo build --target=wasm32-unknown-unknown && wasm-bindgen ./target/wasm32-unknown-unknown/debug/webrtc_chat.wasm --out-dir=public/wasm --weak-refs --target=web --debug",
+    "build:release": "cargo build --target=wasm32-unknown-unknown --release && wasm-bindgen ./target/wasm32-unknown-unknown/release/webrtc_chat.wasm --out-dir=public/wasm --weak-refs --target=web && wasm-opt --enable-nontrapping-float-to-int --enable-bulk-memory -Os -o public/wasm/webrtc_chat.wasm public/wasm/webrtc_chat_bg.wasm",
+    "serve": "http-server --cors -a localhost public/",
+    "dev": "npm run build && npm run serve"
+  },
+  "author": "n0 team",
+  "license": "Apache-2.0 OR MIT",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  },
+  "devDependencies": {
+    "@wasm-tool/wasm-bindgen-cli": "^0.2.92",
+    "@wasm-tool/wasm-opt": "^116.0.0"
+  }
+}
