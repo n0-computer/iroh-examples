@@ -52,14 +52,6 @@ impl EchoNode {
         let stream = self.0.connect(node_id, payload);
         Ok(into_js_readable_stream(stream))
     }
-
-    pub fn remote_info(&self) -> Vec<JsValue> {
-        self.0
-            .endpoint()
-            .remote_info_iter()
-            .map(|info| serde_wasm_bindgen::to_value(&info).unwrap())
-            .collect::<Vec<_>>()
-    }
 }
 
 fn to_js_err(err: impl Into<anyhow::Error>) -> JsError {
