@@ -44,10 +44,7 @@ impl Iroh {
         let builder = iroh::protocol::Router::builder(endpoint.clone());
 
         let router = builder
-            .accept(
-                BLOBS_ALPN,
-                BlobsProtocol::new(&blobs, endpoint.clone(), None),
-            )
+            .accept(BLOBS_ALPN, BlobsProtocol::new(&blobs, None))
             .accept(GOSSIP_ALPN, gossip)
             .accept(DOCS_ALPN, docs.clone())
             .spawn();
@@ -81,7 +78,7 @@ pub async fn load_secret_key(key_path: PathBuf) -> Result<SecretKey> {
         let secret_key = SecretKey::try_from(&key_bytes[0..32])?;
         Ok(secret_key)
     } else {
-        let secret_key = SecretKey::generate(rand::rngs::OsRng);
+        let secret_key = SecretKey::generate(&mut rand::rng());
 
         // Try to canonicalize if possible
         let key_path = key_path.canonicalize().unwrap_or(key_path);
