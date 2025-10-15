@@ -5,18 +5,18 @@ use std::{
 
 use anyhow::{Context, Result};
 pub use iroh::NodeId;
-use iroh::{endpoint::RemoteInfo, protocol::Router, PublicKey, SecretKey};
-use iroh_base::{ticket::Ticket, Signature};
+use iroh::{PublicKey, SecretKey, protocol::Router};
+use iroh_base::{Signature, ticket::Ticket};
 pub use iroh_gossip::proto::TopicId;
 use iroh_gossip::{
     api::{Event as GossipEvent, GossipSender},
-    net::{Gossip, GOSSIP_ALPN},
+    net::{GOSSIP_ALPN, Gossip},
 };
 use n0_future::{
+    StreamExt,
     boxed::BoxStream,
     task::{self, AbortOnDropHandle},
     time::{Duration, SystemTime},
-    StreamExt,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as TokioMutex, Notify};
@@ -73,7 +73,7 @@ pub struct ChatNode {
 impl ChatNode {
     /// Spawns a gossip node.
     pub async fn spawn(secret_key: Option<SecretKey>) -> Result<Self> {
-        let secret_key = secret_key.unwrap_or_else(|| SecretKey::generate(rand::rngs::OsRng));
+        let secret_key = secret_key.unwrap_or_else(|| SecretKey::generate(&mut rand::rng()));
         let endpoint = iroh::Endpoint::builder()
             .secret_key(secret_key.clone())
             .discovery_n0()
@@ -101,14 +101,6 @@ impl ChatNode {
     /// Returns the node id of this node.
     pub fn node_id(&self) -> NodeId {
         self.router.endpoint().node_id()
-    }
-
-    /// Returns information about all the remote nodes this [`Endpoint`] knows about.
-    pub fn remote_info(&self) -> Vec<RemoteInfo> {
-        self.router
-            .endpoint()
-            .remote_info_iter()
-            .collect::<Vec<_>>()
     }
 
     /// Joins a chat channel from a ticket.

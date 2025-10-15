@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 
     let secret_key = match std::env::var("IROH_SECRET") {
         Err(_) => {
-            let secret_key = SecretKey::generate(rand::rngs::OsRng);
+            let secret_key = SecretKey::generate(&mut rand::rng());
             println!("* using new secret. to reuse, set this environment variable:");
             println!(
                 "IROH_SECRET={}",
