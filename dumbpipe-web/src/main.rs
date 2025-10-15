@@ -41,7 +41,7 @@ fn get_or_create_secret() -> anyhow::Result<SecretKey> {
     match std::env::var("IROH_SECRET") {
         Ok(secret) => SecretKey::from_str(&secret).context("invalid secret"),
         Err(_) => {
-            let key = SecretKey::generate(rand::thread_rng());
+            let key = SecretKey::generate(&mut rand::rng());
             let key_str = hex::encode(key.to_bytes());
             eprintln!("using secret key {key_str}");
             Ok(key)
