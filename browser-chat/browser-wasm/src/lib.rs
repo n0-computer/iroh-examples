@@ -5,11 +5,11 @@ use std::{
 
 use anyhow::Result;
 use chat_shared::{ChatSender, ChatTicket, NodeId, TopicId};
-use n0_future::{time::Duration, StreamExt};
+use n0_future::{StreamExt, time::Duration};
 use serde::{Deserialize, Serialize};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber_wasm::MakeConsoleWriter;
-use wasm_bindgen::{prelude::wasm_bindgen, JsError, JsValue};
+use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
 use wasm_streams::ReadableStream;
 
 #[wasm_bindgen(start)]
@@ -47,15 +47,6 @@ impl ChatNode {
     /// Returns the node id of this node.
     pub fn node_id(&self) -> String {
         self.0.node_id().to_string()
-    }
-
-    /// Returns information about all the remote nodes this [`Endpoint`] knows about.
-    pub fn remote_info(&self) -> Vec<JsValue> {
-        self.0
-            .remote_info()
-            .into_iter()
-            .map(|value| serde_wasm_bindgen::to_value(&value).unwrap())
-            .collect()
     }
 
     /// Opens a chat.

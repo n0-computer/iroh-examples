@@ -32,7 +32,7 @@ impl Iroh {
         // create blobs protocol
         let store = FsStore::load(path).await?;
 
-        let blobs = BlobsProtocol::new(&store, endpoint.clone(), None);
+        let blobs = BlobsProtocol::new(&store, None);
         // create router
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs.clone())
