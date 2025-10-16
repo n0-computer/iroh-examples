@@ -16,6 +16,13 @@ Use iroh in the browser, compiled to web assembly. [Try it here!](https://n0-com
 A chat app based on iroh-gossip that can run both in the browser and on the command line.
 [Try it here!](https://n0-computer.github.io/iroh-examples/main/browser-chat/index.html)
 
+### [custom-router](custom-router)
+
+When you need more control or customizations than the
+[iroh `Router`](https://docs.rs/iroh/latest/iroh/protocol/struct.Router.html) allows, we
+recommend to build your own router instead. This example implements a router that allows
+to add and remove protocols at runtime.
+
 ### [dumbpipe-web](dumbpipe-web)
 
 Forward http requests to dumbpipe. Share a local dev server publicly.

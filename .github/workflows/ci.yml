@@ -13,7 +13,7 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.81"
-  RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-automerge-repo,iroh-gateway,frosty,browser-echo,framed-messages"
+  RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-automerge-repo,iroh-gateway,frosty,browser-echo,framed-messages,custom-router"
   WASM_EXAMPLES_LIST: "browser-echo"
   IROH_FORCE_STAGING_RELAYS: "1"
 
