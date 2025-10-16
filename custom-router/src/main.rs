@@ -10,6 +10,9 @@ use iroh::{
 
 use self::router::{AddProtocolOutcome, Router, StopAcceptingError};
 
+const ALPN_1: &[u8] = b"/iroh/test/1";
+const ALPN_2: &[u8] = b"/iroh/test/2";
+
 #[tokio::main]
 async fn main() -> n0_snafu::Result {
     tracing_subscriber::fmt::init();
@@ -85,6 +88,19 @@ async fn main() -> n0_snafu::Result {
     Ok(())
 }
 
+/// An iroh protocol where incoming connections are closed immediately.
+///
+/// The `u32` is the error code with which incoming connections are closed.
+#[derive(Debug, Clone, Default)]
+struct TestProtocol(u32);
+
+impl ProtocolHandler for TestProtocol {
+    async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
+        connection.close(self.0.into(), b"bye");
+        Ok(())
+    }
+}
+
 /// Connect to a remote endpoint, and wait for the connection to be closed.
 ///
 /// Then assert that the connection was closed by the remote with the expected error code.
@@ -114,19 +130,6 @@ async fn connect_assert_fail(endpoint: &Endpoint, addr: &NodeAddr, alpn: &[u8]) 
             if frame.error_code == TransportErrorCode::crypto(rustls::AlertDescription::NoApplicationProtocol.into())
         )
     ));
-}
-
-#[derive(Debug, Clone, Default)]
-struct TestProtocol(u32);
-
-const ALPN_1: &[u8] = b"/iroh/test/1";
-const ALPN_2: &[u8] = b"/iroh/test/2";
-
-impl ProtocolHandler for TestProtocol {
-    async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
-        connection.close(self.0.into(), b"bye");
-        Ok(())
-    }
 }
 
 pub mod router {
