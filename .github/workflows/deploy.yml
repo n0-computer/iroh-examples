@@ -7,10 +7,12 @@ on:
     paths:
       - "browser-echo/**"
       - "browser-chat/**"
+      - "browser-blobs/**"
   pull_request:
     paths:
       - "browser-echo/**"
       - "browser-chat/**"
+      - "browser-blobs/**"
   workflow_dispatch:
     inputs:
       pr_number:

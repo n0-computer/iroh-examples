@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+    <head>
+        <title>iroh-blobs browser demo</title>
+        <script src="./main.js" type="module"></script>
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+
+    <body>
+        <header>
+            <h1>iroh-blobs in the browser</h1>
+            <a
+                href="https://github.com/n0-computer/iroh-blobs/tree/main/examples/wasm"
+                target="_blank"
+            >
+                Source code
+            </a>
+            <p>
+                This example runs iroh-blobs in the browser, compiled to web
+                assembly. The example implements the most basic demo for
+                iroh-blobs: You can create a blob with text in it. We'll print a
+                ticket with which others can fetch the text.
+            </p>
+            <p>
+                The example is implemented both for the browser and for the
+                command line, and the two can interop!
+            </p>
+            <p>
+                How to test for real: Open this page in a new tab, or on another
+                device, and copy over the ticket after importing a blog. You can
+                also fetch a blob from the command line with
+                <code>cargo run --features cli</code> from the
+                <code>examples/wasm</code> folder.
+            </p>
+        </header>
+        <div class="forms">
+            <form id="import">
+                <h3>provide a blob</h3>
+                <div class="fields">
+                    <div>
+                        <label for="data">text to share as blob</label>
+                        <input name="data" placeholder="type something…" />
+                    </div>
+                </div>
+                <button type="submit">import & share</button>
+                <div class="fields">
+                    <label for="print-ticket">ticket</label>
+                    <input disabled id="print-ticket" />
+                    <button id="copy">copy</button>
+                </div>
+            </form>
+            <form id="download">
+                <h3>fetch a blob</h3>
+                <div class="fields">
+                    <div>
+                        <label for="ticket">blob ticket:</label>
+                        <input name="ticket" placeholder="blob…" />
+                    </div>
+                    <button type="submit">download</button>
+                </div>
+                <div></div>
+                <div class="fields">
+                    <label for="print-text">fetched text</label>
+                    <input disabled id="print-text" />
+                </div>
+            </form>
+        </div>
+        <main></main>
+    </body>
+</html>
