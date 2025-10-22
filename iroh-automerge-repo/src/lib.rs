@@ -29,29 +29,29 @@ impl IrohRepo {
     ///
     /// To wait for the connection to be established use [`Repo::when_connected`]
     /// (accessible via [`Self::repo`]: `iroh_repo.repo().when_connected(..)`).
-    /// with the other node's string-encoded [`NodeId`] as the [`PeerId`].
+    /// with the other endpoint's string-encoded [`EndpointId`] as the [`PeerId`].
     ///
-    /// [`NodeId`]: iroh::NodeId
+    /// [`EndpointId`]: iroh::EndpointId
     /// [`PeerId`]: samod::PeerId
     pub async fn sync_with(
         &self,
-        addr: impl Into<iroh::NodeAddr>,
+        addr: impl Into<iroh::EndpointAddr>,
     ) -> anyhow::Result<ConnFinishedReason> {
         let addr = addr.into();
-        let node_id = addr.node_id;
+        let endpoint_id = addr.id;
         let conn = self.endpoint.connect(addr, IrohRepo::SYNC_ALPN).await?;
         let (send, recv) = conn.open_bi().await?;
 
         let conn_finished = self
             .repo
             .connect(
-                FramedRead::new(recv, Codec::new(node_id)),
-                FramedWrite::new(send, Codec::new(node_id)),
+                FramedRead::new(recv, Codec::new(endpoint_id)),
+                FramedWrite::new(send, Codec::new(endpoint_id)),
                 ConnDirection::Outgoing,
             )
             .await;
 
-        tracing::debug!(%node_id, ?conn_finished, "Connection we initiated shut down");
+        tracing::debug!(%endpoint_id, ?conn_finished, "Connection we initiated shut down");
 
         Ok(conn_finished)
     }
@@ -67,20 +67,20 @@ impl iroh::protocol::ProtocolHandler for IrohRepo {
         &self,
         connection: iroh::endpoint::Connection,
     ) -> Result<(), iroh::protocol::AcceptError> {
-        let node_id = connection.remote_node_id()?;
+        let endpoint_id = connection.remote_id()?;
 
         let (send, recv) = connection.accept_bi().await?;
 
         let conn_finished = self
             .repo
             .connect(
-                FramedRead::new(recv, Codec::new(node_id)),
-                FramedWrite::new(send, Codec::new(node_id)),
+                FramedRead::new(recv, Codec::new(endpoint_id)),
+                FramedWrite::new(send, Codec::new(endpoint_id)),
                 ConnDirection::Incoming,
             )
             .await;
 
-        tracing::debug!(%node_id, ?conn_finished, "Connection we accepted shut down");
+        tracing::debug!(%endpoint_id, ?conn_finished, "Connection we accepted shut down");
 
         Ok(())
     }

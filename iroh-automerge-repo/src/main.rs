@@ -4,7 +4,7 @@ use anyhow::Context;
 use automerge::{Automerge, ReadDoc, transaction::Transactable};
 use clap::Parser;
 use hex::encode;
-use iroh::NodeId;
+use iroh::EndpointId;
 use iroh_automerge_repo::IrohRepo;
 
 use samod::{DocumentId, PeerId, Repo, storage::TokioFilesystemStorage};
@@ -12,9 +12,9 @@ use samod::{DocumentId, PeerId, Repo, storage::TokioFilesystemStorage};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// A NodeId to connect to and keep syncing with
+    /// A EndpointId to connect to and keep syncing with
     #[clap(long)]
-    sync_with: Option<NodeId>,
+    sync_with: Option<EndpointId>,
 
     /// Path where storage files will be created
     #[clap(long, default_value = ".")]
@@ -81,8 +81,8 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     // Pull in the secret key from the environment variable if it exists
-    // This key is the public Node ID used to identify the node in the network
-    // If not provided, a random key will be generated, and a new Node ID will
+    // This key is the public Endpoint ID used to identify the endpoint in the network
+    // If not provided, a random key will be generated, and a new Endpoint ID will
     // be assigned each time the app is started
     let secret_key = match std::env::var("IROH_SECRET") {
         Ok(key_hex) => match iroh::SecretKey::from_str(&key_hex) {
@@ -109,25 +109,24 @@ async fn main() -> anyhow::Result<()> {
     if args.print_secret_key {
         println!("Secret Key: {}", encode(secret_key.to_bytes()));
         println!(
-            "Set env var for persistent Node ID: export IROH_SECRET={}",
+            "Set env var for persistent Endpoint ID: export IROH_SECRET={}",
             encode(secret_key.to_bytes())
         );
     }
 
     let endpoint = iroh::Endpoint::builder()
-        .discovery_n0()
         .secret_key(secret_key)
         .bind()
         .await?;
 
-    println!("Node ID: {}", endpoint.node_id());
+    println!("Endpoint ID: {}", endpoint.id());
 
     let samod = Repo::build_tokio()
-        .with_peer_id(PeerId::from_string(endpoint.node_id().to_string()))
+        .with_peer_id(PeerId::from_string(endpoint.id().to_string()))
         .with_storage(TokioFilesystemStorage::new(format!(
             "{}/{}",
             args.storage_path,
-            endpoint.node_id()
+            endpoint.id()
         )))
         .load()
         .await;
@@ -136,7 +135,7 @@ async fn main() -> anyhow::Result<()> {
         .accept(IrohRepo::SYNC_ALPN, proto.clone())
         .spawn();
 
-    println!("Running as {}", router.endpoint().node_id());
+    println!("Running as {}", router.endpoint().id());
 
     if let Some(addr) = args.sync_with {
         tokio::spawn({
@@ -238,7 +237,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Host => {
             println!("Hosting existing documents...");
             println!("Repository is now hosted and ready for sync operations.");
-            println!("Other nodes can connect to sync with this repository.");
+            println!("Other endpoints can connect to sync with this repository.");
         }
     }
 
