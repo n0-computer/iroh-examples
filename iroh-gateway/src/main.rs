@@ -1,5 +1,5 @@
-mod args;
 use std::{
+    ops::Deref,
     result,
     sync::{Arc, Mutex},
 };
@@ -18,12 +18,12 @@ use bao_tree::{ChunkNum, io::fsm::BaoContentItem};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use bytes::Bytes;
 use clap::Parser;
-use derive_more::Deref;
 use futures::{StreamExt, pin_mut};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::{Endpoint, NodeAddr, NodeId, discovery::dns::DnsDiscovery, endpoint::Connection};
-use iroh_base::ticket::NodeTicket;
+use iroh::{
+    Endpoint, EndpointAddr, EndpointId, discovery::dns::DnsDiscovery, endpoint::Connection,
+};
 use iroh_blobs::{
     BlobFormat, Hash,
     format::collection::Collection,
@@ -31,6 +31,7 @@ use iroh_blobs::{
     protocol::{ALPN, ChunkRangesSeq},
     ticket::BlobTicket,
 };
+use iroh_tickets::endpoint::EndpointTicket;
 use lru::LruCache;
 use mime::Mime;
 use mime_classifier::MimeClassifier;
@@ -46,6 +47,8 @@ use crate::{
     cert_util::{load_certs, load_secret_key},
     ranges::{slice, to_byte_range, to_chunk_range},
 };
+
+mod args;
 mod cert_util;
 mod ranges;
 
@@ -89,10 +92,10 @@ type MimeCache = LruCache<(Hash, Option<String>), (u64, Mime)>;
 
 #[derive(derive_more::Debug)]
 struct Inner {
-    /// Endpoint to connect to nodes
+    /// Endpoint to connect to endpoints
     endpoint: Endpoint,
-    /// Default node to connect to when not specified in the url
-    default_node: Option<NodeAddr>,
+    /// Default endpoint to connect to when not specified in the url
+    default_endpoint: Option<EndpointAddr>,
     /// Mime classifier
     #[debug("MimeClassifier")]
     mime_classifier: MimeClassifier,
@@ -103,18 +106,21 @@ struct Inner {
 }
 
 impl Inner {
-    /// Get the default node to connect to when not specified in the url
-    fn default_node(&self) -> anyhow::Result<NodeAddr> {
-        let node_addr = self
-            .default_node
+    /// Get the default endpoint to connect to when not specified in the url
+    fn default_endpoint(&self) -> anyhow::Result<EndpointAddr> {
+        let endpoint_addr = self
+            .default_endpoint
             .clone()
-            .context("default node not configured")?;
-        Ok(node_addr)
+            .context("default endpoint not configured")?;
+        Ok(endpoint_addr)
     }
 
-    /// Get the mime type for a hash from the remote node.
+    /// Get the mime type for a hash from the remote endpoint.
     async fn get_default_connection(&self) -> anyhow::Result<Connection> {
-        let connection = self.endpoint.connect(self.default_node()?, ALPN).await?;
+        let connection = self
+            .endpoint
+            .connect(self.default_endpoint()?, ALPN)
+            .await?;
         Ok(connection)
     }
 }
@@ -202,7 +208,7 @@ fn get_extension(name: &str) -> Option<String> {
         .map(|s| s.to_string_lossy().to_string())
 }
 
-/// Get the mime type for a hash from the remote node.
+/// Get the mime type for a hash from the remote endpoint.
 async fn get_mime_type_inner(
     hash: &Hash,
     ext: Option<&str>,
@@ -248,7 +254,7 @@ fn get_mime_from_ext_and_data(
     )
 }
 
-/// Get the mime type for a hash, either from the cache or by requesting it from the node.
+/// Get the mime type for a hash, either from the cache or by requesting it from the endpoint.
 async fn get_mime_type(
     gateway: &Gateway,
     hash: &Hash,
@@ -266,7 +272,7 @@ async fn get_mime_type(
     Ok(sm)
 }
 
-/// Handle a request for a range of bytes from the default node.
+/// Handle a request for a range of bytes from the default endpoint.
 async fn handle_local_blob_request(
     gateway: Extension<Gateway>,
     Path(blake3_hash): Path<Hash>,
@@ -288,7 +294,7 @@ async fn handle_local_collection_index(
     Ok(res)
 }
 
-/// Handle a request for a range of bytes from the default node.
+/// Handle a request for a range of bytes from the default endpoint.
 async fn handle_local_collection_request(
     gateway: Extension<Gateway>,
     Path((hash, suffix)): Path<(Hash, String)>,
@@ -309,7 +315,7 @@ async fn handle_ticket_index(
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
-        .connect(ticket.node_addr().clone(), ALPN)
+        .connect(ticket.addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
     let prefix = format!("/ticket/{ticket}");
@@ -333,7 +339,7 @@ async fn handle_ticket_request(
     let byte_range = parse_byte_range(req).await?;
     let connection = gateway
         .endpoint
-        .connect(ticket.node_addr().clone(), ALPN)
+        .connect(ticket.addr().clone(), ALPN)
         .await?;
     let hash = ticket.hash();
     let res = forward_collection_range(&gateway, connection, &hash, &suffix, byte_range).await?;
@@ -520,23 +526,25 @@ async fn main() -> anyhow::Result<()> {
         builder = builder.bind_addr_v6(addr);
     }
     let endpoint = builder.bind().await?;
-    let default_node = args
-        .default_node
-        .map(|default_node| {
-            Ok(if let Ok(node_id) = default_node.parse::<NodeId>() {
-                node_id.into()
-            } else if let Ok(node_ticket) = default_node.parse::<NodeTicket>() {
-                node_ticket.node_addr().clone()
-            } else if let Ok(blob_ticket) = default_node.parse::<BlobTicket>() {
-                blob_ticket.node_addr().clone()
-            } else {
-                anyhow::bail!("invalid default node");
-            })
+    let default_endpoint = args
+        .default_endpoint
+        .map(|default_endpoint| {
+            Ok(
+                if let Ok(endpoint_id) = default_endpoint.parse::<EndpointId>() {
+                    endpoint_id.into()
+                } else if let Ok(endpoint_ticket) = default_endpoint.parse::<EndpointTicket>() {
+                    endpoint_ticket.endpoint_addr().clone()
+                } else if let Ok(blob_ticket) = default_endpoint.parse::<BlobTicket>() {
+                    blob_ticket.addr().clone()
+                } else {
+                    anyhow::bail!("invalid default endpoint");
+                },
+            )
         })
         .transpose()?;
     let gateway = Gateway(Arc::new(Inner {
         endpoint,
-        default_node,
+        default_endpoint,
         mime_classifier: MimeClassifier::new(),
         mime_cache: Mutex::new(LruCache::new(100000.try_into().unwrap())),
         collection_cache: Mutex::new(LruCache::new(1000.try_into().unwrap())),
@@ -549,11 +557,11 @@ async fn main() -> anyhow::Result<()> {
 
     #[rustfmt::skip]
     let app = Router::new()
-        .route("/blob/:blake3_hash", get(handle_local_blob_request))
-        .route("/collection/:blake3_hash", get(handle_local_collection_index))
-        .route("/collection/:blake3_hash/*path",get(handle_local_collection_request))
-        .route("/ticket/:ticket", get(handle_ticket_index))
-        .route("/ticket/:ticket/*path", get(handle_ticket_request))
+        .route("/blob/{blake3_hash}", get(handle_local_blob_request))
+        .route("/collection/{blake3_hash}", get(handle_local_collection_index))
+        .route("/collection/{blake3_hash}/{*path}",get(handle_local_collection_request))
+        .route("/ticket/{ticket}", get(handle_ticket_index))
+        .route("/ticket/{ticket}/{*path}", get(handle_ticket_request))
         .layer(cors)
         .layer(Extension(gateway));
 
