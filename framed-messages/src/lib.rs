@@ -13,7 +13,7 @@ use crate::framed::FramedBiStream;
 /// Each protocol is identified by its ALPN string.
 ///
 /// The ALPN, or application-layer protocol negotiation, is exchanged in the connection handshake,
-/// and the connection is aborted unless both nodes pass the same bytestring.
+/// and the connection is aborted unless both endpoints pass the same bytestring.
 pub const ALPN: &[u8] = b"iroh/examples/messages/0";
 
 /// Move is the message type we'll send & receive over the connection.
@@ -82,9 +82,9 @@ impl ProtocolHandler for ChessProtocol {
     /// The returned future runs on a newly spawned tokio task, so it can run as long as
     /// the connection lasts.
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
-        // We can get the remote's node id from the connection.
-        let node_id = connection.remote_node_id()?;
-        println!("accepted connection from {node_id}");
+        // We can get the remote's endpoint id from the connection.
+        let endpoint_id = connection.remote_id()?;
+        println!("accepted connection from {endpoint_id}");
 
         // Our protocol is a simple request-response protocol, so we expect the
         // connecting peer to open a single bi-directional stream.

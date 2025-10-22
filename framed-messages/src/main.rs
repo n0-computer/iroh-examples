@@ -6,15 +6,15 @@ use framed_messages::{ALPN as ChessMovesALPN, ChessProtocol, Move, framed::Frame
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // create the receive side
-    let recv_ep = Endpoint::builder().discovery_n0().bind().await?;
+    let recv_ep = Endpoint::bind().await?;
     let recv_router = Router::builder(recv_ep)
         .accept(ChessMovesALPN, ChessProtocol)
         .spawn();
     recv_router.endpoint().online().await;
-    let addr = recv_router.endpoint().node_addr();
+    let addr = recv_router.endpoint().addr();
 
     // create a send side & send a ping
-    let send_ep = Endpoint::builder().discovery_n0().bind().await?;
+    let send_ep = Endpoint::bind().await?;
     let conn = send_ep.connect(addr, ChessMovesALPN).await?;
     let bi_stream = conn.open_bi().await?;
     // We use the `FramedBiStream` to provide us message framing
