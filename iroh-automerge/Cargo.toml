@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.80"
-automerge = "0.6.1"
+automerge = "0.7"
 clap = { version = "4.5.1", features = ["derive"] }
-iroh = "0.93"
+iroh = "0.94"
 postcard = "1.0.8"
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["full"] }
