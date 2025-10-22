@@ -11,7 +11,7 @@ mod protocol;
 #[command(version, about, long_about = None)]
 struct Cli {
     #[clap(long)]
-    remote_id: Option<iroh::NodeId>,
+    remote_id: Option<iroh::EndpointId>,
 }
 
 #[tokio::main]
@@ -23,14 +23,14 @@ async fn main() -> Result<()> {
     // We set up a channel so we can subscribe to sync events from the automerge protocol
     let (sync_sender, mut sync_finished) = mpsc::channel(10);
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
-    let endpoint = Endpoint::builder().discovery_n0().bind().await?;
+    let endpoint = Endpoint::bind().await?;
     let iroh = Router::builder(endpoint)
         .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
         .spawn();
 
-    let node_id = iroh.endpoint().node_id();
+    let endpoint_id = iroh.endpoint().id();
 
-    println!("Running\nNode Id: {node_id}",);
+    println!("Running\nEndpoint Id: {endpoint_id}",);
 
     // we distinguish the roles in protocol based on if the --remote-id CLI argument is present
     if let Some(remote_id) = opts.remote_id {
@@ -45,11 +45,11 @@ async fn main() -> Result<()> {
         t.commit();
         automerge.merge_doc(&mut doc).await?;
 
-        // connect to the other node
-        let node_addr = iroh::NodeAddr::new(remote_id);
+        // connect to the other endpoint
+        let endpoint_addr = iroh::EndpointAddr::new(remote_id);
         let conn = iroh
             .endpoint()
-            .connect(node_addr, IrohAutomergeProtocol::ALPN)
+            .connect(endpoint_addr, IrohAutomergeProtocol::ALPN)
             .await?;
 
         // initiate a sync session over an iroh-net direct connection

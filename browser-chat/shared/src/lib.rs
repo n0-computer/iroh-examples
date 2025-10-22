@@ -4,14 +4,14 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-pub use iroh::NodeId;
-use iroh::{PublicKey, SecretKey, protocol::Router};
-use iroh_base::{Signature, ticket::Ticket};
+pub use iroh::EndpointId;
+use iroh::{PublicKey, SecretKey, Signature, protocol::Router};
 pub use iroh_gossip::proto::TopicId;
 use iroh_gossip::{
     api::{Event as GossipEvent, GossipSender},
     net::{GOSSIP_ALPN, Gossip},
 };
+use iroh_tickets::Ticket;
 use n0_future::{
     StreamExt,
     boxed::BoxStream,
@@ -28,7 +28,7 @@ pub const PRESENCE_INTERVAL: Duration = Duration::from_secs(5);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ChatTicket {
     pub topic_id: TopicId,
-    pub bootstrap: BTreeSet<NodeId>,
+    pub bootstrap: BTreeSet<EndpointId>,
 }
 
 impl ChatTicket {
@@ -58,7 +58,7 @@ impl Ticket for ChatTicket {
         postcard::to_stdvec(&self).unwrap()
     }
 
-    fn from_bytes(bytes: &[u8]) -> Result<Self, iroh_base::ticket::ParseError> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, iroh_tickets::ParseError> {
         let ticket = postcard::from_bytes(bytes)?;
         Ok(ticket)
     }
@@ -76,14 +76,13 @@ impl ChatNode {
         let secret_key = secret_key.unwrap_or_else(|| SecretKey::generate(&mut rand::rng()));
         let endpoint = iroh::Endpoint::builder()
             .secret_key(secret_key.clone())
-            .discovery_n0()
             .alpns(vec![GOSSIP_ALPN.to_vec()])
             .bind()
             .await?;
 
-        let node_id = endpoint.node_id();
+        let endpoint_id = endpoint.id();
         info!("endpoint bound");
-        info!("node id: {node_id:#?}");
+        info!("endpoint id: {endpoint_id:#?}");
 
         let gossip = Gossip::builder().spawn(endpoint.clone());
         info!("gossip spawned");
@@ -98,9 +97,9 @@ impl ChatNode {
         })
     }
 
-    /// Returns the node id of this node.
-    pub fn node_id(&self) -> NodeId {
-        self.router.endpoint().node_id()
+    /// Returns the endpoint id of this endpoint.
+    pub fn endpoint_id(&self) -> EndpointId {
+        self.router.endpoint().id()
     }
 
     /// Joins a chat channel from a ticket.
@@ -239,28 +238,28 @@ impl ChatSender {
 pub enum Event {
     #[serde(rename_all = "camelCase")]
     Joined {
-        neighbors: Vec<NodeId>,
+        neighbors: Vec<EndpointId>,
     },
     #[serde(rename_all = "camelCase")]
     MessageReceived {
-        from: NodeId,
+        from: EndpointId,
         text: String,
         nickname: String,
         sent_timestamp: u64,
     },
     #[serde(rename_all = "camelCase")]
     Presence {
-        from: NodeId,
+        from: EndpointId,
         nickname: String,
         sent_timestamp: u64,
     },
     #[serde(rename_all = "camelCase")]
     NeighborUp {
-        node_id: NodeId,
+        endpoint_id: EndpointId,
     },
     #[serde(rename_all = "camelCase")]
     NeighborDown {
-        node_id: NodeId,
+        endpoint_id: EndpointId,
     },
     Lagged,
 }
@@ -269,8 +268,8 @@ impl TryFrom<GossipEvent> for Event {
     type Error = anyhow::Error;
     fn try_from(event: GossipEvent) -> Result<Self, Self::Error> {
         let converted = match event {
-            GossipEvent::NeighborUp(node_id) => Self::NeighborUp { node_id },
-            GossipEvent::NeighborDown(node_id) => Self::NeighborDown { node_id },
+            GossipEvent::NeighborUp(endpoint_id) => Self::NeighborUp { endpoint_id },
+            GossipEvent::NeighborDown(endpoint_id) => Self::NeighborDown { endpoint_id },
             GossipEvent::Received(message) => {
                 let message = SignedMessage::verify_and_decode(&message.content)
                     .context("failed to parse and verify signed message")?;
@@ -348,6 +347,6 @@ pub enum Message {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReceivedMessage {
     timestamp: u64,
-    from: NodeId,
+    from: EndpointId,
     message: Message,
 }

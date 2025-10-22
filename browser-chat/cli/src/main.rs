@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
     };
 
     let node = ChatNode::spawn(Some(secret_key)).await?;
-    println!("node id: {}", node.node_id());
+    println!("endpoint id: {}", node.endpoint_id());
 
     let ticket = match args.command {
         Command::Create => ChatTicket::new_random(),
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
     };
 
     let mut our_ticket = ticket.clone();
-    our_ticket.bootstrap = [node.node_id()].into_iter().collect();
+    our_ticket.bootstrap = [node.endpoint_id()].into_iter().collect();
     println!("* ticket to join this chat:");
     println!("{}", our_ticket.serialize());
 
@@ -69,8 +69,8 @@ async fn main() -> Result<()> {
             match event {
                 Event::Joined { neighbors } => {
                     println!("* swarm joined");
-                    for node_id in neighbors {
-                        println!("* neighbor up: {node_id}")
+                    for endpoint_id in neighbors {
+                        println!("* neighbor up: {endpoint_id}")
                     }
                 }
                 Event::Presence {
@@ -102,11 +102,11 @@ async fn main() -> Result<()> {
                     }
                     println!("<{from_short}> {nickname}: {text}");
                 }
-                Event::NeighborUp { node_id } => {
-                    println!("* neighbor up: {node_id}")
+                Event::NeighborUp { endpoint_id } => {
+                    println!("* neighbor up: {endpoint_id}")
                 }
-                Event::NeighborDown { node_id } => {
-                    println!("* neighbor down: {node_id}")
+                Event::NeighborDown { endpoint_id } => {
+                    println!("* neighbor down: {endpoint_id}")
                 }
                 Event::Lagged => {
                     println!("* warn: gossip stream lagged")

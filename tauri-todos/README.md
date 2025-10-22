@@ -34,7 +34,7 @@ npm run tauri dev
 
 # License
 
-Copyright 2023 N0, INC.
+Copyright 2025 N0, INC.
 
 This project is licensed under either of
 

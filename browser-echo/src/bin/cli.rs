@@ -1,7 +1,7 @@
 use anyhow::Result;
 use browser_echo::node::EchoNode;
 use clap::Parser;
-use iroh::NodeId;
+use iroh::EndpointId;
 use n0_future::StreamExt;
 
 #[derive(Debug, Parser)]
@@ -12,7 +12,10 @@ struct Args {
 
 #[derive(Debug, Parser)]
 enum Command {
-    Connect { node_id: NodeId, payload: String },
+    Connect {
+        endpoint_id: EndpointId,
+        payload: String,
+    },
     Accept,
 }
 
@@ -22,8 +25,11 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let node = EchoNode::spawn().await?;
     match args.command {
-        Command::Connect { node_id, payload } => {
-            let mut events = node.connect(node_id, payload);
+        Command::Connect {
+            endpoint_id,
+            payload,
+        } => {
+            let mut events = node.connect(endpoint_id, payload);
             while let Some(event) = events.next().await {
                 println!("event {event:?}");
             }
@@ -32,7 +38,7 @@ async fn main() -> Result<()> {
             println!("connect to this node:");
             println!(
                 "cargo run -- connect {} hello-please-echo-back",
-                node.endpoint().node_id()
+                node.endpoint().id()
             );
             let mut events = node.accept_events();
             while let Some(event) = events.next().await {

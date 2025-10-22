@@ -14,7 +14,7 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
-use iroh::{Endpoint, NodeAddr, SecretKey};
+use iroh::{Endpoint, EndpointAddr, SecretKey};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let mut builder = Endpoint::builder().secret_key(secret_key).discovery_n0();
+    let mut builder = Endpoint::builder().secret_key(secret_key);
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr_v4(addr);
     }
@@ -110,18 +110,14 @@ fn bad_request(text: &'static str) -> anyhow::Result<Response<BoxBody<Bytes, hyp
     Ok(resp)
 }
 
-fn parse_subdomain(subdomain: &str) -> anyhow::Result<NodeAddr> {
-    // first try to parse as a node id
-    if let Ok(node_id) = iroh::NodeId::from_str(subdomain) {
-        return Ok(NodeAddr {
-            node_id,
-            relay_url: None, // Use discovery
-            direct_addresses: Default::default(),
-        });
+fn parse_subdomain(subdomain: &str) -> anyhow::Result<EndpointAddr> {
+    // first try to parse as a endpoint id
+    if let Ok(endpoint_id) = iroh::EndpointId::from_str(subdomain) {
+        return Ok(EndpointAddr::new(endpoint_id));
     }
-    // then try to parse as a node ticket
-    if let Ok(ticket) = dumbpipe::NodeTicket::from_str(subdomain) {
-        return Ok(ticket.node_addr().clone());
+    // then try to parse as a endpoint ticket
+    if let Ok(ticket) = dumbpipe::EndpointTicket::from_str(subdomain) {
+        return Ok(ticket.endpoint_addr().clone());
     }
     Err(anyhow::anyhow!("invalid subdomain"))
 }
@@ -142,11 +138,13 @@ async fn proxy(
     if parts.len() < 2 {
         return bad_request("invalid host header - missing subdomain");
     }
-    let Ok(node_addr) = parse_subdomain(parts[0]) else {
-        return bad_request("invalid host header - subdomain is neither a node id nor a ticket");
+    let Ok(endpoint_addr) = parse_subdomain(parts[0]) else {
+        return bad_request(
+            "invalid host header - subdomain is neither a endpoint id nor a ticket",
+        );
     };
-    tracing::info!("connecting to node: {:?}", node_addr);
-    let conn = endpoint().connect(node_addr, dumbpipe::ALPN).await?;
+    tracing::info!("connecting to endpoint: {:?}", endpoint_addr);
+    let conn = endpoint().connect(endpoint_addr, dumbpipe::ALPN).await?;
     tracing::info!("opening bi stream");
     let (mut send, recv) = conn.open_bi().await?;
     tracing::info!("sending handshake");

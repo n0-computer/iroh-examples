@@ -10,14 +10,14 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 #[derive(Clone)]
 pub(crate) struct Codec {
-    remote_node_id: iroh::NodeId, // used for tracing
+    remote_endpoint_id: iroh::EndpointId, // used for tracing
     inner: LengthDelimitedCodec,
 }
 
 impl Codec {
-    pub(crate) fn new(remote_node_id: iroh::NodeId) -> Self {
+    pub(crate) fn new(remote_endpoint_id: iroh::EndpointId) -> Self {
         Self {
-            remote_node_id,
+            remote_endpoint_id,
             inner: LengthDelimitedCodec::new(), // using default values
         }
     }
@@ -30,7 +30,7 @@ impl Encoder<Vec<u8>> for Codec {
         let len = bytes.len();
         let result = self.inner.encode(Bytes::from(bytes), dst);
         if result.is_ok() {
-            tracing::trace!(len, %self.remote_node_id, "encoded msg");
+            tracing::trace!(len, %self.remote_endpoint_id, "encoded msg");
         }
         result
     }
@@ -46,7 +46,7 @@ impl Decoder for Codec {
             return Ok(None);
         };
 
-        tracing::trace!(len = bytes.len(), %self.remote_node_id, "decoded msg");
+        tracing::trace!(len = bytes.len(), %self.remote_endpoint_id, "decoded msg");
 
         Ok(Some(Vec::from(bytes)))
     }
@@ -56,7 +56,7 @@ impl Decoder for Codec {
             return Ok(None);
         };
 
-        tracing::trace!(len = bytes.len(), %self.remote_node_id, "decoded msg");
+        tracing::trace!(len = bytes.len(), %self.remote_endpoint_id, "decoded msg");
 
         Ok(Some(Vec::from(bytes)))
     }

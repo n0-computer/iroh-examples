@@ -27,7 +27,7 @@ export class IrohAPI implements API {
   static async create(): Promise<IrohAPI> {
     log.info("Spawning iroh node")
     const chatNode = await ChatNode.spawn()
-    log.info(`Iroh node spawned. our node id: ${chatNode.node_id()}`)
+    log.info(`Iroh node spawned. our endpoint id: ${chatNode.endpoint_id()}`)
     return new IrohAPI(chatNode)
   }
 
@@ -49,9 +49,9 @@ export class IrohAPI implements API {
     let onClosePromise = new Promise<void>(resolve => {
       onClose = resolve
     })
-    const nodeId = this.chatNode.node_id()
+    const endpointId = this.chatNode.endpoint_id()
     const myself: PeerInfo = {
-      id: nodeId,
+      id: endpointId,
       name: nickname,
       lastSeen: new Date(),
       status: "online",
@@ -70,7 +70,7 @@ export class IrohAPI implements API {
       myself,
       onClose: onClose!
     }
-    state.peers.set(nodeId, myself)
+    state.peers.set(endpointId, myself)
     this.channels.set(id, state)
 
     const subscribe = async () => {
@@ -130,7 +130,7 @@ export class IrohAPI implements API {
       while (true) {
         const now = new Date()
         for (const peer of state.peers.values()) {
-          if (peer.id === nodeId) {
+          if (peer.id === endpointId) {
             peer.lastSeen = now
             continue
           }
@@ -188,7 +188,7 @@ export class IrohAPI implements API {
       throw new Error("Channel not found")
     }
     await state.channel.sender.broadcast(text)
-    const me = this.chatNode.node_id();
+    const me = this.chatNode.endpoint_id();
     const message = {
       sender: me,
       id: nextId(state),
@@ -313,12 +313,12 @@ type PresenceEvent = {
 
 type NeighborUpEvent = {
   type: "neighborUp"
-  nodeId: string
+  endpointId: string
 }
 
 type NeighborDownEvent = {
   type: "neighborDown"
-  nodeId: string
+  endpointId: string
 }
 
 type LaggedEvent = {

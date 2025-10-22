@@ -10,8 +10,8 @@ crate-type = ["cdylib", "rlib"]
 anyhow = "1.0.86"
 chat-shared = { version = "0.1.0", path = "../shared" }
 console_error_panic_hook = "0.1.7"
-getrandom = { version = "0.2", features = ["js"] }
-n0-future = "0.1.2"
+getrandom = { version = "0.3", features = [] }
+n0-future = "0.3"
 serde = "1.0.217"
 serde-wasm-bindgen = "0.6.5"
 tracing = "0.1.40"

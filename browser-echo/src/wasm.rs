@@ -40,16 +40,20 @@ impl EchoNode {
         into_js_readable_stream(stream)
     }
 
-    pub fn node_id(&self) -> String {
-        self.0.endpoint().node_id().to_string()
+    pub fn endpoint_id(&self) -> String {
+        self.0.endpoint().id().to_string()
     }
 
-    pub fn connect(&self, node_id: String, payload: String) -> Result<JsReadableStream, JsError> {
-        let node_id = node_id
+    pub fn connect(
+        &self,
+        endpoint_id: String,
+        payload: String,
+    ) -> Result<JsReadableStream, JsError> {
+        let endpoint_id = endpoint_id
             .parse()
-            .context("failed to parse node id")
+            .context("failed to parse endpoint id")
             .map_err(to_js_err)?;
-        let stream = self.0.connect(node_id, payload);
+        let stream = self.0.connect(endpoint_id, payload);
         Ok(into_js_readable_stream(stream))
     }
 }

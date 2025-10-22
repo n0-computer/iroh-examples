@@ -22,14 +22,14 @@ pub enum CertMode {
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Ticket for the default node.
+    /// Ticket for the default endpoint.
     ///
-    /// This can be a node ticket or a blob ticket. If it is a blob ticket, the
-    /// hash is ignored and just the node part is used.
+    /// This can be a endpoint ticket or a blob ticket. If it is a blob ticket, the
+    /// hash is ignored and just the endpoint part is used.
     ///
     /// This is needed for all endpoints except `/ticket`.
     #[clap(long)]
-    pub default_node: Option<String>,
+    pub default_endpoint: Option<String>,
 
     /// Http or https listen addr.
     ///

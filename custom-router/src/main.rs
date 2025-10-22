@@ -3,7 +3,7 @@
 //! We will create a router that allows adding or removing protocols at runtime.
 
 use iroh::{
-    Endpoint, NodeAddr, RelayMode,
+    Endpoint, EndpointAddr, RelayMode,
     endpoint::{ApplicationClose, ConnectError, Connection, ConnectionError, TransportErrorCode},
     protocol::{AcceptError, ProtocolHandler},
 };
@@ -28,7 +28,7 @@ async fn main() -> n0_snafu::Result {
         .accept(ALPN_1, TestProtocol(1))
         .spawn();
 
-    let addr = router.endpoint().node_addr();
+    let addr = router.endpoint().addr();
 
     // Create our client endpoint.
     let client = Endpoint::builder()
@@ -104,7 +104,12 @@ impl ProtocolHandler for TestProtocol {
 /// Connect to a remote endpoint, and wait for the connection to be closed.
 ///
 /// Then assert that the connection was closed by the remote with the expected error code.
-async fn connect_assert_ok(endpoint: &Endpoint, addr: &NodeAddr, alpn: &[u8], expected_code: u32) {
+async fn connect_assert_ok(
+    endpoint: &Endpoint,
+    addr: &EndpointAddr,
+    alpn: &[u8],
+    expected_code: u32,
+) {
     let conn = endpoint
         .connect(addr.clone(), alpn)
         .await
@@ -119,7 +124,7 @@ async fn connect_assert_ok(endpoint: &Endpoint, addr: &NodeAddr, alpn: &[u8], ex
 ///
 /// This asserts that the remote closed the connection immediately, and that the remote
 /// returned the error code for an unsupported ALPN protocol.
-async fn connect_assert_fail(endpoint: &Endpoint, addr: &NodeAddr, alpn: &[u8]) {
+async fn connect_assert_fail(endpoint: &Endpoint, addr: &EndpointAddr, alpn: &[u8]) {
     let conn = endpoint.connect(addr.clone(), alpn).await;
     assert!(matches!(
         &conn,
@@ -169,7 +174,7 @@ pub mod router {
     /// ```no_run
     /// # use std::sync::Arc;
     /// # use n0_snafu::ResultExt;
-    /// # use iroh::{endpoint::Connecting, protocol::{ProtocolHandler, Router}, Endpoint, NodeAddr};
+    /// # use iroh::{endpoint::Connecting, protocol::{ProtocolHandler, Router}, Endpoint, EndpointAddr};
     /// #
     /// # async fn test_compile() -> n0_snafu::Result<()> {
     /// let endpoint = Endpoint::builder().discovery_n0().bind().await?;
