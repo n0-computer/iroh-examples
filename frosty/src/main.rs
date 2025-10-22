@@ -216,7 +216,7 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     let signature = secret.sign(rand8::thread_rng(), msg);
     let signature_bytes = signature.serialize()?;
     let signature_bytes: [u8; 64] = signature_bytes.try_into().expect("invalid signature");
-    println!("Signature: {}", hex::encode(&signature_bytes));
+    println!("Signature: {}", hex::encode(signature_bytes));
     let iroh_signature = iroh_base::Signature::from_bytes(&signature_bytes);
     let res = key.verify(msg, &iroh_signature);
     if res.is_err() {
