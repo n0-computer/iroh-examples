@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use anyhow::{Result, anyhow};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::{Endpoint, NodeId, protocol::Router};
+use iroh::{Endpoint, EndpointId, protocol::Router};
 use iroh_blobs::{BlobsProtocol, api::downloader::Shuffled, store::fs::FsStore};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
@@ -27,7 +27,7 @@ pub struct Iroh {
 impl Iroh {
     pub async fn new(path: PathBuf) -> Result<Iroh> {
         // create an endpoint
-        let endpoint = Endpoint::builder().discovery_n0().bind().await?;
+        let endpoint = Endpoint::bind().await?;
 
         // create blobs protocol
         let store = FsStore::load(path).await?;
@@ -40,8 +40,8 @@ impl Iroh {
         Ok(Iroh { router, blobs })
     }
 
-    pub fn node_id(&self) -> NodeId {
-        self.router.endpoint().node_id()
+    pub fn endpoint_id(&self) -> EndpointId {
+        self.router.endpoint().id()
     }
 
     pub fn blobs(&self) -> BlobsProtocol {
@@ -62,7 +62,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     let ctx = user_data.get()?;
     let ctx = ctx.lock().unwrap();
 
-    let (node_addr, hash, format) = iroh_blobs::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
+    let (endpoint_addr, hash, format) = iroh_blobs::ticket::BlobTicket::from_str(ticket).map_err(|_| anyhow!("invalid ticket"))?.into_parts();
 
     if format != iroh_blobs::BlobFormat::Raw {
         return Err(anyhow!("can only get raw bytes for now, not HashSequences (collections)"));
@@ -73,7 +73,7 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     let downloader = store.downloader(router.endpoint());
     let buf = ctx.rt.block_on(async move {
         let blobs = store.blobs();
-        let mut stream = downloader.download(hash, Shuffled::new(vec![node_addr.node_id])).stream().await?;
+        let mut stream = downloader.download(hash, Shuffled::new(vec![endpoint_addr.id])).stream().await?;
         while stream.next().await.is_some() {}
 
         let buffer = blobs.get_bytes(hash).await?;

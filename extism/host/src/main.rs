@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
         let iroh_path = iroh_extism_host_functions::default_iroh_extism_data_root().await?;
         iroh_extism_host_functions::Iroh::new(iroh_path).await
     })?;
-    println!("iroh node id: {:?}", iroh.node_id());
+    println!("iroh endpoint id: {:?}", iroh.endpoint_id());
 
     let file = Wasm::file("../plugin/target/wasm32-unknown-unknown/debug/plugin.wasm");
     let manifest = Manifest::new([file]);
