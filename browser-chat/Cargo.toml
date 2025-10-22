@@ -7,6 +7,3 @@ members = ["shared", "cli", "browser-wasm"]
 iroh = { version = "0.94", default-features = false }
 iroh-tickets = "0.1"
 iroh-gossip = { version = "0.94", default-features = false, features = ["net"] }
-
-[patch.crates-io]
-iroh-base = { path = "../../iroh/iroh-base" }
