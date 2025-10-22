@@ -24,11 +24,7 @@ impl Iroh {
         let key = load_secret_key(path.clone().join("keypair")).await?;
 
         // create endpoint
-        let endpoint = iroh::Endpoint::builder()
-            .discovery_n0()
-            .secret_key(key)
-            .bind()
-            .await?;
+        let endpoint = iroh::Endpoint::builder().secret_key(key).bind().await?;
 
         // add iroh gossip
         let gossip = Gossip::builder().spawn(endpoint.clone());
