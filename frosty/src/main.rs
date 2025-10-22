@@ -6,11 +6,10 @@ use frost_ed25519::{
 };
 use futures::StreamExt;
 use iroh::{
-    PublicKey, SecretKey, Watcher,
+    PublicKey, SecretKey,
     discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
     endpoint::{RecvStream, SendStream},
 };
-use rand::thread_rng;
 use sha2::{Digest, Sha512};
 use ssh_key::LineEnding;
 use std::{
@@ -107,8 +106,8 @@ fn try_from_openssh<T: AsRef<[u8]>>(data: T) -> anyhow::Result<iroh::SecretKey> 
 
 fn to_openssh(key: &SecretKey) -> ssh_key::Result<zeroize::Zeroizing<String>> {
     let ckey = ssh_key::private::Ed25519Keypair {
-        public: key.secret().verifying_key().into(),
-        private: key.secret().clone().into(),
+        public: key.as_signing_key().verifying_key().into(),
+        private: key.as_signing_key().clone().into(),
     };
     ssh_key::private::PrivateKey::from(ckey).to_openssh(LineEnding::default())
 }
@@ -134,7 +133,7 @@ fn split(args: SplitArgs) -> anyhow::Result<()> {
         max_signers,
         min_signers,
         IdentifierList::Default,
-        &mut thread_rng(),
+        &mut rand8::thread_rng(),
     )?;
     let pubkey_bytes = pubkey.serialize()?;
     for (i, secret_share) in parts.values().enumerate() {
@@ -181,7 +180,7 @@ fn resplit(args: ReSplitArgs) -> anyhow::Result<()> {
         args.max_signers,
         args.min_signers,
         IdentifierList::Default,
-        &mut thread_rng(),
+        &mut rand8::thread_rng(),
     )?;
     let public_key_package_bytes = pubkey.serialize()?;
     println!("Re-splitting key into {} parts", args.max_signers);
@@ -214,10 +213,11 @@ fn sign_local(args: SignLocalArgs) -> anyhow::Result<()> {
     let secret = frost::keys::reconstruct(parts.as_slice())?;
     println!("Reconstructed a signing key from {paths:?}");
     let msg = args.message.as_bytes();
-    let signature = secret.sign(rand::thread_rng(), msg);
+    let signature = secret.sign(rand8::thread_rng(), msg);
     let signature_bytes = signature.serialize()?;
+    let signature_bytes: [u8; 64] = signature_bytes.try_into().expect("invalid signature");
     println!("Signature: {}", hex::encode(&signature_bytes));
-    let iroh_signature = iroh_base::Signature::from_slice(&signature_bytes)?;
+    let iroh_signature = iroh_base::Signature::from_bytes(&signature_bytes);
     let res = key.verify(msg, &iroh_signature);
     if res.is_err() {
         println!("Verification failed: {res:?}");
@@ -251,8 +251,8 @@ async fn handle_cosign_request(
 ) -> anyhow::Result<()> {
     // we don't need to check the ALPN, since we only accept connections with the correct ALPN
     let connection = incoming.await?;
-    let remote_node_id = connection.remote_node_id()?;
-    info!("Incoming connection from {}", remote_node_id,);
+    let remote_endpoint_id = connection.remote_id()?;
+    info!("Incoming connection from {}", remote_endpoint_id,);
     let (mut send, mut recv) = connection.accept_bi().await?;
     let key_bytes = read_exact_bytes(&mut recv).await?;
     let key = PublicKey::from_bytes(&key_bytes)?;
@@ -263,7 +263,7 @@ async fn handle_cosign_request(
     let key_package = KeyPackage::try_from(secret_share)?;
     info!("Got fragment, creating commitment");
     let (nonces, commitments) =
-        frost::round1::commit(key_package.signing_share(), &mut thread_rng());
+        frost::round1::commit(key_package.signing_share(), &mut rand8::thread_rng());
     info!("Sending identifier");
     send.write_all(&key_package.identifier().serialize())
         .await?;
@@ -328,7 +328,7 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     let public_key_package = PublicKeyPackage::deserialize(&fs::read(&public_key_package_path)?)?;
     info!("Creating local commitment");
     let (nonce, commitments) =
-        frost::round1::commit(key_package.signing_share(), &mut thread_rng());
+        frost::round1::commit(key_package.signing_share(), &mut rand8::thread_rng());
 
     let min_cosigners = (key_package.min_signers() - 1) as usize;
     info!("{} co-signers required", min_cosigners);
@@ -372,7 +372,9 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
     info!("got {} signature shares", signature_shares.len());
     let signature = frost::aggregate(&signing_package, &signature_shares, &public_key_package)?;
     let bytes = signature.serialize()?;
-    let iroh_signature = iroh_base::Signature::from_slice(&bytes)?;
+    let sig: [u8; 64] = bytes[..].try_into().expect("invalid sig");
+
+    let iroh_signature = iroh_base::Signature::from_bytes(&sig);
     if let Err(cause) = key.verify(args.message.as_bytes(), &iroh_signature) {
         error!("Verification failed: {:?}", cause);
     }
@@ -415,8 +417,9 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
         .discovery(discovery)
         .bind()
         .await?;
-    let addr = endpoint.node_addr().initialized().await;
-    println!("\nListening on {}", addr.node_id);
+    endpoint.online().await;
+    let addr = endpoint.addr();
+    println!("\nListening on {}", addr.id);
     while let Some(incoming) = endpoint.accept().await {
         let data_path = data_path.clone();
         tokio::task::spawn(async {
@@ -447,7 +450,7 @@ fn get_or_create_key(path: &Path) -> anyhow::Result<SecretKey> {
         let key_bytes = std::fs::read(path)?;
         Ok(try_from_openssh(key_bytes.as_slice())?)
     } else {
-        let key = SecretKey::generate(rand::thread_rng());
+        let key = SecretKey::generate(&mut rand::rng());
         let key_bytes = to_openssh(&key)?;
         std::fs::write(path, &key_bytes)?;
         Ok(key)
@@ -482,7 +485,7 @@ async fn read_lp<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) -> anyhow::Res
 #[allow(dead_code)]
 #[allow(clippy::unnecessary_cast)]
 fn example() -> anyhow::Result<()> {
-    let mut rng = thread_rng();
+    let mut rng = rand8::thread_rng();
     let max_signers = 5;
     let min_signers = 3;
     let (shares, pubkey_package) = frost::keys::generate_with_dealer(
