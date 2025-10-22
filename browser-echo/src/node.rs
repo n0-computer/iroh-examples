@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_channel::Sender;
 use iroh::{
-    Endpoint, NodeId,
+    Endpoint, EndpointId,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler, Router},
 };
@@ -20,7 +20,6 @@ pub struct EchoNode {
 impl EchoNode {
     pub async fn spawn() -> Result<Self> {
         let endpoint = iroh::Endpoint::builder()
-            .discovery_n0()
             .alpns(vec![Echo::ALPN.to_vec()])
             .bind()
             .await?;
@@ -44,13 +43,13 @@ impl EchoNode {
 
     pub fn connect(
         &self,
-        node_id: NodeId,
+        endpoint_id: EndpointId,
         payload: String,
     ) -> impl Stream<Item = ConnectEvent> + Unpin + use<> {
         let (event_sender, event_receiver) = async_channel::bounded(16);
         let endpoint = self.router.endpoint().clone();
         task::spawn(async move {
-            let res = connect(&endpoint, node_id, payload, event_sender.clone()).await;
+            let res = connect(&endpoint, endpoint_id, payload, event_sender.clone()).await;
             let error = res.as_ref().err().map(|err| err.to_string());
             event_sender.send(ConnectEvent::Closed { error }).await.ok();
         });
@@ -71,14 +70,14 @@ pub enum ConnectEvent {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum AcceptEvent {
     Accepted {
-        node_id: NodeId,
+        endpoint_id: EndpointId,
     },
     Echoed {
-        node_id: NodeId,
+        endpoint_id: EndpointId,
         bytes_sent: u64,
     },
     Closed {
-        node_id: NodeId,
+        endpoint_id: EndpointId,
         error: Option<String>,
     },
 }
@@ -101,14 +100,14 @@ impl Echo {
         connection: Connection,
     ) -> std::result::Result<(), AcceptError> {
         // Wait for the connection to be fully established.
-        let node_id = connection.remote_node_id()?;
+        let endpoint_id = connection.remote_id()?;
         self.event_sender
-            .send(AcceptEvent::Accepted { node_id })
+            .send(AcceptEvent::Accepted { endpoint_id })
             .ok();
         let res = self.handle_connection_0(&connection).await;
         let error = res.as_ref().err().map(|err| err.to_string());
         self.event_sender
-            .send(AcceptEvent::Closed { node_id, error })
+            .send(AcceptEvent::Closed { endpoint_id, error })
             .ok();
         res
     }
@@ -116,9 +115,9 @@ impl Echo {
         &self,
         connection: &Connection,
     ) -> std::result::Result<(), AcceptError> {
-        // We can get the remote's node id from the connection.
-        let node_id = connection.remote_node_id()?;
-        info!("Accepted connection from {node_id}");
+        // We can get the remote's endpoint id from the connection.
+        let endpoint_id = connection.remote_id()?;
+        info!("Accepted connection from {endpoint_id}");
 
         // Our protocol is a simple request-response protocol, so we expect the
         // connecting peer to open a single bi-directional stream.
@@ -129,7 +128,7 @@ impl Echo {
         info!("Copied over {bytes_sent} byte(s)");
         self.event_sender
             .send(AcceptEvent::Echoed {
-                node_id,
+                endpoint_id,
                 bytes_sent,
             })
             .ok();
@@ -157,11 +156,11 @@ impl ProtocolHandler for Echo {
 
 async fn connect(
     endpoint: &Endpoint,
-    node_id: NodeId,
+    endpoint_id: EndpointId,
     payload: String,
     event_sender: Sender<ConnectEvent>,
 ) -> Result<()> {
-    let connection = endpoint.connect(node_id, Echo::ALPN).await?;
+    let connection = endpoint.connect(endpoint_id, Echo::ALPN).await?;
     event_sender.send(ConnectEvent::Connected).await?;
     let (mut send_stream, mut recv_stream) = connection.open_bi().await?;
     let send_task = task::spawn({
