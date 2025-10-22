@@ -5,11 +5,13 @@ await init();
 log("launching iroh endpoint …");
 
 const blobs = await BlobsNode.spawn();
+console.log(blobs);
 
 log("iroh endpoint launched");
 log(`our node id: ${blobs.endpoint_id()}`);
 
 document.querySelector(".forms").style.display = "flex";
+console.log(document.querySelector(".forms").style);
 
 // when submitting the import form: import a blob and show a ticket
 document.querySelector("form#import").onsubmit = (e) => {
