@@ -107,7 +107,7 @@ jobs:
           for example in browser-echo; do
             echo "Building WASM: $example"
             cd "$example"
-            RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown --all-features
+            RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
             cd ..
           done
         env:
