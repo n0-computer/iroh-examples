@@ -6,16 +6,16 @@ log("launching iroh endpoint …");
 const node = await EchoNode.spawn();
 
 log("iroh endpoint launched");
-log("our node id: " + node.node_id());
+log("our endpoint id: " + node.endpoint_id());
 
 log("connect from the command line:");
 log("git clone https://github.com/n0-computer/iroh-examples.git", "cmd");
 log("cd iroh-examples/browser-echo", "cmd");
 log(
-  `cargo run --features cli -- connect ${node.node_id()} "hi from cli"`,
+  `cargo run --features cli -- connect ${node.endpoint_id()} "hi from cli"`,
   "cmd",
 );
-const link = createConnectLink(node.node_id(), "hi from browser");
+const link = createConnectLink(node.endpoint_id(), "hi from browser");
 log(`connect from the browser: ${link}`);
 log("waiting for connections …");
 
@@ -31,9 +31,9 @@ fillFormFromUrlAndSubmit();
   const $incoming = document.querySelector("#incoming");
   for await (const event of node.events()) {
     console.log("incoming event", event);
-    const nodeId = event.node_id;
-    delete event.node_id;
-    logNodeEvent($incoming, nodeId, JSON.stringify(event));
+    const endpointId = event.endpoint_id;
+    delete event.endpoint_id;
+    logNodeEvent($incoming, endpointId, JSON.stringify(event));
   }
 })();
 
@@ -41,19 +41,19 @@ fillFormFromUrlAndSubmit();
 async function onConnectSubmit(e) {
   e.preventDefault();
   const data = new FormData(e.target);
-  const nodeId = data.get("node-id");
+  const endpointId = data.get("endpoint-id");
   const payload = data.get("payload");
-  if (!nodeId || !payload) return;
+  if (!endpointId || !payload) return;
 
   const $outgoing = document.querySelector("#outgoing");
   try {
-    logNodeEvent($outgoing, nodeId, "connecting …");
-    const stream = node.connect(nodeId, payload);
+    logNodeEvent($outgoing, endpointId, "connecting …");
+    const stream = node.connect(endpointId, payload);
     for await (const event of stream) {
-      logNodeEvent($outgoing, nodeId, JSON.stringify(event));
+      logNodeEvent($outgoing, endpointId, JSON.stringify(event));
     }
   } catch (err) {
-    logNodeEvent($outgoing, nodeId, `connection failed: ${err}`, "error");
+    logNodeEvent($outgoing, endpointId, `connection failed: ${err}`, "error");
   }
 }
 
@@ -67,14 +67,14 @@ function log(line, className, parent) {
   parent.appendChild(el);
 }
 
-function logNodeEvent(container, nodeId, event, className) {
-  let nodeDiv = container.querySelector(`.node-${nodeId}`);
+function logNodeEvent(container, endpointId, event, className) {
+  let nodeDiv = container.querySelector(`.node-${endpointId}`);
   if (!nodeDiv) {
     nodeDiv = document.createElement("div");
     nodeDiv.classList.add("node");
-    nodeDiv.classList.add(`node-${nodeId}`);
+    nodeDiv.classList.add(`node-${endpointId}`);
     const heading = document.createElement("h3");
-    heading.innerText = nodeId;
+    heading.innerText = endpointId;
     nodeDiv.appendChild(heading);
     container.appendChild(nodeDiv);
   }
@@ -84,16 +84,16 @@ function logNodeEvent(container, nodeId, event, className) {
 function fillFormFromUrlAndSubmit() {
   const $form = document.querySelector("form#connect");
   const url = new URL(document.location);
-  $form.querySelector("[name=node-id]").value =
+  $form.querySelector("[name=endpoint-id]").value =
     url.searchParams.get("connect") || "";
   $form.querySelector("[name=payload]").value =
     url.searchParams.get("payload") || "";
   document.querySelector("form#connect").requestSubmit();
 }
 
-function createConnectLink(nodeId, payload) {
+function createConnectLink(endpointId, payload) {
   const ourUrl = new URL(document.location);
-  ourUrl.searchParams.set("connect", nodeId);
+  ourUrl.searchParams.set("connect", endpointId);
   ourUrl.searchParams.set("payload", payload);
   return `<a href="${ourUrl}" target="_blank">click here</a>`;
 }

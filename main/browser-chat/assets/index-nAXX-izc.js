@@ -16565,7 +16565,7 @@ Error generating stack: ` + c.message + `
     try {
       an.info("Importing WASM module");
       const { IrohAPI: n } = await Jx(async () => {
-        const { IrohAPI: o } = await import("./iroh-CdZ9H9-q.js").then(async (m) => {
+        const { IrohAPI: o } = await import("./iroh-BfuKo9HE.js").then(async (m) => {
           await m.__tla;
           return m;
         });
@@ -18763,10 +18763,10 @@ For more information, see https://radix-ui.com/primitives/docs/components/${o.do
         h.jsxs("div", {
           children: [
             h.jsx("strong", {
-              children: "Node ID:"
+              children: "Endpoint ID:"
             }),
             h.jsx($h, {
-              nodeId: n.id
+              endpointId: n.id
             })
           ]
         })
@@ -18791,17 +18791,17 @@ For more information, see https://radix-ui.com/primitives/docs/components/${o.do
         h.jsxs("div", {
           children: [
             h.jsx("strong", {
-              children: "Node ID:"
+              children: "Endpoint ID:"
             }),
             h.jsx($h, {
-              nodeId: n.id
+              endpointId: n.id
             })
           ]
         })
       ]
     });
   }
-  function $h({ nodeId: n }) {
+  function $h({ endpointId: n }) {
     return h.jsxs(h.Fragment, {
       children: [
         h.jsxs("span", {
