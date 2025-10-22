@@ -2,9 +2,9 @@
 
 This forwards http requests to [dumbpipe](https://crates.io/crates/dumbpipe)
 
-You give a node url like `<ticket>.localhost:8080` or `nodeid`.localhost:8000,
+You give a node url like `<ticket>.localhost:8080` or `endpointid`.localhost:8000,
 and the request will be forwarded to the dumbpipe command running under that
-node id.
+endpoint id.
 
 ## Example:
 
