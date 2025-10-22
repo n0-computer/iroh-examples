@@ -13,8 +13,8 @@ export class EchoNode {
   [Symbol.dispose](): void;
   static spawn(): Promise<EchoNode>;
   events(): ReadableStream;
-  node_id(): string;
-  connect(node_id: string, payload: string): ReadableStream;
+  endpoint_id(): string;
+  connect(endpoint_id: string, payload: string): ReadableStream;
 }
 export class IntoUnderlyingByteSource {
   private constructor();
@@ -50,7 +50,7 @@ export interface InitOutput {
   readonly __wbg_echonode_free: (a: number, b: number) => void;
   readonly echonode_spawn: () => number;
   readonly echonode_events: (a: number) => number;
-  readonly echonode_node_id: (a: number, b: number) => void;
+  readonly echonode_endpoint_id: (a: number, b: number) => void;
   readonly echonode_connect: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly __wbg_intounderlyingbytesource_free: (a: number, b: number) => void;
   readonly intounderlyingbytesource_type: (a: number) => number;
@@ -65,7 +65,7 @@ export interface InitOutput {
   readonly intounderlyingsink_write: (a: number, b: number) => number;
   readonly intounderlyingsink_close: (a: number) => number;
   readonly intounderlyingsink_abort: (a: number, b: number) => number;
-  readonly ring_core_0_17_8_bn_mul_mont: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly ring_core_0_17_14__bn_mul_mont: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
   readonly __wbindgen_export_1: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_2: (a: number, b: number) => number;
@@ -73,13 +73,12 @@ export interface InitOutput {
   readonly __wbindgen_export_4: WebAssembly.Table;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_export_5: (a: number, b: number) => void;
-  readonly __wbindgen_export_6: (a: number, b: number) => void;
-  readonly __wbindgen_export_7: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_8: (a: number, b: number) => void;
-  readonly __wbindgen_export_9: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_10: (a: number, b: number) => void;
-  readonly __wbindgen_export_11: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_12: (a: number, b: number, c: number, d: number) => void;
+  readonly __wbindgen_export_6: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_7: (a: number, b: number) => void;
+  readonly __wbindgen_export_8: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_9: (a: number, b: number) => void;
+  readonly __wbindgen_export_10: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_11: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_start: () => void;
 }
 

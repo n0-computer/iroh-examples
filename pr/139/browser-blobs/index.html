@@ -10,28 +10,30 @@
     <body>
         <header>
             <h1>iroh-blobs in the browser</h1>
-            <a
-                href="https://github.com/n0-computer/iroh-blobs/tree/main/examples/wasm"
-                target="_blank"
-            >
-                Source code
-            </a>
             <p>
-                This example runs iroh-blobs in the browser, compiled to web
-                assembly. The example implements the most basic demo for
-                iroh-blobs: You can create a blob with text in it. We'll print a
-                ticket with which others can fetch the text.
+                This example runs
+                <a
+                    href="https://github.com/n0-computer/iroh-blobs"
+                    target="_blank"
+                    >iroh-blobs</a
+                >
+                in the browser, compiled to WebAssembly. The example implements
+                a very basic demo for iroh-blobs: You can create a blob with
+                text in it. We'll print a ticket with which others can fetch the
+                text. There's also a terminal app that interoperates with this
+                browser app.
             </p>
             <p>
-                The example is implemented both for the browser and for the
-                command line, and the two can interop!
-            </p>
-            <p>
-                How to test for real: Open this page in a new tab, or on another
-                device, and copy over the ticket after importing a blog. You can
-                also fetch a blob from the command line with
-                <code>cargo run --features cli</code> from the
-                <code>examples/wasm</code> folder.
+                <strong>Usage:</strong> Open this page in a new tab, or on
+                another device, and copy over the ticket after importing a blog.
+                You can also fetch a blob from the command line: Clone the
+                <a
+                    href="https://github.com/n0-computer/iroh-examples/"
+                    target="_blank"
+                    >iroh-examples</a
+                >
+                repo, navigate to <code>browser-blobs</code>, and run the CLI
+                with <code>cargo run --features cli</code>.
             </p>
         </header>
         <div class="forms">
