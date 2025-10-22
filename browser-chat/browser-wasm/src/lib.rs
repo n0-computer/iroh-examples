@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
-use chat_shared::{ChatSender, ChatTicket, NodeId, TopicId};
+use chat_shared::{ChatSender, ChatTicket, EndpointId, TopicId};
 use n0_future::{StreamExt, time::Duration};
 use serde::{Deserialize, Serialize};
 use tracing::level_filters::LevelFilter;
@@ -44,9 +44,9 @@ impl ChatNode {
         Ok(Self(inner))
     }
 
-    /// Returns the node id of this node.
-    pub fn node_id(&self) -> String {
-        self.0.node_id().to_string()
+    /// Returns the endpoint id of this node.
+    pub fn endpoint_id(&self) -> String {
+        self.0.endpoint_id().to_string()
     }
 
     /// Opens a chat.
@@ -73,11 +73,11 @@ impl ChatNode {
                     chat_shared::Event::Joined { neighbors } => {
                         neighbors2.lock().unwrap().extend(neighbors.iter().cloned());
                     }
-                    chat_shared::Event::NeighborUp { node_id } => {
-                        neighbors2.lock().unwrap().insert(*node_id);
+                    chat_shared::Event::NeighborUp { endpoint_id } => {
+                        neighbors2.lock().unwrap().insert(*endpoint_id);
                     }
-                    chat_shared::Event::NeighborDown { node_id } => {
-                        neighbors2.lock().unwrap().remove(node_id);
+                    chat_shared::Event::NeighborDown { endpoint_id } => {
+                        neighbors2.lock().unwrap().remove(endpoint_id);
                     }
                     _ => {}
                 }
@@ -90,14 +90,14 @@ impl ChatNode {
 
         // Add ourselves to the ticket.
         let mut ticket = ticket;
-        ticket.bootstrap.insert(self.0.node_id());
-        // ticket.bootstrap = [self.0.node_id()].into_iter().collect();
+        ticket.bootstrap.insert(self.0.endpoint_id());
+        // ticket.bootstrap = [self.0.endpoint_id()].into_iter().collect();
 
         let topic = Channel {
             topic_id: ticket.topic_id,
             bootstrap: ticket.bootstrap,
             neighbors,
-            me: self.0.node_id(),
+            me: self.0.endpoint_id(),
             sender,
             receiver,
         };
@@ -110,9 +110,9 @@ type ChannelReceiver = wasm_streams::readable::sys::ReadableStream;
 #[wasm_bindgen]
 pub struct Channel {
     topic_id: TopicId,
-    me: NodeId,
-    bootstrap: BTreeSet<NodeId>,
-    neighbors: Arc<Mutex<BTreeSet<NodeId>>>,
+    me: EndpointId,
+    bootstrap: BTreeSet<EndpointId>,
+    neighbors: Arc<Mutex<BTreeSet<EndpointId>>>,
     sender: ChannelSender,
     receiver: ChannelReceiver,
 }
@@ -162,7 +162,7 @@ impl Channel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerInfo {
-    pub node_id: NodeId,
+    pub endpoint_id: EndpointId,
     pub nickname: String,
     pub last_active: Duration,
 }

@@ -253,8 +253,8 @@ function MyselfInfo({ peer }: PeerProps) {
     <div className="space-y-2">
       This is us :)
       <div>
-        <strong>Node ID:</strong>
-        <NodeId nodeId={peer.id} />
+        <strong>Endpoint ID:</strong>
+        <EndpointId endpointId={peer.id} />
       </div>
     </div>
   )
@@ -267,22 +267,22 @@ function RemotePeerInfo({ peer }: PeerProps) {
         <strong>Last seen:</strong> <TimeAgo date={peer.lastSeen} />
       </p>
       <div>
-        <strong>Node ID:</strong>
-        <NodeId nodeId={peer.id} />
+        <strong>Endpoint ID:</strong>
+        <EndpointId endpointId={peer.id} />
       </div>
     </div>
   )
 }
 
-interface NodeIdProps {
-  nodeId: string
+interface EndpointIdProps {
+  endpointId: string
 }
 
-function NodeId({ nodeId }: NodeIdProps) {
+function EndpointId({ endpointId }: EndpointIdProps) {
   return (
     <>
-      <span className="ml-2 font-mono">{nodeId.substring(0, 8)}…</span>
-      <Button size="sm" onClick={() => copyToClipboard(nodeId)} className="ml-2 inline" variant="outline">
+      <span className="ml-2 font-mono">{endpointId.substring(0, 8)}…</span>
+      <Button size="sm" onClick={() => copyToClipboard(endpointId)} className="ml-2 inline" variant="outline">
         Copy
       </Button>
     </>
