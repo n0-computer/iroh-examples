@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { l as A, P as V, __tla as __tla_0 } from "./index-BLjMzgtQ.js";
+import { l as A, P as V, __tla as __tla_0 } from "./index-BRmxmjk_.js";
 let ne;
 let __tla = Promise.all([
   (() => {
@@ -11,7 +11,7 @@ let __tla = Promise.all([
     }
   })()
 ]).then(async () => {
-  const re = "" + new URL("chat_browser_bg-CRWmBk2Q.wasm", import.meta.url).href, oe = async (e = {}, n) => {
+  const re = "" + new URL("chat_browser_bg-DQU1VGGw.wasm", import.meta.url).href, oe = async (e = {}, n) => {
     let t;
     if (n.startsWith("data:")) {
       const _ = n.replace(/^data:.*?base64,/, "");
@@ -37,9 +37,9 @@ let __tla = Promise.all([
   function ce(e) {
     c = e;
   }
-  let z = null;
+  let W = null;
   function E() {
-    return (z === null || z.byteLength === 0) && (z = new Uint8Array(c.memory.buffer)), z;
+    return (W === null || W.byteLength === 0) && (W = new Uint8Array(c.memory.buffer)), W;
   }
   let D = new TextDecoder("utf-8", {
     ignoreBOM: true,
@@ -57,16 +57,16 @@ let __tla = Promise.all([
   function w(e, n) {
     return e = e >>> 0, ie(e, n);
   }
-  let v = new Array(128).fill(void 0);
-  v.push(void 0, null, true, false);
-  let O = v.length;
+  let k = new Array(128).fill(void 0);
+  k.push(void 0, null, true, false);
+  let O = k.length;
   function s(e) {
-    O === v.length && v.push(v.length + 1);
+    O === k.length && k.push(k.length + 1);
     const n = O;
-    return O = v[n], v[n] = e, n;
+    return O = k[n], k[n] = e, n;
   }
   function r(e) {
-    return v[e];
+    return k[e];
   }
   let h = 0;
   const L = new TextEncoder();
@@ -112,7 +112,7 @@ let __tla = Promise.all([
     return e == null;
   }
   function ae(e) {
-    e < 132 || (v[e] = O, O = e);
+    e < 132 || (k[e] = O, O = e);
   }
   function p(e) {
     const n = r(e);
@@ -200,17 +200,17 @@ ${e.stack}` : _;
     };
     return a.original = o, $.register(a, o, o), a;
   }
-  function de(e, n) {
-    c.__wbindgen_export_5(e, n);
+  function de(e, n, t) {
+    c.__wbindgen_export_5(e, n, s(t));
   }
   function fe(e, n, t) {
     c.__wbindgen_export_6(e, n, s(t));
   }
-  function ue(e, n, t) {
-    c.__wbindgen_export_7(e, n, s(t));
+  function ue(e, n) {
+    c.__wbindgen_export_7(e, n);
   }
-  function ge(e, n, t) {
-    c.__wbindgen_export_8(e, n, s(t));
+  function ge(e, n) {
+    c.__wbindgen_export_8(e, n);
   }
   function we(e, n) {
     c.__wbindgen_export_9(e, n);
@@ -218,8 +218,8 @@ ${e.stack}` : _;
   function le(e, n) {
     c.__wbindgen_export_10(e, n);
   }
-  function pe(e, n) {
-    c.__wbindgen_export_11(e, n);
+  function pe(e, n, t) {
+    c.__wbindgen_export_11(e, n, s(t));
   }
   function he(e, n, t, _) {
     c.__wbindgen_export_12(e, n, s(t), s(_));
@@ -265,7 +265,7 @@ ${e.stack}` : _;
     }
     get sender() {
       const n = c.channel_sender(this.__wbg_ptr);
-      return B.__wrap(n);
+      return N.__wrap(n);
     }
     get receiver() {
       const n = c.channel_receiver(this.__wbg_ptr);
@@ -274,9 +274,9 @@ ${e.stack}` : _;
     ticket(n) {
       let t, _;
       try {
-        const R = c.__wbindgen_add_to_stack_pointer(-16);
-        c.channel_ticket(R, this.__wbg_ptr, s(n));
-        var o = d().getInt32(R + 4 * 0, true), a = d().getInt32(R + 4 * 1, true), b = d().getInt32(R + 4 * 2, true), u = d().getInt32(R + 4 * 3, true), m = o, g = a;
+        const I = c.__wbindgen_add_to_stack_pointer(-16);
+        c.channel_ticket(I, this.__wbg_ptr, s(n));
+        var o = d().getInt32(I + 4 * 0, true), a = d().getInt32(I + 4 * 1, true), b = d().getInt32(I + 4 * 2, true), u = d().getInt32(I + 4 * 3, true), m = o, g = a;
         if (u) throw m = 0, g = 0, p(b);
         return t = m, _ = g, w(m, g);
       } finally {
@@ -312,10 +312,10 @@ ${e.stack}` : _;
     unregister: () => {
     }
   } : new FinalizationRegistry((e) => c.__wbg_channelsender_free(e >>> 0, 1));
-  class B {
+  class N {
     static __wrap(n) {
       n = n >>> 0;
-      const t = Object.create(B.prototype);
+      const t = Object.create(N.prototype);
       return t.__wbg_ptr = n, X.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
@@ -335,7 +335,7 @@ ${e.stack}` : _;
       c.channelsender_set_nickame(this.__wbg_ptr, t, _);
     }
   }
-  Symbol.dispose && (B.prototype[Symbol.dispose] = B.prototype.free);
+  Symbol.dispose && (N.prototype[Symbol.dispose] = N.prototype.free);
   const Y = typeof FinalizationRegistry > "u" ? {
     register: () => {
     },
@@ -389,10 +389,10 @@ ${e.stack}` : _;
     unregister: () => {
     }
   } : new FinalizationRegistry((e) => c.__wbg_intounderlyingsource_free(e >>> 0, 1));
-  class N {
+  class U {
     static __wrap(n) {
       n = n >>> 0;
-      const t = Object.create(N.prototype);
+      const t = Object.create(U.prototype);
       return t.__wbg_ptr = n, K.register(t, t.__wbg_ptr, t), t;
     }
     __destroy_into_raw() {
@@ -412,19 +412,19 @@ ${e.stack}` : _;
       c.intounderlyingsource_cancel(n);
     }
   }
-  Symbol.dispose && (N.prototype[Symbol.dispose] = N.prototype.free);
-  function ke(e, n) {
+  Symbol.dispose && (U.prototype[Symbol.dispose] = U.prototype.free);
+  function ve(e, n) {
     const t = Error(w(e, n));
     return s(t);
   }
-  function ve(e, n) {
+  function ke(e, n) {
     const t = String(r(n)), _ = y(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = h;
     d().setInt32(e + 4 * 1, o, true), d().setInt32(e + 4 * 0, _, true);
   }
-  function Re(e) {
+  function Ie(e) {
     r(e).abort();
   }
-  function Ie(e, n) {
+  function Re(e, n) {
     r(e).abort(r(n));
   }
   function je() {
@@ -467,13 +467,13 @@ ${e.stack}` : _;
       return s(t);
     }, arguments);
   }
-  function Be() {
+  function Ne() {
     return f(function(e, n, t) {
       const _ = r(e).call(r(n), r(t));
       return s(_);
     }, arguments);
   }
-  function Ne(e) {
+  function Ue(e) {
     const n = r(e).cancel();
     return s(n);
   }
@@ -481,15 +481,15 @@ ${e.stack}` : _;
     const t = r(e).catch(r(n));
     return s(t);
   }
-  function Ue(e) {
+  function Be(e) {
     const n = M.__wrap(e);
     return s(n);
   }
-  function We(e) {
+  function ze(e) {
     const n = F.__wrap(e);
     return s(n);
   }
-  function ze(e) {
+  function We(e) {
     const n = clearTimeout(p(e));
     return s(n);
   }
@@ -660,11 +660,11 @@ ${e.stack}` : _;
     const e = new Object();
     return s(e);
   }
-  function kn() {
+  function vn() {
     const e = new Array();
     return s(e);
   }
-  function vn(e, n) {
+  function kn(e, n) {
     try {
       var t = {
         a: e,
@@ -684,11 +684,11 @@ ${e.stack}` : _;
       t.a = t.b = 0;
     }
   }
-  function Rn(e) {
+  function In(e) {
     const n = new Uint8Array(r(e));
     return s(n);
   }
-  function In() {
+  function Rn() {
     return f(function() {
       const e = new AbortController();
       return s(e);
@@ -727,20 +727,20 @@ ${e.stack}` : _;
     return s(_);
   }
   function Ln(e, n) {
-    const t = new ReadableStream(N.__wrap(e), p(n));
+    const t = new ReadableStream(U.__wrap(e), p(n));
     return s(t);
   }
   function Mn(e) {
     const n = new Uint8Array(e >>> 0);
     return s(n);
   }
-  function Bn() {
+  function Nn() {
     return f(function(e, n, t) {
       const _ = new Request(w(e, n), r(t));
       return s(_);
     }, arguments);
   }
-  function Nn() {
+  function Un() {
     return f(function(e, n, t) {
       const _ = new WebSocket(w(e, n), r(t));
       return s(_);
@@ -750,17 +750,17 @@ ${e.stack}` : _;
     const n = r(e).next;
     return s(n);
   }
-  function Un() {
+  function Bn() {
     return f(function(e) {
       const n = r(e).next();
       return s(n);
     }, arguments);
   }
-  function Wn(e) {
+  function zn(e) {
     const n = r(e).node;
     return s(n);
   }
-  function zn() {
+  function Wn() {
     return Date.now();
   }
   function Dn(e) {
@@ -891,17 +891,17 @@ ${e.stack}` : _;
   function St(e, n) {
     r(e).onmessage = r(n);
   }
-  function kt(e, n) {
+  function vt(e, n) {
     r(e).onopen = r(n);
   }
-  function vt(e, n) {
+  function kt(e, n) {
     r(e).signal = r(n);
   }
-  function Rt(e) {
+  function It(e) {
     const n = r(e).signal;
     return s(n);
   }
-  function It(e, n) {
+  function Rt(e, n) {
     const t = r(n).stack, _ = y(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = h;
     d().setInt32(e + 4 * 1, o, true), d().setInt32(e + 4 * 0, _, true);
   }
@@ -942,11 +942,11 @@ ${e.stack}` : _;
     const t = r(e).then(r(n));
     return s(t);
   }
-  function Bt(e, n) {
+  function Nt(e, n) {
     const t = r(n).url, _ = y(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = h;
     d().setInt32(e + 4 * 1, o, true), d().setInt32(e + 4 * 0, _, true);
   }
-  function Nt(e, n) {
+  function Ut(e, n) {
     const t = r(n).url, _ = y(t, c.__wbindgen_export_0, c.__wbindgen_export_1), o = h;
     d().setInt32(e + 4 * 1, o, true), d().setInt32(e + 4 * 0, _, true);
   }
@@ -954,15 +954,15 @@ ${e.stack}` : _;
     const n = r(e).value;
     return s(n);
   }
-  function Ut(e) {
+  function Bt(e) {
     const n = r(e).versions;
     return s(n);
   }
-  function Wt(e) {
+  function zt(e) {
     const n = r(e).view;
     return x(n) ? 0 : s(n);
   }
-  function zt(e, n) {
+  function Wt(e, n) {
     var t = q(e, n).slice();
     c.__wbindgen_export_3(e, n * 4, 4), console.warn(...t);
   }
@@ -1021,7 +1021,7 @@ ${e.stack}` : _;
     return s(n);
   }
   function __(e, n) {
-    const t = C(e, n, 735, ge);
+    const t = C(e, n, 735, pe);
     return s(t);
   }
   function r_(e, n) {
@@ -1033,7 +1033,7 @@ ${e.stack}` : _;
     return s(t);
   }
   function c_(e, n) {
-    const t = C(e, n, 2755, de);
+    const t = C(e, n, 2755, ue);
     return s(t);
   }
   function s_(e, n) {
@@ -1041,18 +1041,18 @@ ${e.stack}` : _;
     return s(t);
   }
   function i_(e, n) {
-    const t = C(e, n, 1556, pe);
+    const t = C(e, n, 1556, we);
     return s(t);
   }
   function a_(e) {
     return s(e);
   }
   function b_(e, n) {
-    const t = C(e, n, 2763, ue);
+    const t = C(e, n, 2763, de);
     return s(t);
   }
   function d_(e, n) {
-    const t = C(e, n, 1772, we);
+    const t = C(e, n, 1772, ge);
     return s(t);
   }
   function f_(e) {
@@ -1066,28 +1066,28 @@ ${e.stack}` : _;
   const i = await oe({
     "./chat_browser_bg.js": {
       __wbindgen_object_drop_ref: u_,
-      __wbg_chatnode_new: We,
-      __wbg_channel_new: Ue,
+      __wbg_chatnode_new: ze,
+      __wbg_channel_new: Be,
       __wbindgen_object_clone_ref: f_,
-      __wbg_String_8f0eb39a4a4c2f66: ve,
+      __wbg_String_8f0eb39a4a4c2f66: ke,
       __wbg_getwithrefkey_1dc361bd10053bfe: bn,
       __wbg_set_3f1d0b984ed272ed: at,
       __wbg_new_8a6f238a6ece86ea: jn,
-      __wbg_stack_0ed75d68575b0f3c: It,
+      __wbg_stack_0ed75d68575b0f3c: Rt,
       __wbg_error_7534b8e9a36f1ab4: Ze,
       __wbg_debug_55137df391ebfd29: Xe,
       __wbg_error_91947ba14c44e1c9: en,
       __wbg_log_e51ef223c244b133: yn,
-      __wbg_warn_479b8bbb8337357b: zt,
+      __wbg_warn_479b8bbb8337357b: Wt,
       __wbg_fetch_74a3e84ebd2c9a0e: nn,
       __wbg_setTimeout_7bb3429662ab1e70: st,
-      __wbg_clearTimeout_7a42b49784aea641: ze,
+      __wbg_clearTimeout_7a42b49784aea641: We,
       __wbg_getReader_48e00749fe3f6089: on,
       __wbg_newwithintounderlyingsource_b47f6a6a596a7f24: Ln,
-      __wbg_signal_da4d466ce86118b5: Rt,
-      __wbg_new_66b9434b4e59b63e: In,
-      __wbg_abort_67e1b49bf6614565: Re,
-      __wbg_abort_d830bf2e9aa6ec5b: Ie,
+      __wbg_signal_da4d466ce86118b5: It,
+      __wbg_new_66b9434b4e59b63e: Rn,
+      __wbg_abort_67e1b49bf6614565: Ie,
+      __wbg_abort_d830bf2e9aa6ec5b: Re,
       __wbg_instanceof_Blob_3db67efd3f1b960f: gn,
       __wbg_wasClean_ffb515fbcbcbdd3d: Dt,
       __wbg_code_177e3bed72688e58: Ge,
@@ -1103,46 +1103,46 @@ ${e.stack}` : _;
       __wbg_sethighwatermark_3d5961f834647d41: pt,
       __wbg_byobRequest_2c036bceca1e6037: Ee,
       __wbg_close_cccada6053ee3a65: Pe,
-      __wbg_view_91cc97d57ab30530: Wt,
+      __wbg_view_91cc97d57ab30530: zt,
       __wbg_respond_6c2c4e20ef85138e: _t,
       __wbg_close_d71a78219dc23e91: Ve,
       __wbg_enqueue_452bc2343d1c2ff9: Ke,
       __wbg_read_bc925c758aa4d897: Xn,
       __wbg_releaseLock_ff29b586502a8221: Zn,
-      __wbg_cancel_8bb5b8f4906b658a: Ne,
+      __wbg_cancel_8bb5b8f4906b658a: Ue,
       __wbg_getdone_f026246f6bbe58d3: sn,
       __wbg_getvalue_31e5a08f61e5aa42: an,
-      __wbg_newwithstrandinit_b5d168a29a3fd85f: Bn,
+      __wbg_newwithstrandinit_b5d168a29a3fd85f: Nn,
       __wbg_setbody_c8460bdf44147df8: ft,
       __wbg_setcache_90ca4ad8a8ad40d3: ut,
       __wbg_setcredentials_9cd60d632c9d5dfc: gt,
       __wbg_setheaders_0052283e2f3503d1: lt,
       __wbg_setmethod_9b504d5b855b329c: ht,
       __wbg_setmode_a23e1a2ad8b512f8: yt,
-      __wbg_setsignal_8c45ad1247a74809: vt,
+      __wbg_setsignal_8c45ad1247a74809: kt,
       __wbg_instanceof_Response_50fde2cd696850bf: wn,
-      __wbg_url_e5720dfacf77b05e: Nt,
+      __wbg_url_e5720dfacf77b05e: Ut,
       __wbg_status_3fea3036088621d6: At,
       __wbg_headers_29fec3c72865cd75: fn,
       __wbg_body_4851aa049324a851: Ce,
       __wbg_arrayBuffer_9c99b8e2809e8cbb: Te,
-      __wbg_url_18b0690200329f32: Bt,
+      __wbg_url_18b0690200329f32: Nt,
       __wbg_readyState_b0d20ca4531d3797: Yn,
-      __wbg_setonopen_3e43af381c2901f8: kt,
+      __wbg_setonopen_3e43af381c2901f8: vt,
       __wbg_setonerror_5d9bff045f909e89: xt,
       __wbg_setonclose_159c0332c2d91b09: mt,
       __wbg_setonmessage_5e486f326638a9da: St,
       __wbg_setbinaryType_37f3cd35d7775a47: dt,
       __wbg_new_e213f63d18b0de01: Tn,
-      __wbg_newwithstrsequence_f7e2d4848dd49d98: Nn,
+      __wbg_newwithstrsequence_f7e2d4848dd49d98: Un,
       __wbg_close_6437264570d2d37f: $e,
       __wbg_send_bdda9fac7465e036: ot,
       __wbg_send_aa9cb445685f0fd0: rt,
       __wbg_fetch_87aed7f306ec6d63: tn,
       __wbg_crypto_574e78ad8b13b65f: Je,
       __wbg_process_dc0fbacc7c1c06f7: Pn,
-      __wbg_versions_c01dfd4722a88165: Ut,
-      __wbg_node_905d3e251edff8a2: Wn,
+      __wbg_versions_c01dfd4722a88165: Bt,
+      __wbg_node_905d3e251edff8a2: zn,
       __wbg_require_60cc747a6bc5215a: nt,
       __wbg_msCrypto_a61aeb35a24c1329: xn,
       __wbg_getRandomValues_b8f5dbd5f3995a9e: rn,
@@ -1154,24 +1154,24 @@ ${e.stack}` : _;
       __wbg_performance_7a3ffd0b17f663ad: $n,
       __wbg_now_2c95c9de01293173: Dn,
       __wbg_next_5b3530e612fde77d: qn,
-      __wbg_new_1f3a344cf3123716: kn,
+      __wbg_new_1f3a344cf3123716: vn,
       __wbg_set_90f6c0f7bd8c0415: bt,
       __wbg_push_330b2eb93e4e1212: Gn,
       __wbg_instanceof_ArrayBuffer_67f3012529f6a2dd: un,
       __wbg_new_da9dc54c5db29dfa: Fn,
       __wbg_newnoargs_254190557c45b4ec: En,
       __wbg_call_13410aac570ffff7: Me,
-      __wbg_call_a5400b25a865cfd8: Be,
-      __wbg_next_692e82279131b03c: Un,
+      __wbg_call_a5400b25a865cfd8: Ne,
+      __wbg_next_692e82279131b03c: Bn,
       __wbg_done_75ed0ee6dd243d9d: Ye,
       __wbg_value_dd9372230531eade: qt,
-      __wbg_now_1e80617bcee43265: zn,
+      __wbg_now_1e80617bcee43265: Wn,
       __wbg_new_19c25a3f2fa63a02: Sn,
       __wbg_get_458e874b43b18b25: cn,
       __wbg_has_b89e451f638123e3: dn,
       __wbg_stringify_b98c93d0a190446a: Et,
       __wbg_iterator_f370b34483c71a1c: pn,
-      __wbg_new_2e3c58a15f39f5f9: vn,
+      __wbg_new_2e3c58a15f39f5f9: kn,
       __wbg_resolve_4055c623acdd6a1b: tt,
       __wbg_catch_c80ecae90cb8ed4e: qe,
       __wbg_then_e22500defe16819f: Mt,
@@ -1183,7 +1183,7 @@ ${e.stack}` : _;
       __wbg_prototypesetcall_3d4a26c1ed734349: Vn,
       __wbg_set_1353b2a5e96bc48c: it,
       __wbg_instanceof_Uint8Array_9a8378d955933db7: ln,
-      __wbg_new_638ebfaedbf32a5e: Rn,
+      __wbg_new_638ebfaedbf32a5e: In,
       __wbg_newwithlength_a167dcc7aaa3ba77: Mn,
       __wbg_newfromslice_074c56947bd43469: An,
       __wbg_newwithbyteoffsetandlength_e8f53910b4d42b45: On,
@@ -1194,7 +1194,7 @@ ${e.stack}` : _;
       __wbg_byteOffset_49a5b5608000358b: Le,
       __wbg_getRandomValues_1c61fac11405ffdc: _n,
       __wbg_wbindgendebugstring_99ef257a3ddda34d: Vt,
-      __wbg_Error_e17e777aac105295: ke,
+      __wbg_Error_e17e777aac105295: ve,
       __wbg_wbindgenisundefined_c4b71d073b92f3c5: Xt,
       __wbg_wbindgenisobject_307a53c6bd97fbf8: Jt,
       __wbg_wbindgenisfunction_8cee7dce3725ae74: Ht,
@@ -1206,26 +1206,26 @@ ${e.stack}` : _;
       __wbg_wbindgenthrow_451ec1a8469d7eb6: e_,
       __wbg_wbindgencbdrop_eb10308566512b88: Pt,
       __wbg_wbindgenjsvallooseeq_9bec8c9be826bed1: Yt,
-      __wbindgen_cast_c2c989a27a0562df: c_,
-      __wbindgen_cast_84c6047cf3a3a26f: o_,
       __wbindgen_cast_e1c34903082403c1: b_,
-      __wbindgen_cast_4d0daddcc392ccc2: __,
-      __wbindgen_cast_fc4b8e9259f7cb57: d_,
-      __wbindgen_cast_835a3fca9ef01735: r_,
-      __wbindgen_cast_d1cc5ed77062331f: i_,
-      __wbindgen_cast_2241b6af4c4b2941: n_,
       __wbindgen_cast_cb9088102bce6b30: s_,
+      __wbindgen_cast_84c6047cf3a3a26f: o_,
       __wbindgen_cast_4625c577ab2ec9ee: t_,
-      __wbindgen_cast_d6cd19b81560fd6e: a_
+      __wbindgen_cast_c2c989a27a0562df: c_,
+      __wbindgen_cast_fc4b8e9259f7cb57: d_,
+      __wbindgen_cast_d1cc5ed77062331f: i_,
+      __wbindgen_cast_835a3fca9ef01735: r_,
+      __wbindgen_cast_d6cd19b81560fd6e: a_,
+      __wbindgen_cast_4d0daddcc392ccc2: __,
+      __wbindgen_cast_2241b6af4c4b2941: n_
     }
-  }, re), g_ = i.memory, w_ = i.start, l_ = i.__wbg_chatnode_free, p_ = i.chatnode_spawn, h_ = i.chatnode_endpoint_id, y_ = i.chatnode_create, m_ = i.chatnode_join, x_ = i.__wbg_channel_free, S_ = i.channel_sender, k_ = i.channel_receiver, v_ = i.channel_ticket, R_ = i.channel_id, I_ = i.channel_neighbors, j_ = i.__wbg_channelsender_free, F_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, C_ = i.__wbg_intounderlyingbytesource_free, A_ = i.intounderlyingbytesource_type, E_ = i.intounderlyingbytesource_autoAllocateChunkSize, O_ = i.intounderlyingbytesource_start, L_ = i.intounderlyingbytesource_pull, M_ = i.intounderlyingbytesource_cancel, B_ = i.__wbg_intounderlyingsource_free, N_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, U_ = i.__wbg_intounderlyingsink_free, W_ = i.intounderlyingsink_write, z_ = i.intounderlyingsink_close, D_ = i.intounderlyingsink_abort, $_ = i.ring_core_0_17_14__bn_mul_mont, P_ = i.__wbindgen_export_0, V_ = i.__wbindgen_export_1, G_ = i.__wbindgen_export_2, H_ = i.__wbindgen_export_3, J_ = i.__wbindgen_export_4, Q_ = i.__wbindgen_add_to_stack_pointer, X_ = i.__wbindgen_export_5, Y_ = i.__wbindgen_export_6, K_ = i.__wbindgen_export_7, Z_ = i.__wbindgen_export_8, er = i.__wbindgen_export_9, nr = i.__wbindgen_export_10, tr = i.__wbindgen_export_11, _r = i.__wbindgen_export_12, ee = i.__wbindgen_start, rr = Object.freeze(Object.defineProperty({
+  }, re), g_ = i.memory, w_ = i.start, l_ = i.__wbg_chatnode_free, p_ = i.chatnode_spawn, h_ = i.chatnode_endpoint_id, y_ = i.chatnode_create, m_ = i.chatnode_join, x_ = i.__wbg_channel_free, S_ = i.channel_sender, v_ = i.channel_receiver, k_ = i.channel_ticket, I_ = i.channel_id, R_ = i.channel_neighbors, j_ = i.__wbg_channelsender_free, F_ = i.channelsender_broadcast, T_ = i.channelsender_set_nickame, C_ = i.__wbg_intounderlyingbytesource_free, A_ = i.intounderlyingbytesource_type, E_ = i.intounderlyingbytesource_autoAllocateChunkSize, O_ = i.intounderlyingbytesource_start, L_ = i.intounderlyingbytesource_pull, M_ = i.intounderlyingbytesource_cancel, N_ = i.__wbg_intounderlyingsource_free, U_ = i.intounderlyingsource_pull, q_ = i.intounderlyingsource_cancel, B_ = i.__wbg_intounderlyingsink_free, z_ = i.intounderlyingsink_write, W_ = i.intounderlyingsink_close, D_ = i.intounderlyingsink_abort, $_ = i.ring_core_0_17_14__bn_mul_mont, P_ = i.__wbindgen_export_0, V_ = i.__wbindgen_export_1, G_ = i.__wbindgen_export_2, H_ = i.__wbindgen_export_3, J_ = i.__wbindgen_export_4, Q_ = i.__wbindgen_add_to_stack_pointer, X_ = i.__wbindgen_export_5, Y_ = i.__wbindgen_export_6, K_ = i.__wbindgen_export_7, Z_ = i.__wbindgen_export_8, er = i.__wbindgen_export_9, nr = i.__wbindgen_export_10, tr = i.__wbindgen_export_11, _r = i.__wbindgen_export_12, ee = i.__wbindgen_start, rr = Object.freeze(Object.defineProperty({
     __proto__: null,
     __wbg_channel_free: x_,
     __wbg_channelsender_free: j_,
     __wbg_chatnode_free: l_,
     __wbg_intounderlyingbytesource_free: C_,
-    __wbg_intounderlyingsink_free: U_,
-    __wbg_intounderlyingsource_free: B_,
+    __wbg_intounderlyingsink_free: B_,
+    __wbg_intounderlyingsource_free: N_,
     __wbindgen_add_to_stack_pointer: Q_,
     __wbindgen_export_0: P_,
     __wbindgen_export_1: V_,
@@ -1241,11 +1241,11 @@ ${e.stack}` : _;
     __wbindgen_export_8: Z_,
     __wbindgen_export_9: er,
     __wbindgen_start: ee,
-    channel_id: R_,
-    channel_neighbors: I_,
-    channel_receiver: k_,
+    channel_id: I_,
+    channel_neighbors: R_,
+    channel_receiver: v_,
     channel_sender: S_,
-    channel_ticket: v_,
+    channel_ticket: k_,
     channelsender_broadcast: F_,
     channelsender_set_nickame: T_,
     chatnode_create: y_,
@@ -1258,10 +1258,10 @@ ${e.stack}` : _;
     intounderlyingbytesource_start: O_,
     intounderlyingbytesource_type: A_,
     intounderlyingsink_abort: D_,
-    intounderlyingsink_close: z_,
-    intounderlyingsink_write: W_,
+    intounderlyingsink_close: W_,
+    intounderlyingsink_write: z_,
     intounderlyingsource_cancel: q_,
-    intounderlyingsource_pull: N_,
+    intounderlyingsource_pull: U_,
     memory: g_,
     ring_core_0_17_14__bn_mul_mont: $_,
     start: w_
@@ -1293,8 +1293,8 @@ ${e.stack}` : _;
       const _ = n.id();
       A.info(`joining channel ${_}`);
       const o = _.substring(5, 13);
-      let a, b = new Promise((I) => {
-        a = I;
+      let a, b = new Promise((R) => {
+        a = R;
       });
       const u = this.chatNode.endpoint_id(), m = {
         id: u,
@@ -1316,68 +1316,68 @@ ${e.stack}` : _;
         onClose: a
       };
       g.peers.set(u, m), this.channels.set(_, g);
-      const R = async () => {
-        const I = n.receiver.getReader();
+      const I = async () => {
+        const R = n.receiver.getReader();
         for (; ; ) {
-          const { done: S, value: U } = await I.read();
+          const { done: S, value: B } = await R.read();
           if (S) break;
-          const l = U;
+          const l = B;
           if (console.debug("channel event", _.substring(0, 8), l), l.type === "messageReceived") {
-            const k = {
+            const v = {
               id: l.from,
               name: l.nickname,
               lastSeen: new Date(l.sentTimestamp / 1e3),
               status: "online",
               role: V.RemoteNode
             };
-            g.peers.set(l.from, k);
-            const W = {
+            g.peers.set(l.from, v);
+            const z = {
               id: Z(g),
               sender: l.from,
               content: l.text
             };
-            g.messages.push(W);
-            const _e = H(g, W);
+            g.messages.push(z);
+            const _e = H(g, z);
             for (const P of g.subscribers) P(_e);
             for (const P of g.peerSubscribers) P();
           } else if (l.type === "presence") {
-            const k = {
+            const v = {
               id: l.from,
               name: l.nickname,
               lastSeen: new Date(l.sentTimestamp / 1e3),
               status: "online",
               role: V.RemoteNode
             };
-            g.peers.set(l.from, k);
-            for (const W of g.peerSubscribers) W();
+            g.peers.set(l.from, v);
+            for (const z of g.peerSubscribers) z();
           } else if (l.type === "joined") {
             A.info(`joined channel ${_}`), g.neighbors += l.neighbors.length;
-            for (const k of g.neighborSubscribers) k(g.neighbors);
+            for (const v of g.neighborSubscribers) v(g.neighbors);
           } else if (l.type === "neighborUp") {
             g.neighbors += 1;
-            for (const k of g.neighborSubscribers) k(g.neighbors);
+            for (const v of g.neighborSubscribers) v(g.neighbors);
           } else if (l.type === "neighborDown") {
             g.neighbors -= 1;
-            for (const k of g.neighborSubscribers) k(g.neighbors);
+            for (const v of g.neighborSubscribers) v(g.neighbors);
           }
         }
       }, te = async () => {
         for (; ; ) {
-          const I = /* @__PURE__ */ new Date();
+          const R = /* @__PURE__ */ new Date();
           for (const S of g.peers.values()) {
             if (S.id === u) {
-              S.lastSeen = I;
+              S.lastSeen = R;
               continue;
             }
-            const U = (I.getTime() - S.lastSeen.getTime()) / 1e3;
-            U > 20 ? S.status = "offline" : U > 10 ? S.status = "away" : S.status = "online";
+            const B = (R.getTime() - S.lastSeen.getTime()) / 1e3;
+            B > 20 ? S.status = "offline" : B > 10 ? S.status = "away" : S.status = "online";
           }
           await new Promise((S) => setTimeout(S, 1e3));
         }
       };
       return Promise.race([
         b,
-        R(),
+        I(),
         te()
       ]), {
         id: _,
