@@ -13,6 +13,8 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.85"
+  RS_EXAMPLES_LIST: "browser-chat browser-echo custom-router dumbpipe-web framed-messages frosty iroh-automerge iroh-automerge-repo iroh-gateway extism/host extism/plugin extism/iroh-extism-host-functions"
+  WASM_EXAMPLES_LIST: "browser-chat browser-echo"
   IROH_FORCE_STAGING_RELAYS: "1"
 
 jobs:
@@ -43,9 +45,7 @@ jobs:
 
       - name: Fetch dependencies
         run: |
-          for example in browser-chat browser-echo custom-router dumbpipe-web \
-            framed-messages frosty iroh-automerge iroh-automerge-repo iroh-gateway \
-            extism/host extism/plugin extism/iroh-extism-host-functions; do
+          for example in $RS_EXAMPLES_LIST; do
             if [ -f "$example/Cargo.toml" ]; then
               echo "Fetching dependencies for $example"
               cargo fetch --manifest-path "$example/Cargo.toml" --locked 2>/dev/null || cargo fetch --manifest-path "$example/Cargo.toml"
@@ -70,9 +70,7 @@ jobs:
 
       - name: Check formatting
         run: |
-          for example in browser-chat browser-echo custom-router dumbpipe-web \
-            framed-messages frosty iroh-automerge iroh-automerge-repo iroh-gateway \
-            extism/host extism/plugin extism/iroh-extism-host-functions; do
+          for example in $RS_EXAMPLES_LIST; do
             if [ -f "$example/Cargo.toml" ]; then
               echo "Checking format: $example"
               cargo fmt --manifest-path "$example/Cargo.toml" --all -- --check
@@ -104,7 +102,7 @@ jobs:
 
       - name: Build WASM examples
         run: |
-          for example in browser-echo; do
+          for example in $WASM_EXAMPLES_LIST; do
             echo "Building WASM: $example"
             cd "$example"
             RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
