@@ -13,89 +13,173 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.85"
-  RS_EXAMPLES_LIST: "dumbpipe-web,extism/host,extism/iroh-extism-host-functions,extism/plugin,iroh-automerge,iroh-automerge-repo,iroh-gateway,frosty,browser-echo,framed-messages,custom-router"
-  WASM_EXAMPLES_LIST: "browser-echo"
+  # NOTE: When adding a new example, add it here AND to the test matrix below (because we cannot create matrix entries dynamically)
+  RS_EXAMPLES_LIST: "browser-chat browser-chat/cli browser-echo custom-router dumbpipe-web framed-messages frosty iroh-automerge iroh-automerge-repo iroh-gateway extism/host extism/plugin extism/iroh-extism-host-functions"
+  WASM_EXAMPLES_LIST: "browser-chat browser-echo"
   IROH_FORCE_STAGING_RELAYS: "1"
 
 jobs:
-  build_and_test_nix:
-    timeout-minutes: 30
-    name: Build and test (Nix)
-    runs-on: ${{ matrix.runner }}
+  # Prepare dependencies and cache them for all other jobs
+  prepare:
+    name: Prepare dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "iroh-examples-shared"
+          cache-all-crates: true
+
+      - name: Fetch dependencies
+        run: |
+          for example in $RS_EXAMPLES_LIST; do
+            if [ -f "$example/Cargo.toml" ]; then
+              echo "Fetching dependencies for $example"
+              cargo fetch --manifest-path "$example/Cargo.toml" --locked 2>/dev/null || cargo fetch --manifest-path "$example/Cargo.toml"
+            fi
+          done
+
+  # Check formatting for all examples in a single job (fast)
+  fmt:
+    name: Format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: |
+          for example in $RS_EXAMPLES_LIST; do
+            if [ -f "$example/Cargo.toml" ]; then
+              echo "Checking format: $example"
+              cargo fmt --manifest-path "$example/Cargo.toml" --all -- --check
+            fi
+          done
+
+  # Build WASM examples
+  wasm:
+    name: WASM build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: prepare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "iroh-examples-shared"
+
+      - name: Build WASM examples
+        run: |
+          for example in $WASM_EXAMPLES_LIST; do
+            echo "Building WASM for $example"
+            cd "$example"
+            case "$example" in
+              browser-echo)
+                RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown --lib
+                ;;
+              browser-chat)
+                RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown -p chat-browser
+                ;;
+              *)
+                echo "Unknown WASM example: $example"
+                exit 1
+                ;;
+            esac
+            cd ..
+          done
+        env:
+          RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+
+  # Parallel testing matrix for all examples
+  test:
+    name: Test ${{ matrix.example }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        name: [ubuntu-latest]
-        rust: [stable]
-        include:
-          - name: ubuntu-latest
-            os: ubuntu-latest
-            release-os: linux
-            release-arch: amd64
-            runner: [self-hosted, linux, X64]
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
+        example:
+          - browser-chat
+          - browser-chat/cli
+          - browser-echo
+          - custom-router
+          - dumbpipe-web
+          - framed-messages
+          - frosty
+          - iroh-automerge
+          - iroh-automerge-repo
+          - iroh-gateway
+          - extism/host
+          - extism/plugin
+          - extism/iroh-extism-host-functions
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Install ${{ matrix.rust }}
-      uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ matrix.rust }}
-        components: clippy,rustfmt
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
-    - name: Add wasm target
-      run: rustup target add wasm32-unknown-unknown
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "iroh-examples-shared"
+          workspaces: ${{ matrix.example }}
 
-    - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.9
-
-    - name: check
-      run: |
-        for i in ${RS_EXAMPLES_LIST//,/ }
-        do
-          echo "Checking $i"
-          cargo check --manifest-path $i/Cargo.toml --all-features
-        done
-      env:
-        RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
-
-    - name: wasm
-      run: |
-        for i in ${WASM_EXAMPLES_LIST//,/ }
-        do
-          echo "Checking wasm $i"
-          cd $i
-          # the rust flag should get picked up from the `config.toml` file
-          # but cargo build seems to not be picking it up
-          # this dependency exists for both `browser-chat` and `browser-echo`
-          # so I'm adding the flag to the command
-          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
-          cd ..
-        done
-      env:
-        RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
-
-    - name: fmt
-      run: |
-          for i in ${RS_EXAMPLES_LIST//,/ }
-          do
-            echo "Checking $i"
-            cargo fmt --all --manifest-path $i/Cargo.toml -- --check
-          done
-      env:
+      - name: Check
+        run: |
+          echo "Checking ${{ matrix.example }}"
+          cargo check --manifest-path "${{ matrix.example }}/Cargo.toml" --all-features
+        env:
           RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
 
-    - name: clippy
-      run: |
-          for i in ${RS_EXAMPLES_LIST//,/ }
-          do
-            echo "Checking $i"
-            cargo clippy --manifest-path $i/Cargo.toml
-          done
-      env:
+      - name: Clippy
+        run: |
+          echo "Running clippy on ${{ matrix.example }}"
+          cargo clippy --manifest-path "${{ matrix.example }}/Cargo.toml" --all-features
+        env:
+          RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
+
+      - name: Test
+        run: |
+          echo "Testing ${{ matrix.example }}"
+          cargo test --manifest-path "${{ matrix.example }}/Cargo.toml" --all-features
+        env:
           RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
