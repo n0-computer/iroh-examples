@@ -1,0 +1,14 @@
+{
+  "name": "browser-iroh-demo",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "cargo build --target=wasm32-unknown-unknown && wasm-bindgen ./target/wasm32-unknown-unknown/debug/blobs_wasm.wasm --out-dir=public/wasm --weak-refs --target=web --debug",
+    "build:release": "cargo build --target=wasm32-unknown-unknown --release && wasm-bindgen ./target/wasm32-unknown-unknown/release/blobs_wasm.wasm --out-dir=public/wasm --weak-refs --target=web && wasm-opt -Os -o public/wasm/blobs_wasm_bg.wasm public/wasm/blobs_wasm_bg.wasm",
+    "serve": "servor public"
+  },
+  "author": "n0 team",
+  "license": "Apache-2.0 OR MIT",
+  "dependencies": {
+    "servor": "^4.0.2"
+  }
+}
