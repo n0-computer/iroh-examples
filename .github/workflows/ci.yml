@@ -102,12 +102,15 @@ jobs:
 
       - name: Build WASM examples
         run: |
-          for example in $WASM_EXAMPLES_LIST; do
-            echo "Building WASM: $example"
-            cd "$example"
-            RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown
-            cd ..
-          done
+          # browser-echo is a single package
+          cd browser-echo
+          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown --lib
+          cd ..
+
+          # browser-chat is a workspace, build only the browser-wasm package
+          cd browser-chat
+          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown -p chat-browser
+          cd ..
         env:
           RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
 
