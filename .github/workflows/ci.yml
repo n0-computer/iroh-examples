@@ -13,6 +13,7 @@ env:
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
   MSRV: "1.85"
+  # NOTE: When adding a new example, add it here AND to the test matrix below (because we cannot create matrix entries dynamically)
   RS_EXAMPLES_LIST: "browser-chat browser-chat/cli browser-echo custom-router dumbpipe-web framed-messages frosty iroh-automerge iroh-automerge-repo iroh-gateway extism/host extism/plugin extism/iroh-extism-host-functions"
   WASM_EXAMPLES_LIST: "browser-chat browser-echo"
   IROH_FORCE_STAGING_RELAYS: "1"
@@ -102,15 +103,23 @@ jobs:
 
       - name: Build WASM examples
         run: |
-          # browser-echo is a single package
-          cd browser-echo
-          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown --lib
-          cd ..
-
-          # browser-chat is a workspace, build only the browser-wasm package
-          cd browser-chat
-          RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown -p chat-browser
-          cd ..
+          for example in $WASM_EXAMPLES_LIST; do
+            echo "Building WASM for $example"
+            cd "$example"
+            case "$example" in
+              browser-echo)
+                RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown --lib
+                ;;
+              browser-chat)
+                RUSTFLAGS='--cfg getrandom_backend="wasm_js"' cargo build --target wasm32-unknown-unknown -p chat-browser
+                ;;
+              *)
+                echo "Unknown WASM example: $example"
+                exit 1
+                ;;
+            esac
+            cd ..
+          done
         env:
           RUST_LOG: ${{ runner.debug && 'DEBUG' || 'INFO'}}
 
