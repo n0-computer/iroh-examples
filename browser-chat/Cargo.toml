@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["shared", "cli", "browser-wasm"]
+default-members = ["shared", "browser-wasm"]
 
 [workspace.dependencies]
 # we define iroh dependencies here to make upgrading easier.
