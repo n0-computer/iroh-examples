@@ -139,9 +139,9 @@ impl IrohAutomergeProtocol {
 
 impl ProtocolHandler for IrohAutomergeProtocol {
     async fn accept(&self, conn: Connection) -> Result<(), iroh::protocol::AcceptError> {
-        self.respond_sync(conn)
-            .await
-            .map_err(anyhow::Error::into_boxed_dyn_error)?;
+        self.respond_sync(conn).await.map_err(|e| {
+            AcceptError::from(n0_error::AnyError::from_std_box(e.into_boxed_dyn_error()))
+        })?;
 
         self.sync_finished
             .send(self.fork_doc().await)
