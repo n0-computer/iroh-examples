@@ -16565,7 +16565,7 @@ Error generating stack: ` + c.message + `
     try {
       an.info("Importing WASM module");
       const { IrohAPI: n } = await Jx(async () => {
-        const { IrohAPI: o } = await import("./iroh-CHKhozZa.js").then(async (m) => {
+        const { IrohAPI: o } = await import("./iroh-CnrEm-Fe.js").then(async (m) => {
           await m.__tla;
           return m;
         });
