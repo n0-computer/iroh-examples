@@ -83,7 +83,7 @@ impl ProtocolHandler for ChessProtocol {
     /// the connection lasts.
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         // We can get the remote's endpoint id from the connection.
-        let endpoint_id = connection.remote_id()?;
+        let endpoint_id = connection.remote_id();
         println!("accepted connection from {endpoint_id}");
 
         // Our protocol is a simple request-response protocol, so we expect the
@@ -92,9 +92,9 @@ impl ProtocolHandler for ChessProtocol {
         let mut stream = FramedBiStream::new(bi_stream);
 
         // make some moves
-        black_moves(&mut stream)
-            .await
-            .map_err(anyhow::Error::into_boxed_dyn_error)?;
+        black_moves(&mut stream).await.map_err(|e| {
+            AcceptError::from(n0_error::AnyError::from_std_box(e.into_boxed_dyn_error()))
+        })?;
 
         // We could keep going, but we'll call `SendStream::finish()` to indicate we're done.
         stream.write.get_mut().finish()?;

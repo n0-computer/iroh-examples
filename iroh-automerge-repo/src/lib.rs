@@ -67,7 +67,7 @@ impl iroh::protocol::ProtocolHandler for IrohRepo {
         &self,
         connection: iroh::endpoint::Connection,
     ) -> Result<(), iroh::protocol::AcceptError> {
-        let endpoint_id = connection.remote_id()?;
+        let endpoint_id = connection.remote_id();
 
         let (send, recv) = connection.accept_bi().await?;
 

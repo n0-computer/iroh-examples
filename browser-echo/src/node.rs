@@ -100,7 +100,7 @@ impl Echo {
         connection: Connection,
     ) -> std::result::Result<(), AcceptError> {
         // Wait for the connection to be fully established.
-        let endpoint_id = connection.remote_id()?;
+        let endpoint_id = connection.remote_id();
         self.event_sender
             .send(AcceptEvent::Accepted { endpoint_id })
             .ok();
@@ -116,7 +116,7 @@ impl Echo {
         connection: &Connection,
     ) -> std::result::Result<(), AcceptError> {
         // We can get the remote's endpoint id from the connection.
-        let endpoint_id = connection.remote_id()?;
+        let endpoint_id = connection.remote_id();
         info!("Accepted connection from {endpoint_id}");
 
         // Our protocol is a simple request-response protocol, so we expect the
