@@ -3,7 +3,7 @@ use n0_future::{Stream, StreamExt};
 use serde::Serialize;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber_wasm::MakeConsoleWriter;
-use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
+use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 use wasm_streams::{ReadableStream, readable::sys::ReadableStream as JsReadableStream};
 
 use crate::node;
