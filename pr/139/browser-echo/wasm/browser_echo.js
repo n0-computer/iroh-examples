@@ -275,28 +275,28 @@ export function start() {
     wasm.start();
 }
 
-function __wasm_bindgen_func_elem_12567(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_12567(arg0, arg1, addHeapObject(arg2));
-}
-
-function __wasm_bindgen_func_elem_6587(arg0, arg1) {
-    wasm.__wasm_bindgen_func_elem_6587(arg0, arg1);
-}
-
-function __wasm_bindgen_func_elem_12505(arg0, arg1) {
-    wasm.__wasm_bindgen_func_elem_12505(arg0, arg1);
+function __wasm_bindgen_func_elem_5031(arg0, arg1) {
+    wasm.__wasm_bindgen_func_elem_5031(arg0, arg1);
 }
 
 function __wasm_bindgen_func_elem_2013(arg0, arg1, arg2) {
     wasm.__wasm_bindgen_func_elem_2013(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_5031(arg0, arg1) {
-    wasm.__wasm_bindgen_func_elem_5031(arg0, arg1);
-}
-
 function __wasm_bindgen_func_elem_5830(arg0, arg1, arg2) {
     wasm.__wasm_bindgen_func_elem_5830(arg0, arg1, addHeapObject(arg2));
+}
+
+function __wasm_bindgen_func_elem_12567(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_12567(arg0, arg1, addHeapObject(arg2));
+}
+
+function __wasm_bindgen_func_elem_12505(arg0, arg1) {
+    wasm.__wasm_bindgen_func_elem_12505(arg0, arg1);
+}
+
+function __wasm_bindgen_func_elem_6587(arg0, arg1) {
+    wasm.__wasm_bindgen_func_elem_6587(arg0, arg1);
 }
 
 function __wasm_bindgen_func_elem_12696(arg0, arg1, arg2, arg3) {
