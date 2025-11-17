@@ -16,6 +16,11 @@ Use iroh in the browser, compiled to web assembly. [Try it here!](https://n0-com
 A chat app based on iroh-gossip that can run both in the browser and on the command line.
 [Try it here!](https://n0-computer.github.io/iroh-examples/main/browser-chat/index.html)
 
+### [browser-blobs](browser-blobs)
+
+Small example for running [iroh-blobs](https://github.com/n0-computer/iroh-blobs) in the browser.
+[Try it here!](https://n0-computer.github.io/iroh-examples/main/browser-blobs/index.html)
+
 ### [custom-router](custom-router)
 
 When you need more control or customizations than the

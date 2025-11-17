@@ -7,6 +7,7 @@
 dependencies = [
     { name = "deploy", path = "browser-echo" },
     { name = "deploy", path = "browser-chat" },
+    { name = "deploy", path = "browser-blobs" },
 ]
 
 script = '''
@@ -24,6 +25,9 @@ echo '<li><a href="./browser-echo/index.html">browser-echo</li>' >> deploy-out/i
 
 cp -r browser-chat/frontend/dist deploy-out/browser-chat
 echo '<li><a href="./browser-chat/index.html">browser-chat</li>' >> deploy-out/index.html
+
+cp -r browser-blobs/public deploy-out/browser-blobs
+echo '<li><a href="./browser-blobs/index.html">browser-blobs</li>' >> deploy-out/index.html
 
 echo '</ul></body></html>' >> deploy-out/index.html
 '''
