@@ -11,28 +11,28 @@ export class EchoNode {
   private constructor();
   free(): void;
   [Symbol.dispose](): void;
+  endpoint_id(): string;
   static spawn(): Promise<EchoNode>;
   events(): ReadableStream;
-  endpoint_id(): string;
   connect(endpoint_id: string, payload: string): ReadableStream;
 }
 export class IntoUnderlyingByteSource {
   private constructor();
   free(): void;
   [Symbol.dispose](): void;
-  start(controller: ReadableByteStreamController): void;
   pull(controller: ReadableByteStreamController): Promise<any>;
+  start(controller: ReadableByteStreamController): void;
   cancel(): void;
-  readonly type: ReadableStreamType;
   readonly autoAllocateChunkSize: number;
+  readonly type: ReadableStreamType;
 }
 export class IntoUnderlyingSink {
   private constructor();
   free(): void;
   [Symbol.dispose](): void;
-  write(chunk: any): Promise<any>;
-  close(): Promise<any>;
   abort(reason: any): Promise<any>;
+  close(): Promise<any>;
+  write(chunk: any): Promise<any>;
 }
 export class IntoUnderlyingSource {
   private constructor();
@@ -46,39 +46,44 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly start: () => void;
   readonly __wbg_echonode_free: (a: number, b: number) => void;
-  readonly echonode_spawn: () => number;
-  readonly echonode_events: (a: number) => number;
-  readonly echonode_endpoint_id: (a: number, b: number) => void;
   readonly echonode_connect: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly echonode_endpoint_id: (a: number, b: number) => void;
+  readonly echonode_events: (a: number) => number;
+  readonly echonode_spawn: () => number;
+  readonly start: () => void;
   readonly __wbg_intounderlyingbytesource_free: (a: number, b: number) => void;
-  readonly intounderlyingbytesource_type: (a: number) => number;
-  readonly intounderlyingbytesource_autoAllocateChunkSize: (a: number) => number;
-  readonly intounderlyingbytesource_start: (a: number, b: number) => void;
-  readonly intounderlyingbytesource_pull: (a: number, b: number) => number;
-  readonly intounderlyingbytesource_cancel: (a: number) => void;
-  readonly __wbg_intounderlyingsource_free: (a: number, b: number) => void;
-  readonly intounderlyingsource_pull: (a: number, b: number) => number;
-  readonly intounderlyingsource_cancel: (a: number) => void;
   readonly __wbg_intounderlyingsink_free: (a: number, b: number) => void;
-  readonly intounderlyingsink_write: (a: number, b: number) => number;
-  readonly intounderlyingsink_close: (a: number) => number;
+  readonly __wbg_intounderlyingsource_free: (a: number, b: number) => void;
+  readonly intounderlyingbytesource_autoAllocateChunkSize: (a: number) => number;
+  readonly intounderlyingbytesource_cancel: (a: number) => void;
+  readonly intounderlyingbytesource_pull: (a: number, b: number) => number;
+  readonly intounderlyingbytesource_start: (a: number, b: number) => void;
+  readonly intounderlyingbytesource_type: (a: number) => number;
   readonly intounderlyingsink_abort: (a: number, b: number) => number;
+  readonly intounderlyingsink_close: (a: number) => number;
+  readonly intounderlyingsink_write: (a: number, b: number) => number;
+  readonly intounderlyingsource_cancel: (a: number) => void;
+  readonly intounderlyingsource_pull: (a: number, b: number) => number;
   readonly ring_core_0_17_14__bn_mul_mont: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
-  readonly __wbindgen_export_0: (a: number) => void;
-  readonly __wbindgen_export_1: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_2: (a: number, b: number) => number;
-  readonly __wbindgen_export_3: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_export_4: WebAssembly.Table;
+  readonly __wasm_bindgen_func_elem_12567: (a: number, b: number, c: number) => void;
+  readonly __wasm_bindgen_func_elem_12551: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_6587: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_6577: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_12505: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_12487: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_2013: (a: number, b: number, c: number) => void;
+  readonly __wasm_bindgen_func_elem_1578: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_5031: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_5013: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_5830: (a: number, b: number, c: number) => void;
+  readonly __wasm_bindgen_func_elem_5785: (a: number, b: number) => void;
+  readonly __wasm_bindgen_func_elem_12696: (a: number, b: number, c: number, d: number) => void;
+  readonly __wbindgen_export: (a: number, b: number) => number;
+  readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export3: (a: number) => void;
+  readonly __wbindgen_export4: (a: number, b: number, c: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
-  readonly __wbindgen_export_5: (a: number, b: number) => void;
-  readonly __wbindgen_export_6: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_7: (a: number, b: number) => void;
-  readonly __wbindgen_export_8: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_9: (a: number, b: number) => void;
-  readonly __wbindgen_export_10: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_11: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_start: () => void;
 }
 
