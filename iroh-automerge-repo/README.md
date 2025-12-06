@@ -15,6 +15,7 @@ Waiting for Ctrl+C
 ```
 
 Simultaneously, in another terminal or on another machine:
+
 ```sh
 # Connect to the other node that's running and set the key "hello" to "friend!"
 $ cargo run -- --sync-with [node-id] upsert [document-id] hello friend!
@@ -42,3 +43,7 @@ This directory contains just three source files:
 - `lib.rs` is the main implementation of the `IrohRepo` struct that combines an `iroh::Endpoint` with a `samod::Samod` automerge repository and implements `iroh::protocol::ProtocolHandler` so it can be used to accept incoming connections with an `iroh::protocol::Router`.
 - `codec.rs` is a very small utility to adapt `tokio-util`'s `LengthDelimitedCodec` to work with `Vec<u8>` instead of `Bytes`.
 - `main.rs` implements the example CLI seen in the section above.
+
+[automerge]: https://automerge.org/
+[iroh]: https://www.iroh.computer/
+[samod]: https://crates.io/crates/samod
