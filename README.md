@@ -44,6 +44,10 @@ Send chess moves back and forth on the same bi-directional stream by framing it 
 
 Experiment with [FROST] threshold signatures for iroh.
 
+### [gossip-node-discover](gossip-node-discover)
+
+Discover nodes via [iroh-gossip-discovery](https://crates.io/crates/iroh-gossip-discovery).
+
 ### [iroh-automerge](iroh-automerge)
 
 Iroh integration with [automerge]
