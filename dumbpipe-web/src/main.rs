@@ -1,5 +1,5 @@
 use std::{
-    net::{SocketAddrV4, SocketAddrV6},
+    net::{SocketAddr, SocketAddrV4, SocketAddrV6},
     str::FromStr,
     sync::OnceLock,
 };
@@ -67,10 +67,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Done explicitly here because creation is async
     let mut builder = Endpoint::builder().secret_key(secret_key);
     if let Some(addr) = args.iroh_ipv4_addr {
-        builder = builder.bind_addr_v4(addr);
+        builder = builder.bind_addr(SocketAddr::V4(addr))?;
     }
     if let Some(addr) = args.iroh_ipv6_addr {
-        builder = builder.bind_addr_v6(addr);
+        builder = builder.bind_addr(SocketAddr::V6(addr))?;
     }
     let endpoint = builder.bind().await?;
     ENDPOINT.set(endpoint).expect("endpoint already set");
