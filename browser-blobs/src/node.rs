@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use bytes::Bytes;
-use iroh::{discovery::static_provider::StaticProvider, protocol::Router, Endpoint, EndpointId};
+use iroh::{address_lookup::MemoryLookup, protocol::Router, Endpoint, EndpointId};
 use iroh_blobs::{
     api::{blobs::BlobStatus, downloader::Downloader, Store},
     ticket::BlobTicket,
@@ -9,7 +9,7 @@ use iroh_blobs::{
 
 #[derive(Debug, Clone)]
 pub struct BlobsNode {
-    discovery: StaticProvider,
+    address_lookup: MemoryLookup,
     router: Router,
     pub blobs: Store,
     downloader: Downloader,
@@ -17,9 +17,11 @@ pub struct BlobsNode {
 
 impl BlobsNode {
     pub async fn spawn() -> Result<Self> {
-        let discovery = StaticProvider::default();
-        let endpoint = iroh::Endpoint::bind().await?;
-        endpoint.discovery().add(discovery.clone());
+        let address_lookup = MemoryLookup::default();
+        let endpoint = iroh::Endpoint::builder()
+            .address_lookup(address_lookup.clone())
+            .bind()
+            .await?;
         let store = iroh_blobs::store::mem::MemStore::default();
         let downloader = Downloader::new(&store, &endpoint);
         let router = Router::builder(endpoint)
@@ -29,7 +31,7 @@ impl BlobsNode {
             blobs: store.as_ref().clone(),
             router,
             downloader,
-            discovery,
+            address_lookup,
         })
     }
 
@@ -42,7 +44,7 @@ impl BlobsNode {
     }
 
     pub async fn download(&self, ticket: BlobTicket) -> anyhow::Result<Hash> {
-        self.discovery.add_endpoint_info(ticket.addr().clone());
+        self.address_lookup.add_endpoint_info(ticket.addr().clone());
         self.downloader
             .download(ticket.hash_and_format(), [ticket.addr().id])
             .await?;

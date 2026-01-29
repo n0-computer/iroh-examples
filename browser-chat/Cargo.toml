@@ -5,6 +5,6 @@ default-members = ["cli"]
 
 [workspace.dependencies]
 # we define iroh dependencies here to make upgrading easier.
-iroh = { version = "0.95", default-features = false }
-iroh-tickets = "0.2"
-iroh-gossip = { version = "0.95", default-features = false, features = ["net"] }
+iroh = { version = "0.96", default-features = false }
+iroh-tickets = "0.3"
+iroh-gossip = { version = "0.96", default-features = false, features = ["net"] }

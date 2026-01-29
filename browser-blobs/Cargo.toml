@@ -16,8 +16,8 @@ anyhow = "1.0.86"
 bytes = "1.10.1"
 clap = { version = "4.5.30", features = ["derive"], optional = true }
 console_error_panic_hook = "0.1.7"
-iroh = { version = "0.95", default-features = false }
-iroh-blobs = { version = "0.97", default-features = false }
+iroh = { version = "0.96", default-features = false }
+iroh-blobs = { version = "0.98", default-features = false }
 js-sys = "0.3.77"
 tokio = { version = "1.44.0", default-features = false, features = ["sync"] }
 tracing = "0.1.40"
