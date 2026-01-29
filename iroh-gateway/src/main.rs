@@ -22,7 +22,7 @@ use futures::{StreamExt, pin_mut};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use iroh::{
-    Endpoint, EndpointAddr, EndpointId, discovery::dns::DnsDiscovery, endpoint::Connection,
+    Endpoint, EndpointAddr, EndpointId, address_lookup::dns::DnsAddressLookup, endpoint::Connection,
 };
 use iroh_blobs::{
     BlobFormat, Hash,
@@ -518,12 +518,12 @@ async fn main() -> anyhow::Result<()> {
         .install_default()
         .unwrap();
     let args = args::Args::parse();
-    let mut builder = Endpoint::builder().discovery(DnsDiscovery::n0_dns());
+    let mut builder = Endpoint::builder().address_lookup(DnsAddressLookup::n0_dns());
     if let Some(addr) = args.iroh_ipv4_addr {
-        builder = builder.bind_addr_v4(addr);
+        builder = builder.bind_addr(addr)?;
     }
     if let Some(addr) = args.iroh_ipv6_addr {
-        builder = builder.bind_addr_v6(addr);
+        builder = builder.bind_addr(addr)?;
     }
     let endpoint = builder.bind().await?;
     let default_endpoint = args
