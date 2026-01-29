@@ -14,7 +14,7 @@ const ALPN_1: &[u8] = b"/iroh/test/1";
 const ALPN_2: &[u8] = b"/iroh/test/2";
 
 #[tokio::main]
-async fn main() -> n0_snafu::Result {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     // Create our server endpoint.
     let server = Endpoint::builder()
@@ -130,7 +130,7 @@ async fn connect_assert_fail(endpoint: &Endpoint, addr: &EndpointAddr, alpn: &[u
         &conn,
         Err(ConnectError::Connection { source, .. })
         if matches!(
-            source.as_ref(),
+            source,
             ConnectionError::ConnectionClosed(frame)
             if frame.error_code == TransportErrorCode::crypto(rustls::AlertDescription::NoApplicationProtocol.into())
         )
@@ -557,15 +557,15 @@ pub mod router {
             warn!("Ignoring connection: unsupported ALPN protocol");
             return;
         };
-        match handler.on_connecting(connecting).await {
-            Ok(connection) => {
-                if let Err(err) = handler.accept(connection).await {
-                    warn!("Handling incoming connection ended with error: {err}");
-                }
-            }
+        let connection = match connecting.await {
+            Ok(conn) => conn,
             Err(err) => {
-                warn!("Handling incoming connecting ended with error: {err}");
+                warn!("Ignoring connection: connection failed: {err:#}");
+                return;
             }
+        };
+        if let Err(err) = handler.accept(connection).await {
+            warn!("Handling incoming connection ended with error: {err}");
         }
     }
 }

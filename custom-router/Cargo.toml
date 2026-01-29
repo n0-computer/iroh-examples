@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-iroh = "0.94"
+anyhow = "1"
+iroh = "0.96"
 n0-future = "0.3"
-n0-snafu = "0.2.2"
 rustls = { version = "0.23.32", default-features = false }
 snafu = "0.8.9"
 tokio = { version = "1.48.0", features = ["full"] }
