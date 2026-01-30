@@ -20,8 +20,8 @@ First find or start an iroh node that has content you want to view:
 Listening addresses:
   x.x.x.x:xxxxx
   x.x.x.x:xxxxx
-DERP Region: 2
-PeerID: cytwbysn6cs6jbhdak6ypmrbg2w3nrcrptl5xlts2yurk4mq5cb
+Relay: 2
+EndpointID: cytwbysn6cs6jbhdak6ypmrbg2w3nrcrptl5xlts2yurk4mq5cb
 
 ...
 
