@@ -177,7 +177,7 @@ pub mod router {
     /// # use iroh::{endpoint::Connecting, protocol::{ProtocolHandler, Router}, Endpoint, EndpointAddr};
     /// #
     /// # async fn test_compile() -> n0_snafu::Result<()> {
-    /// let endpoint = Endpoint::builder().discovery_n0().bind().await?;
+    /// let endpoint = Endpoint::builder().bind().await?;
     ///
     /// let router = Router::builder(endpoint)
     ///     // .accept(&ALPN, <something>)
