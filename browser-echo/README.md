@@ -1,6 +1,6 @@
 # iroh browser echo demo
 
-This example runs iroh in the browser, compiled to web assembly. The example uses a custom *Echo protocol*: You connect to remote node, send some data, and the remote node sends back the same data. The protocol may be used both from the browser and from the command line, and browser and cli nodes can connect to each other.
+This example runs iroh in the browser, compiled to web assembly. The example uses a custom *Echo protocol*: You connect to a remote endpoint, send some data, and the remote endpoint sends back the same data. The protocol may be used both from the browser and from the command line, and browser and cli endpoints can connect to each other.
 
 The protocol and setup code is shared between the browser and the CLI.
 
@@ -30,7 +30,7 @@ cargo run --features cli -- accept
 
 To initiate a connection:
 ```sh
-cargo run --features cli -- connect <NODE-ID> <PAYLOAD>
+cargo run --features cli -- connect <ENDPOINT-ID> <PAYLOAD>
 ```
 
 ## Navigate the code
