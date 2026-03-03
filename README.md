@@ -48,6 +48,10 @@ Experiment with [FROST] threshold signatures for iroh.
 
 Iroh integration with [automerge]
 
+### [iroh-automerge-repo](iroh-automerge-repo)
+
+Iroh integration with [automerge] using [samod]
+
 ### [iroh-gateway](iroh-gateway)
 
 A http gateway for iroh-blobs data, written using iroh-blobs.
@@ -60,7 +64,22 @@ Todo app using iroh documents and [tauri].
 [iroh-experiments]: https://github.com/n0-computer/iroh-experiments
 [extism]: https://extism.org/
 [automerge]: https://automerge.org/
+[samod]: https://github.com/alexjg/samod
 [mainline]: https://en.wikipedia.org/wiki/Mainline_DHT
 [pkarr]: https://pkarr.org/
 [tauri]: https://tauri.app/
 [FROST]: https://eprint.iacr.org/2020/852.pdf
+
+
+## License
+
+Copyright 2025 N0, INC.
+
+This project is licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
+   http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or
+   http://opensource.org/licenses/MIT)
+
+at your option.
