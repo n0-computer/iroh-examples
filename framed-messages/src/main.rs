@@ -1,12 +1,12 @@
 // a program that creates two endpoints & sends a ping between them
-use iroh::{Endpoint, protocol::Router};
+use iroh::{Endpoint, endpoint::presets, protocol::Router};
 
 use framed_messages::{ALPN as ChessMovesALPN, ChessProtocol, Move, framed::FramedBiStream};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // create the receive side
-    let recv_ep = Endpoint::bind().await?;
+    let recv_ep = Endpoint::bind(presets::N0).await?;
     let recv_router = Router::builder(recv_ep)
         .accept(ChessMovesALPN, ChessProtocol)
         .spawn();
@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
     let addr = recv_router.endpoint().addr();
 
     // create a send side & send a ping
-    let send_ep = Endpoint::bind().await?;
+    let send_ep = Endpoint::bind(presets::N0).await?;
     let conn = send_ep.connect(addr, ChessMovesALPN).await?;
     let bi_stream = conn.open_bi().await?;
     // We use the `FramedBiStream` to provide us message framing
