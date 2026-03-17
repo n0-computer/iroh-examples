@@ -115,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let endpoint = iroh::Endpoint::builder()
+    let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
         .secret_key(secret_key)
         .bind()
         .await?;
