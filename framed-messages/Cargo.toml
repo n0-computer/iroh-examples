@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1.0.98"
 bytes = "1.10.1"
 futures-util = { version = "0.3.31", features = ["sink"] }
-iroh = "0.96"
+iroh = "0.97"
 iroh-metrics = "0.38"
 n0-watcher = "0.6"
 postcard = "1.1.2"
