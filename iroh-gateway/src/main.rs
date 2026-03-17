@@ -21,9 +21,7 @@ use clap::Parser;
 use futures::{StreamExt, pin_mut};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use iroh::{
-    Endpoint, EndpointAddr, EndpointId, address_lookup::dns::DnsAddressLookup, endpoint::Connection,
-};
+use iroh::{Endpoint, EndpointAddr, EndpointId, endpoint::Connection, endpoint::presets};
 use iroh_blobs::{
     BlobFormat, Hash,
     format::collection::Collection,
@@ -518,7 +516,7 @@ async fn main() -> anyhow::Result<()> {
         .install_default()
         .unwrap();
     let args = args::Args::parse();
-    let mut builder = Endpoint::builder().address_lookup(DnsAddressLookup::n0_dns());
+    let mut builder = Endpoint::builder(presets::N0);
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr(addr)?;
     }
