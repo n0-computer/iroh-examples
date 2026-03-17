@@ -1,7 +1,7 @@
 use anyhow::Result;
 use automerge::{Automerge, ReadDoc, transaction::Transactable};
 use clap::Parser;
-use iroh::{Endpoint, protocol::Router};
+use iroh::{Endpoint, endpoint::presets, protocol::Router};
 use protocol::IrohAutomergeProtocol;
 use tokio::sync::mpsc;
 
@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     // We set up a channel so we can subscribe to sync events from the automerge protocol
     let (sync_sender, mut sync_finished) = mpsc::channel(10);
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), sync_sender);
-    let endpoint = Endpoint::bind().await?;
+    let endpoint = Endpoint::bind(presets::N0).await?;
     let iroh = Router::builder(endpoint)
         .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
         .spawn();
