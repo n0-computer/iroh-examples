@@ -18,7 +18,7 @@ pub struct BlobsNode {
 impl BlobsNode {
     pub async fn spawn() -> Result<Self> {
         let address_lookup = MemoryLookup::default();
-        let endpoint = iroh::Endpoint::builder()
+        let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
             .address_lookup(address_lookup.clone())
             .bind()
             .await?;
