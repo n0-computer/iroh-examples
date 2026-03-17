@@ -3,8 +3,10 @@
 //! We will create a router that allows adding or removing protocols at runtime.
 
 use iroh::{
-    Endpoint, EndpointAddr, RelayMode,
-    endpoint::{ApplicationClose, ConnectError, Connection, ConnectionError, TransportErrorCode},
+    Endpoint, EndpointAddr,
+    endpoint::{
+        ApplicationClose, ConnectError, Connection, ConnectionError, TransportErrorCode, presets,
+    },
     protocol::{AcceptError, ProtocolHandler},
 };
 
@@ -17,10 +19,7 @@ const ALPN_2: &[u8] = b"/iroh/test/2";
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     // Create our server endpoint.
-    let server = Endpoint::builder()
-        .relay_mode(RelayMode::Disabled)
-        .bind()
-        .await?;
+    let server = Endpoint::builder(presets::N0DisableRelay).bind().await?;
 
     // Create our custom router, and accept a protocol at `ALPN_1`.
     // Our protocol closes all connections immediately with the passed-in error code.
@@ -31,10 +30,7 @@ async fn main() -> anyhow::Result<()> {
     let addr = router.endpoint().addr();
 
     // Create our client endpoint.
-    let client = Endpoint::builder()
-        .relay_mode(RelayMode::Disabled)
-        .bind()
-        .await?;
+    let client = Endpoint::builder(presets::N0DisableRelay).bind().await?;
 
     // Assert that we can connect on ALPN_1, but not on ALPN_2.
     connect_assert_ok(&client, &addr, ALPN_1, 1).await;
@@ -177,7 +173,7 @@ pub mod router {
     /// # use iroh::{endpoint::Connecting, protocol::{ProtocolHandler, Router}, Endpoint, EndpointAddr};
     /// #
     /// # async fn test_compile() -> n0_snafu::Result<()> {
-    /// let endpoint = Endpoint::builder().bind().await?;
+    /// let endpoint = Endpoint::bind(presets::N0).await?;
     ///
     /// let router = Router::builder(endpoint)
     ///     // .accept(&ALPN, <something>)
