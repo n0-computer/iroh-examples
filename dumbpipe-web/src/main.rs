@@ -14,7 +14,7 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 
 use hyper_util::rt::TokioIo;
-use iroh::{Endpoint, EndpointAddr, SecretKey};
+use iroh::{Endpoint, EndpointAddr, SecretKey, endpoint::presets};
 use tokio::net::TcpListener;
 
 #[derive(Parser, Debug)]
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a iroh endpoint and set it as a global
     //
     // Done explicitly here because creation is async
-    let mut builder = Endpoint::builder().secret_key(secret_key);
+    let mut builder = Endpoint::builder(presets::N0).secret_key(secret_key);
     if let Some(addr) = args.iroh_ipv4_addr {
         builder = builder.bind_addr(SocketAddr::V4(addr))?;
     }
