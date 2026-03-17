@@ -9,8 +9,8 @@ clap = { version = "4.5.18", features = ["derive"] }
 frost-ed25519 = "2.0.0"
 futures = "0.3.30"
 hex = "0.4.3"
-iroh = "0.94"
-iroh-base = "0.94"
+iroh = "0.97"
+iroh-base = "0.97"
 pkarr = "5.0"
 rand = "0.9"
 rand8 = { version = "0.8", package = "rand" }
