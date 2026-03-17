@@ -7,8 +7,7 @@ use frost_ed25519::{
 use futures::StreamExt;
 use iroh::{
     PublicKey, SecretKey,
-    discovery::{dns::DnsDiscovery, pkarr::PkarrPublisher},
-    endpoint::{RecvStream, SendStream},
+    endpoint::{RecvStream, SendStream, presets},
 };
 use sha2::{Digest, Sha512};
 use ssh_key::LineEnding;
@@ -251,7 +250,7 @@ async fn handle_cosign_request(
 ) -> anyhow::Result<()> {
     // we don't need to check the ALPN, since we only accept connections with the correct ALPN
     let connection = incoming.await?;
-    let remote_endpoint_id = connection.remote_id()?;
+    let remote_endpoint_id = connection.remote_id();
     info!("Incoming connection from {}", remote_endpoint_id,);
     let (mut send, mut recv) = connection.accept_bi().await?;
     let key_bytes = read_exact_bytes(&mut recv).await?;
@@ -332,10 +331,8 @@ async fn sign(args: SignArgs) -> anyhow::Result<()> {
 
     let min_cosigners = (key_package.min_signers() - 1) as usize;
     info!("{} co-signers required", min_cosigners);
-    let discovery = DnsDiscovery::n0_dns();
-    let endpoint = iroh::endpoint::Endpoint::builder()
+    let endpoint = iroh::endpoint::Endpoint::builder(presets::N0)
         .secret_key(secret_key)
-        .discovery(discovery)
         .bind()
         .await?;
     // get at least min_cosigners cosigners
@@ -410,11 +407,9 @@ async fn cosign_daemon(args: CosignArgs) -> anyhow::Result<()> {
             println!("- {} (min {} signers)", key, key_package.min_signers());
         }
     }
-    let discovery = PkarrPublisher::n0_dns().build(secret_key.clone());
-    let endpoint = iroh::endpoint::Endpoint::builder()
+    let endpoint = iroh::endpoint::Endpoint::builder(presets::N0)
         .alpns(vec![COSIGN_ALPN.to_vec()])
         .secret_key(secret_key)
-        .discovery(discovery)
         .bind()
         .await?;
     endpoint.online().await;
