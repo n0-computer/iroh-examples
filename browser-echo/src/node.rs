@@ -19,7 +19,7 @@ pub struct EchoNode {
 
 impl EchoNode {
     pub async fn spawn() -> Result<Self> {
-        let endpoint = iroh::Endpoint::builder()
+        let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
             .alpns(vec![Echo::ALPN.to_vec()])
             .bind()
             .await?;
