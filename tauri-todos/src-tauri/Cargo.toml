@@ -43,3 +43,11 @@ codegen-units = 1 # Compile crates one after another so the compiler can optimiz
 lto = true        # Enables link to optimizations
 opt-level = "s"   # Optimize for binary size
 strip = true      # Remove debug symbols
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-relay = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-main" }
+iroh-docs = { git = "https://github.com/n0-computer/iroh-docs.git", branch = "iroh-main" }
+iroh-gossip = { git = "https://github.com/n0-computer/iroh-gossip.git", branch = "deps/iroh-main" }

@@ -445,7 +445,7 @@ fn get_or_create_key(path: &Path) -> anyhow::Result<SecretKey> {
         let key_bytes = std::fs::read(path)?;
         Ok(try_from_openssh(key_bytes.as_slice())?)
     } else {
-        let key = SecretKey::generate(&mut rand::rng());
+        let key = SecretKey::generate();
         let key_bytes = to_openssh(&key)?;
         std::fs::write(path, &key_bytes)?;
         Ok(key)

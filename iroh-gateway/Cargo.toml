@@ -34,3 +34,9 @@ rustls-pemfile = "2.2"
 tower-service = "0.3.2"
 mime_guess = "2.0.4"
 bao-tree = "0.16.0"
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-relay = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-blobs = { git = "https://github.com/n0-computer/iroh-blobs.git", branch = "iroh-main" }

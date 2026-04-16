@@ -15,3 +15,8 @@ serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["codec"] }
 n0-error = "0.1"
+
+[patch.crates-io]
+iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
+iroh-relay = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }

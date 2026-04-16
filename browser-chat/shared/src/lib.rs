@@ -73,7 +73,7 @@ pub struct ChatNode {
 impl ChatNode {
     /// Spawns a gossip node.
     pub async fn spawn(secret_key: Option<SecretKey>) -> Result<Self> {
-        let secret_key = secret_key.unwrap_or_else(|| SecretKey::generate(&mut rand::rng()));
+        let secret_key = secret_key.unwrap_or_else(|| SecretKey::generate());
         let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
             .secret_key(secret_key.clone())
             .alpns(vec![GOSSIP_ALPN.to_vec()])
