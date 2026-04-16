@@ -16,6 +16,7 @@ anyhow = "1.0.86"
 bytes = "1.10.1"
 clap = { version = "4.5.30", features = ["derive"], optional = true }
 console_error_panic_hook = "0.1.7"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 iroh = { version = "0.97", default-features = false, features = ["tls-ring"] }
 iroh-blobs = { version = "0.99", default-features = false }
 js-sys = "0.3.77"
