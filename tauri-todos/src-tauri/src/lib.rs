@@ -3,7 +3,7 @@ mod iroh;
 mod state;
 mod todos;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use state::AppState;
 use tauri::Manager as _;
 

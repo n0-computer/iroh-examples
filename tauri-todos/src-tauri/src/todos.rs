@@ -142,7 +142,7 @@ impl Todos {
         let mut entries = entries.iter_mut();
         let mut todos = Vec::new();
         while let Some(Ok(entry)) = entries.next() {
-            let todo = self.todo_from_entry(&entry).await?;
+            let todo = self.todo_from_entry(entry).await?;
             if !todo.is_delete {
                 todos.push(todo);
             }
