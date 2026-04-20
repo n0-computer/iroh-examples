@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1"
-iroh = "0.97"
+iroh = "0.98"
 n0-future = "0.3"
 rustls = { version = "0.23.32", default-features = false }
 snafu = "0.8.9"
@@ -14,7 +14,3 @@ tokio-util = "0.7.16"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
 
-[patch.crates-io]
-iroh = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
-iroh-base = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }
-iroh-relay = { git = "https://github.com/n0-computer/iroh.git", branch = "main" }

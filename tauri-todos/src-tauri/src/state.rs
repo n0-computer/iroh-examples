@@ -31,11 +31,11 @@ impl AppState {
         let events_handle = tokio::spawn(async move {
             while let Some(Ok(event)) = events.next().await {
                 match event {
-                    LiveEvent::InsertRemote { content_status, .. } => {
-                        // Only update if the we already have the content. Likely to happen when a remote user toggles "done".
-                        if content_status == ContentStatus::Complete {
-                            app_handle.emit("update-all", ()).ok();
-                        }
+                    LiveEvent::InsertRemote {
+                        content_status: ContentStatus::Complete,
+                        ..
+                    } => {
+                        app_handle.emit("update-all", ()).ok();
                     }
                     LiveEvent::InsertLocal { .. } | LiveEvent::ContentReady { .. } => {
                         app_handle.emit("update-all", ()).ok();
