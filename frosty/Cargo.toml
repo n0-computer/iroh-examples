@@ -9,10 +9,9 @@ clap = { version = "4.5.18", features = ["derive"] }
 frost-ed25519 = "2.0.0"
 futures = "0.3.30"
 hex = "0.4.3"
-iroh = "0.97"
-iroh-base = "0.97"
+iroh = "0.98"
+iroh-base = "0.98"
 pkarr = "5.0"
-rand = "0.9"
 rand8 = { version = "0.8", package = "rand" }
 sha2 = "0.11.0-rc.2"
 ssh-key = { version = "0.7.0-rc.3", features = ["ed25519", "ecdsa"] }
@@ -20,3 +19,4 @@ tokio = { version = "1.40.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 zeroize = { version = "1.5" }
+

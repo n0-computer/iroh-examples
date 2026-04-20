@@ -103,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
         }
         None => {
             println!("Generating new key");
-            iroh::SecretKey::generate(&mut rand::rng())
+            iroh::SecretKey::generate()
         }
     };
 

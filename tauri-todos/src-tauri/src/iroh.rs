@@ -24,7 +24,10 @@ impl Iroh {
         let key = load_secret_key(path.clone().join("keypair")).await?;
 
         // create endpoint
-        let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0).secret_key(key).bind().await?;
+        let endpoint = iroh::Endpoint::builder(iroh::endpoint::presets::N0)
+            .secret_key(key)
+            .bind()
+            .await?;
 
         // add iroh gossip
         let gossip = Gossip::builder().spawn(endpoint.clone());
@@ -74,7 +77,7 @@ pub async fn load_secret_key(key_path: PathBuf) -> Result<SecretKey> {
         let secret_key = SecretKey::try_from(&key_bytes[0..32])?;
         Ok(secret_key)
     } else {
-        let secret_key = SecretKey::generate(&mut rand::rng());
+        let secret_key = SecretKey::generate();
 
         // Try to canonicalize if possible
         let key_path = key_path.canonicalize().unwrap_or(key_path);
