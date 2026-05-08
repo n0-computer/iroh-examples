@@ -7,12 +7,12 @@ edition = "2024"
 anyhow = "1.0.98"
 bytes = "1.10.1"
 futures-util = { version = "0.3.31", features = ["sink"] }
-iroh = "0.98"
-iroh-metrics = "0.38"
+iroh = "1.0.0-rc.0"
+iroh-metrics = "1.0.0-rc.0"
 n0-watcher = "0.6"
 postcard = "1.1.2"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["codec"] }
-n0-error = "0.1"
+n0-error = "1.0.0-rc.0"
 
