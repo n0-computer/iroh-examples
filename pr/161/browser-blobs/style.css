@@ -1,0 +1,103 @@
+body {
+    margin: 0;
+    padding: 2rem;
+    color: #eee;
+    background: #222;
+    font-family:
+        ui-monospace, Menlo, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono",
+        "Source Code Pro", monospace;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+header,
+main,
+.connections,
+form {
+    max-width: 80rem;
+    padding: 0.5rem;
+    margin: 0.5rem;
+}
+
+.error {
+    color: #f9a;
+}
+
+.cmd {
+    padding-left: 8rem;
+    color: #bda;
+    font-size: 0.9rem;
+}
+.cmd .time {
+    display: none;
+}
+
+a {
+    color: #eac;
+}
+
+form {
+    color: #888;
+    background: #333;
+    min-width: 30rem;
+}
+label {
+    display: block;
+}
+
+input,
+button {
+    background: #33222f;
+    padding: 0.5rem;
+    color: #fff;
+    border: 1px dotted #735;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+input:focus,
+button:focus,
+button:hover,
+button:active {
+    outline: none;
+    border-color: #957;
+    background: #44333f;
+}
+
+button {
+    margin: 0.5rem 0;
+    border: 2px solid #735;
+}
+
+input {
+    width: 100%;
+}
+
+h2,
+h3 {
+    color: #999;
+    font-size: 1rem;
+    font-weight: bold;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    font-size: 1.2rem;
+    color: #eac;
+    margin: 0 0 1rem 0;
+    padding: 0;
+}
+
+.forms {
+    display: none;
+    flex-direction: row;
+}
+
+code {
+    background: rgba(0, 0, 0, 0.5);
+}
