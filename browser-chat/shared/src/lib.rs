@@ -44,21 +44,21 @@ impl ChatTicket {
         }
     }
     pub fn deserialize(input: &str) -> Result<Self> {
-        <Self as Ticket>::deserialize(input).map_err(Into::into)
+        <Self as Ticket>::decode_string(input).map_err(Into::into)
     }
     pub fn serialize(&self) -> String {
-        <Self as Ticket>::serialize(self)
+        <Self as Ticket>::encode_string(self)
     }
 }
 
 impl Ticket for ChatTicket {
     const KIND: &'static str = "chat";
 
-    fn to_bytes(&self) -> Vec<u8> {
+    fn encode_bytes(&self) -> Vec<u8> {
         postcard::to_stdvec(&self).unwrap()
     }
 
-    fn from_bytes(bytes: &[u8]) -> Result<Self, iroh_tickets::ParseError> {
+    fn decode_bytes(bytes: &[u8]) -> Result<Self, iroh_tickets::ParseError> {
         let ticket = postcard::from_bytes(bytes)?;
         Ok(ticket)
     }
