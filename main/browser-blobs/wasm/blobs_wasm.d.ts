@@ -6,7 +6,7 @@
  * *This API requires the following crate features to be activated: `ReadableStreamType`*
  */
 
-type ReadableStreamType = "bytes";
+export type ReadableStreamType = "bytes";
 
 export class BlobsNode {
     private constructor();
@@ -62,35 +62,28 @@ export interface InitOutput {
     readonly blobsnode_import: (a: number, b: any) => any;
     readonly blobsnode_spawn: () => any;
     readonly start: () => void;
-    readonly __wbg_intounderlyingsink_free: (a: number, b: number) => void;
-    readonly intounderlyingsink_abort: (a: number, b: any) => any;
-    readonly intounderlyingsink_close: (a: number) => any;
-    readonly intounderlyingsink_write: (a: number, b: any) => any;
+    readonly __wbg_intounderlyingsource_free: (a: number, b: number) => void;
+    readonly intounderlyingsource_cancel: (a: number) => void;
+    readonly intounderlyingsource_pull: (a: number, b: any) => any;
     readonly __wbg_intounderlyingbytesource_free: (a: number, b: number) => void;
     readonly intounderlyingbytesource_autoAllocateChunkSize: (a: number) => number;
     readonly intounderlyingbytesource_cancel: (a: number) => void;
     readonly intounderlyingbytesource_pull: (a: number, b: any) => any;
     readonly intounderlyingbytesource_start: (a: number, b: any) => void;
     readonly intounderlyingbytesource_type: (a: number) => number;
-    readonly __wbg_intounderlyingsource_free: (a: number, b: number) => void;
-    readonly intounderlyingsource_cancel: (a: number) => void;
-    readonly intounderlyingsource_pull: (a: number, b: any) => any;
+    readonly __wbg_intounderlyingsink_free: (a: number, b: number) => void;
+    readonly intounderlyingsink_abort: (a: number, b: any) => any;
+    readonly intounderlyingsink_close: (a: number) => any;
+    readonly intounderlyingsink_write: (a: number, b: any) => any;
     readonly ring_core_0_17_14__bn_mul_mont: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
-    readonly wasm_bindgen__closure__destroy__hd3ac853b05f47023: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__ha2c141d9ee6b88f6: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__ha5eeef7d78c2e2f7: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__h1e4b93d1f1419bba: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__h276bbc7daad97315: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__h32c21b93cbd3feca: (a: number, b: number) => void;
-    readonly wasm_bindgen__closure__destroy__hec4b29efce2a3272: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h8506664ff5ef0a56: (a: number, b: number, c: any) => [number, number];
-    readonly wasm_bindgen__convert__closures_____invoke__h19b4abff8bf432fb: (a: number, b: number, c: any, d: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h2d58a232ff60a071: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__hd79d89080bd20057: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h03f589a7dd5aaf90: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h0d77d15a417cbf9e: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__hf48cc941c723898b: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__hc3a18e22b51075fe: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h59825490a661cec4: (a: number, b: number, c: any) => [number, number];
+    readonly wasm_bindgen__convert__closures_____invoke__h046e9730d71e434f: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h9347dc9d485d1f69: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__hb9011934bf3bef7a: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h829adff0dbe3dbd1: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__hc2563cdd10808ecc: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__hc6567625d86ddf79: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h3e8c402a5024eab4: (a: number, b: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;
@@ -98,6 +91,7 @@ export interface InitOutput {
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_destroy_closure: (a: number, b: number) => void;
     readonly __externref_table_dealloc: (a: number) => void;
     readonly __wbindgen_start: () => void;
 }

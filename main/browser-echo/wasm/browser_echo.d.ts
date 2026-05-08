@@ -6,7 +6,7 @@
  * *This API requires the following crate features to be activated: `ReadableStreamType`*
  */
 
-type ReadableStreamType = "bytes";
+export type ReadableStreamType = "bytes";
 
 export class EchoNode {
     private constructor();
@@ -72,27 +72,20 @@ export interface InitOutput {
     readonly intounderlyingsource_cancel: (a: number) => void;
     readonly intounderlyingsource_pull: (a: number, b: number) => number;
     readonly ring_core_0_17_14__bn_mul_mont: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
-    readonly __wasm_bindgen_func_elem_5315: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_5464: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_5831: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_5854: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_6701: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_14412: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_14476: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_1722: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_14604: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_14620: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_5539: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_6746: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_2155: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_5324: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_5837: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_5873: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_14429: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_14510: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_14529: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_5556: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2159: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_7213: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_5338: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6470: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_6523: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_14385: (a: number, b: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
     readonly __wbindgen_export4: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_export5: (a: number, b: number) => void;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_start: () => void;
 }
