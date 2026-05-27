@@ -26,10 +26,10 @@ serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
 anyhow = "^1"
 tokio = { version = "1" }
-iroh = "1.0.0-rc.0"
-iroh-docs = { version = "0.99" }
-iroh-blobs = { version = "0.101" }
-iroh-gossip = { version = "0.99" }
+iroh = "1.0.0-rc.1"
+iroh-docs = { version = "0.100" }
+iroh-blobs = { version = "0.102" }
+iroh-gossip = { version = "0.100" }
 bytes = "1"
 num_cpus = { version = "1.15.0" }
 tokio-util = { version = "0.7" }

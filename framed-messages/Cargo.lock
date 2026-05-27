@@ -791,8 +791,8 @@ dependencies = [
  "futures-util",
  "iroh",
  "iroh-metrics",
- "n0-error 1.0.0-rc.0",
- "n0-watcher 0.6.1",
+ "n0-error",
+ "n0-watcher",
  "postcard",
  "serde",
  "tokio",
@@ -1458,9 +1458,9 @@ dependencies = [
 
 [[package]]
 name = "iroh"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b98e206e3d3f2642f5c08c413755fc0ac19b54ae1a656af88be03454ce3ed2e6"
+checksum = "bef865dc2d11a19fe670ff217b68ffc3b511bddf473dc3a3e120090b9f691803"
 dependencies = [
  "backon",
  "blake3",
@@ -1479,9 +1479,9 @@ dependencies = [
  "iroh-dns",
  "iroh-metrics",
  "iroh-relay",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
- "n0-watcher 1.0.0-rc.0",
+ "n0-watcher",
  "netwatch",
  "noq",
  "noq-proto",
@@ -1511,9 +1511,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2160a45265eba3bd290ce698f584c9b088bee47e518e9ec4460d5e5888ef660e"
+checksum = "af93d67701c00c504982154569192ad384738c0450ba1196930314b955100552"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",
@@ -1522,7 +1522,7 @@ dependencies = [
  "digest",
  "ed25519-dalek",
  "getrandom 0.4.2",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "rand",
  "serde",
  "sha2",
@@ -1533,16 +1533,16 @@ dependencies = [
 
 [[package]]
 name = "iroh-dns"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8b6d2946350d398c9d2d795bb99b04f22e8414c8a8ad9c5c3c0c5b7899af9a4"
+checksum = "de4112c91eb64094d77df9d3112606dcf7ff216421afccd2dc762fda5a7b2879"
 dependencies = [
  "arc-swap",
  "cfg_aliases",
  "derive_more",
  "hickory-resolver",
  "iroh-base",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
  "ndk-context",
  "rand",
@@ -1563,7 +1563,7 @@ checksum = "d102597d0ee523f17fdb672c532395e634dbe945429284c811430d63bacc0d8a"
 dependencies = [
  "iroh-metrics-derive",
  "itoa",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "portable-atomic",
  "ryu",
  "serde",
@@ -1584,9 +1584,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-relay"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54f490405e42dd2ecf16be18a3587d2665401e94a498094f12322eaa6d5ebb2b"
+checksum = "a70030b9e71c1183bd4f88fbdbebfa1af2a5be549dd6f20a1e8ac3cd0202ee9d"
 dependencies = [
  "blake3",
  "bytes",
@@ -1603,7 +1603,7 @@ dependencies = [
  "iroh-dns",
  "iroh-metrics",
  "lru",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
  "noq",
  "noq-proto",
@@ -1813,33 +1813,12 @@ dependencies = [
 
 [[package]]
 name = "n0-error"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af4782b4baf92d686d161c15460c83d16ebcfd215918763903e9619842665cae"
-dependencies = [
- "n0-error-macros 0.1.3",
- "spez",
-]
-
-[[package]]
-name = "n0-error"
 version = "1.0.0-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "223e946a84aa91644507a6b7865cfebbb9a231ace499041c747ab0fd30408212"
 dependencies = [
- "n0-error-macros 1.0.0-rc.0",
+ "n0-error-macros",
  "spez",
-]
-
-[[package]]
-name = "n0-error-macros"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03755949235714b2b307e5ae89dd8c1c2531fb127d9b8b7b4adf9c876cd3ed18"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1876,23 +1855,12 @@ dependencies = [
 
 [[package]]
 name = "n0-watcher"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38795f7932e6e9d1c6e989270ef5b3ff24ebb910e2c9d4bed2d28d8bae3007dc"
-dependencies = [
- "derive_more",
- "n0-error 0.1.3",
- "n0-future",
-]
-
-[[package]]
-name = "n0-watcher"
 version = "1.0.0-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "928d8039a66cce5efcfd35e88b32d3defc8eba630b3ac451522997f563956a52"
 dependencies = [
  "derive_more",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
 ]
 
@@ -1988,9 +1956,9 @@ dependencies = [
 
 [[package]]
 name = "netwatch"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5bfbba77b994ce69f1d40fc66fd8abbd23df62ce4aea61fbb34d638106a2549"
+checksum = "2071e0c2b5b229622c459096b84f1ad51afa150cdeeefdad491ef3704e581d91"
 dependencies = [
  "atomic-waker",
  "bytes",
@@ -1998,9 +1966,9 @@ dependencies = [
  "derive_more",
  "js-sys",
  "libc",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
- "n0-watcher 1.0.0-rc.0",
+ "n0-watcher",
  "netdev",
  "netlink-packet-core",
  "netlink-packet-route 0.30.0",
@@ -2024,9 +1992,9 @@ dependencies = [
 
 [[package]]
 name = "noq"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22739e0831e40f5ab7d6ac5317ed80bfe5fb3f44be57d23fa2eea8bff83fb303"
+checksum = "198b99fc085a5db1f7d259edb5ede8311e59f28cdd2687920b4313613d21a73f"
 dependencies = [
  "bytes",
  "cfg_aliases",
@@ -2046,9 +2014,9 @@ dependencies = [
 
 [[package]]
 name = "noq-proto"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cee32450cf726b223ac4154003c93cb52fbde159ab1240990e88945bf3ae35e"
+checksum = "1ab0ac774795ce1e42a7e61266e71f3be8110210630441169ac8dda403dd23f1"
 dependencies = [
  "aes-gcm",
  "bytes",
@@ -2073,9 +2041,9 @@ dependencies = [
 
 [[package]]
 name = "noq-udp"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78633d1fe1bde91d12bcabb230ac9edb890857414c6d44f3212e0d309525b5ff"
+checksum = "b3c1520eacd33fd6b009e2e70116b05508ade51db5e0d315ff8bf6b702148c2b"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -2393,9 +2361,9 @@ dependencies = [
 
 [[package]]
 name = "portmapper"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aec2a8809e3f7dba624776bb223da9fed49c413c60b3bef21aadcb67a5e35944"
+checksum = "64959cbabf952c8ffcbaea13745308508f1f825922f4068353f3de08d42cf214"
 dependencies = [
  "base64",
  "bytes",
@@ -2404,7 +2372,7 @@ dependencies = [
  "igd-next",
  "iroh-metrics",
  "libc",
- "n0-error 1.0.0-rc.0",
+ "n0-error",
  "n0-future",
  "netwatch",
  "num_enum",

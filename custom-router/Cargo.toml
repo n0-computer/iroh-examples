@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1"
-iroh = "1.0.0-rc.0"
+iroh = "1.0.0-rc.1"
 n0-future = "0.3"
 rustls = { version = "0.23.32", default-features = false }
 snafu = "0.8.9"
@@ -13,4 +13,3 @@ tokio = { version = "1.48.0", features = ["full"] }
 tokio-util = "0.7.16"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
-

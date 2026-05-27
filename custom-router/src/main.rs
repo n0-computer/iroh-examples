@@ -5,7 +5,8 @@
 use iroh::{
     Endpoint, EndpointAddr,
     endpoint::{
-        ApplicationClose, ConnectError, Connection, ConnectionError, TransportErrorCode, presets,
+        ApplicationClose, ConnectError, ConnectingError, Connection, ConnectionError,
+        TransportErrorCode, presets,
     },
     protocol::{AcceptError, ProtocolHandler},
 };
@@ -124,11 +125,15 @@ async fn connect_assert_fail(endpoint: &Endpoint, addr: &EndpointAddr, alpn: &[u
     let conn = endpoint.connect(addr.clone(), alpn).await;
     assert!(matches!(
         &conn,
-        Err(ConnectError::Connection { source, .. })
+        Err(ConnectError::Connecting { source, .. })
         if matches!(
             source,
-            ConnectionError::ConnectionClosed(frame)
-            if frame.error_code == TransportErrorCode::crypto(rustls::AlertDescription::NoApplicationProtocol.into())
+            ConnectingError::ConnectionError { source: inner, .. }
+            if matches!(
+                inner,
+                ConnectionError::ConnectionClosed(frame)
+                if frame.error_code == TransportErrorCode::crypto(rustls::AlertDescription::NoApplicationProtocol.into())
+            )
         )
     ));
 }
