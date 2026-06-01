@@ -3,7 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use anyhow::{Result, anyhow};
 use extism::*;
 use futures::stream::StreamExt;
-use iroh::{Endpoint, EndpointId, protocol::Router};
+use iroh::{Endpoint, EndpointId, endpoint::presets, protocol::Router};
 use iroh_blobs::{BlobsProtocol, api::downloader::Shuffled, store::fs::FsStore};
 
 const IROH_EXTISM_DATA_DIR: &str = "iroh-extism";
@@ -27,7 +27,7 @@ pub struct Iroh {
 impl Iroh {
     pub async fn new(path: PathBuf) -> Result<Iroh> {
         // create an endpoint
-        let endpoint = Endpoint::bind().await?;
+        let endpoint = Endpoint::bind(presets::N0).await?;
 
         // create blobs protocol
         let store = FsStore::load(path).await?;
@@ -70,8 +70,8 @@ host_fn!(iroh_blob_get_ticket(user_data: Context; ticket: &str) -> Vec<u8> {
     let router = ctx.iroh.router();
     let blobs = ctx.iroh.blobs();
     let store = blobs.store();
-    let downloader = store.downloader(router.endpoint());
     let buf = ctx.rt.block_on(async move {
+        let downloader = store.downloader(router.endpoint());
         let blobs = store.blobs();
         let mut stream = downloader.download(hash, Shuffled::new(vec![endpoint_addr.id])).stream().await?;
         while stream.next().await.is_some() {}

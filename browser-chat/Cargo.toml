@@ -5,6 +5,6 @@ default-members = ["cli"]
 
 [workspace.dependencies]
 # we define iroh dependencies here to make upgrading easier.
-iroh = { version = "1.0.0-rc.0", default-features = false, features = ["tls-ring"] }
-iroh-tickets = "1.0.0-rc.0"
-iroh-gossip = { version = "0.99", default-features = false, features = ["net"] }
+iroh = { version = "1.0.0-rc.1", default-features = false, features = ["tls-ring"] }
+iroh-tickets = "1.0.0-rc.1"
+iroh-gossip = { version = "0.100", default-features = false, features = ["net"] }
