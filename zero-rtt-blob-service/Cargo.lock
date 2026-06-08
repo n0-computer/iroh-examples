@@ -1584,6 +1584,7 @@ dependencies = [
 [[package]]
 name = "iroh"
 version = "1.0.0-rc.1"
+source = "git+https://github.com/n0-computer/iroh?branch=persistent-token-store#fc1044a0ec6b501f3fa4fe36261a5f8c074b9195"
 dependencies = [
  "backon",
  "blake3",
@@ -1635,6 +1636,7 @@ dependencies = [
 [[package]]
 name = "iroh-base"
 version = "1.0.0-rc.1"
+source = "git+https://github.com/n0-computer/iroh?branch=persistent-token-store#fc1044a0ec6b501f3fa4fe36261a5f8c074b9195"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",
@@ -1655,6 +1657,7 @@ dependencies = [
 [[package]]
 name = "iroh-dns"
 version = "1.0.0-rc.1"
+source = "git+https://github.com/n0-computer/iroh?branch=persistent-token-store#fc1044a0ec6b501f3fa4fe36261a5f8c074b9195"
 dependencies = [
  "arc-swap",
  "cfg_aliases",
@@ -1704,6 +1707,7 @@ dependencies = [
 [[package]]
 name = "iroh-relay"
 version = "1.0.0-rc.1"
+source = "git+https://github.com/n0-computer/iroh?branch=persistent-token-store#fc1044a0ec6b501f3fa4fe36261a5f8c074b9195"
 dependencies = [
  "blake3",
  "bytes",

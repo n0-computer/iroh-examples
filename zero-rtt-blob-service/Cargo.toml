@@ -17,8 +17,10 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
-# Local iroh with the shared client-side QUIC token store fix (NEW_TOKEN tokens
-# now survive across connections). See branch `persistent-token-store`.
+# iroh branch with the shared client-side QUIC token store fix: NEW_TOKEN
+# address-validation tokens now survive across connections (the default minted a
+# fresh, empty store per connection). iroh-base is patched too so iroh-tickets
+# (still from crates.io) resolves the same iroh-base as the patched iroh.
 [patch.crates-io]
-iroh = { path = "/Users/rklaehn/projects_git/iroh/iroh" }
-iroh-base = { path = "/Users/rklaehn/projects_git/iroh/iroh-base" }
+iroh = { git = "https://github.com/n0-computer/iroh", branch = "persistent-token-store" }
+iroh-base = { git = "https://github.com/n0-computer/iroh", branch = "persistent-token-store" }
