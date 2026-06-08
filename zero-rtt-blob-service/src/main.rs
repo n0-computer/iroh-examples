@@ -66,6 +66,13 @@ struct ServerArgs {
     /// Disable issuance of NEW_TOKEN validation tokens.
     #[clap(long)]
     no_tokens: bool,
+
+    /// Bind a fixed UDP port (IPv4 only) instead of a random one. With a fixed
+    /// `IROH_SECRET` this keeps the ticket stable across restarts. Binding IPv4
+    /// only also stops advertising an IPv6 address that IPv4-only clients would
+    /// otherwise waste a dial attempt on.
+    #[clap(long)]
+    port: Option<u16>,
 }
 
 #[derive(Parser)]
@@ -114,12 +121,20 @@ async fn run_server(args: ServerArgs) -> Result<()> {
     // a reachable direct address. It doesn't affect the measurement — the ticket is
     // built from IP addresses only (see `wait_for_ip_addr`), and the client runs with
     // relays disabled, so the client always dials the server directly.
-    let endpoint = Endpoint::builder(presets::N0)
+    let mut builder = Endpoint::builder(presets::N0)
         .alpns(vec![ALPN.to_vec()])
         .transport_config(server_transport_config("zero-rtt-blob-service-server"))
-        .secret_key(get_or_generate_secret_key()?)
-        .bind()
-        .await?;
+        .secret_key(get_or_generate_secret_key()?);
+    if let Some(port) = args.port {
+        // Replace the default dual-stack ephemeral binds with a single fixed
+        // IPv4 socket, so the ticket is stable across restarts and carries no
+        // (unreachable, for IPv4-only clients) IPv6 address.
+        builder = builder
+            .clear_ip_transports()
+            .bind_addr(format!("0.0.0.0:{port}").as_str())
+            .anyerr()?;
+    }
+    let endpoint = builder.bind().await?;
     let ip_addr = wait_for_ip_addr(&endpoint).await?;
     eprintln!(
         "direct addresses: {:?}",
@@ -414,15 +429,21 @@ async fn roundtrip(conn: &Connection, request: &[u8]) -> Result<Vec<u8>> {
 /// lines a few ms apart.
 async fn read_response(recv: &mut RecvStream, t0: Instant) -> Result<Vec<u8>> {
     let mut data = Vec::new();
-    let mut buf = [0u8; 4096];
+    let mut buf = [0u8; MAX_BLOB];
+    let mut prev = Duration::ZERO;
     while let Some(n) = recv.read(&mut buf).await.anyerr()? {
         data.extend_from_slice(&buf[..n]);
+        let elapsed = t0.elapsed();
+        // `Δ` is the gap since the previous chunk: tiny for a paced/bursted
+        // response, but ~1 RTT on the chunk right after an amplification stall.
         eprintln!(
-            "  recv +{:>6} us | +{:>5} B | {:>6} B total",
-            t0.elapsed().as_micros(),
+            "  recv +{:>6} us  Δ{:>+7} us  | +{:>5} B | {:>6} B total",
+            elapsed.as_micros(),
+            elapsed.saturating_sub(prev).as_micros(),
             n,
             data.len()
         );
+        prev = elapsed;
         if data.len() > MAX_BLOB {
             n0_error::bail_any!("response exceeds {MAX_BLOB} bytes");
         }
