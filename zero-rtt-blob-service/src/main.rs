@@ -113,6 +113,10 @@ async fn run_server(args: ServerArgs) -> Result<()> {
         .bind()
         .await?;
     let ip_addr = wait_for_ip_addr(&endpoint).await?;
+    eprintln!(
+        "direct addresses: {:?}",
+        ip_addr.ip_addrs().copied().collect::<Vec<_>>()
+    );
     println!("ticket: {}", EndpointTicket::from(ip_addr));
 
     let server_config = Arc::new(make_server_config(&endpoint, !args.no_tokens));
@@ -241,6 +245,10 @@ async fn run_client(args: ClientArgs) -> Result<()> {
     if remote.ip_addrs().next().is_none() {
         n0_error::bail_any!("ticket has no IP addresses — this demo requires direct IP paths");
     }
+    eprintln!(
+        "dialing direct addresses: {:?}",
+        remote.ip_addrs().copied().collect::<Vec<_>>()
+    );
 
     let shared = if args.no_tokens {
         None
