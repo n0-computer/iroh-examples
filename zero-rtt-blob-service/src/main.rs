@@ -32,7 +32,7 @@ use iroh_tickets::endpoint::EndpointTicket;
 use n0_error::{Result, StdResultExt};
 use noq_proto::{BloomTokenLog, NoneTokenLog};
 use papaya::HashMap;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tracing::{info, trace};
 
 const ALPN: &[u8] = b"zero-rtt-blob-service/v1";
@@ -89,7 +89,8 @@ enum ClientOp {
         #[command(flatten)]
         common: CommonArgs,
     },
-    /// Download the blob with the given hex-encoded BLAKE3 hash to stdout.
+    /// Download the blob with the given hex-encoded BLAKE3 hash. Prints the
+    /// BLAKE3 hash of what was received (for verification), not the data itself.
     Get {
         #[command(flatten)]
         common: CommonArgs,
@@ -307,7 +308,7 @@ async fn run_client(args: ClientArgs) -> Result<()> {
             for round in 0..n {
                 let t0 = Instant::now();
                 let resp = do_round(&endpoint, remote.clone(), request.clone()).await?;
-                tokio::io::stdout().write_all(&resp).await.anyerr()?;
+                println!("{}", blake3::hash(&resp).to_hex());
                 eprintln!("get {round}: {} us", t0.elapsed().as_micros());
             }
         }
