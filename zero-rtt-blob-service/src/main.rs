@@ -63,9 +63,13 @@ enum Mode {
 
 #[derive(Parser)]
 struct ServerArgs {
-    /// Disable issuance of NEW_TOKEN validation tokens.
+    /// Issue and validate NEW_TOKEN address-validation tokens. Off by default
+    /// (matching iroh's default), so a 0-RTT response larger than the 3x
+    /// amplification budget stalls until the handshake validates the client's
+    /// address. With this flag the client's replayed token validates the address
+    /// up front and the stall disappears.
     #[clap(long)]
-    no_tokens: bool,
+    tokens: bool,
 
     /// Bind a fixed UDP port (IPv4 only) instead of a random one. With a fixed
     /// `IROH_SECRET` this keeps the ticket stable across restarts. Binding IPv4
@@ -143,7 +147,7 @@ async fn run_server(args: ServerArgs) -> Result<()> {
     );
     println!("ticket: {}", EndpointTicket::from(ip_addr));
 
-    let server_config = Arc::new(make_server_config(&endpoint, !args.no_tokens));
+    let server_config = Arc::new(make_server_config(&endpoint, args.tokens));
     let store: Arc<HashMap<Hash, Bytes>> = Arc::new(HashMap::new());
 
     let accept = async move {
@@ -189,12 +193,13 @@ async fn wait_for_ip_addr(endpoint: &Endpoint) -> Result<EndpointAddr> {
 /// 3x anti-amplification limit on 0-RTT connections so large 0.5-RTT responses
 /// flow immediately.
 ///
-/// With `tokens` disabled (`--no-tokens`) the server neither issues (`sent` = 0)
-/// nor validates ([`NoneTokenLog`] ignores any token a client presents), so every
-/// 0-RTT connection's address stays unvalidated until the handshake completes and
-/// a large 0.5-RTT response stalls on the 3x budget. Note that the default config
-/// (`ValidationTokenConfig::default()`, used by `Incoming::accept`) issues and
-/// validates by default, so we must set this explicitly rather than rely on it.
+/// With `tokens` disabled (the default — pass `--tokens` to enable) the server
+/// neither issues (`sent` = 0) nor validates ([`NoneTokenLog`] ignores any token a
+/// client presents), so every 0-RTT connection's address stays unvalidated until
+/// the handshake completes and a large 0.5-RTT response stalls on the 3x budget.
+/// Note that `ValidationTokenConfig::default()` (used by `Incoming::accept`)
+/// actually issues and validates, so the disabled case must be set explicitly
+/// rather than relying on the default.
 fn make_server_config(endpoint: &Endpoint, tokens: bool) -> ServerConfig {
     let mut validation_token = ValidationTokenConfig::default();
     if tokens {
@@ -358,6 +363,12 @@ fn server_transport_config(prefix: &str) -> QuicTransportConfig {
 }
 
 async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> Result<Vec<u8>> {
+    // Start the receive clock before connecting, so the per-chunk `recv` timing
+    // reflects the *full* request latency from this client's point of view:
+    // ~1 RTT to the first byte for an accepted 0-RTT round, but ~2 RTT for a cold
+    // round (where the handshake completes inside `connecting.await` before the
+    // request can even be sent).
+    let t0 = Instant::now();
     let connecting = endpoint
         .connect_with_opts(remote, ALPN, Default::default())
         .await?;
@@ -373,15 +384,14 @@ async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> 
             // Writing inline and awaiting it guarantees the bytes are buffered as
             // 0-RTT data first. This matches iroh's own 0-RTT test.
             write_request(send, request.clone()).await?;
-            let recv_t0 = Instant::now();
             match zrtt.handshake_completed().await? {
                 ZeroRttStatus::Accepted(conn) => {
                     println!("0-RTT accepted");
-                    (conn, read_response(&mut recv, recv_t0).await?)
+                    (conn, read_response(&mut recv, t0).await?)
                 }
                 ZeroRttStatus::Rejected(conn) => {
                     println!("0-RTT rejected; retrying on a fresh stream");
-                    let resp = roundtrip(&conn, &request).await?;
+                    let resp = roundtrip(&conn, &request, t0).await?;
                     (conn, resp)
                 }
             }
@@ -389,7 +399,7 @@ async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> 
         Err(connecting) => {
             println!("0-RTT not possible from our side");
             let conn = connecting.await.anyerr()?;
-            let resp = roundtrip(&conn, &request).await?;
+            let resp = roundtrip(&conn, &request, t0).await?;
             (conn, resp)
         }
     };
@@ -415,12 +425,11 @@ async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> 
     Ok(resp)
 }
 
-async fn roundtrip(conn: &Connection, request: &[u8]) -> Result<Vec<u8>> {
+async fn roundtrip(conn: &Connection, request: &[u8], t0: Instant) -> Result<Vec<u8>> {
     let (mut send, mut recv) = conn.open_bi().await.anyerr()?;
     send.write_all(request).await.anyerr()?;
     send.finish().anyerr()?;
-    let recv_t0 = Instant::now();
-    read_response(&mut recv, recv_t0).await
+    read_response(&mut recv, t0).await
 }
 
 /// Read a response to its end, logging each chunk's arrival time relative to `t0`
