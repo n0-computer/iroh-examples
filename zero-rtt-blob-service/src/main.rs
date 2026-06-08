@@ -70,30 +70,38 @@ struct ServerArgs {
 
 #[derive(Parser)]
 struct ClientArgs {
-    /// Ticket of the server to connect to, in `<endpoint_id>@<addr>,<addr>,...` form.
-    /// The ticket must contain at least one IP address — relay-only tickets are
-    /// refused because 0-RTT via a relay is not interesting for this demo.
-    ticket: String,
-
     #[command(subcommand)]
     op: ClientOp,
-
-    /// Discard the in-memory token store between rounds, so no stored
-    /// token is presented to the server.
-    #[clap(long)]
-    no_tokens: bool,
-
-    /// Number of requests to run.
-    #[clap(long = "n", default_value = "2")]
-    n: u32,
 }
 
 #[derive(Subcommand)]
 enum ClientOp {
-    /// Upload up to 10 KiB of data read from stdin. Prints the BLAKE3 hash.
-    Put,
+    /// Upload up to 10 KiB of data from stdin, then re-GET it for the remaining
+    /// rounds. Prints the BLAKE3 hash.
+    Put {
+        #[command(flatten)]
+        common: CommonArgs,
+    },
     /// Download the blob with the given hex-encoded BLAKE3 hash to stdout.
-    Get { hash: String },
+    Get {
+        #[command(flatten)]
+        common: CommonArgs,
+        /// Hex-encoded BLAKE3 hash to download.
+        hash: String,
+    },
+}
+
+/// Arguments shared by every client operation, flattened into each subcommand so
+/// the ticket and flags come *after* `put`/`get` (e.g. `client put <ticket> -n 10`).
+#[derive(clap::Args)]
+struct CommonArgs {
+    /// Ticket of the server to connect to. Must contain at least one IP address —
+    /// relay-only tickets are refused because 0-RTT via a relay isn't interesting here.
+    ticket: String,
+
+    /// Number of requests to run: round 0 (cold full handshake) plus the 0-RTT rounds.
+    #[clap(short = 'n', long = "rounds", default_value = "2")]
+    n: u32,
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +116,7 @@ async fn run_server(args: ServerArgs) -> Result<()> {
     // relays disabled, so the client always dials the server directly.
     let endpoint = Endpoint::builder(presets::N0)
         .alpns(vec![ALPN.to_vec()])
-        .transport_config(qlog_transport_config("zero-rtt-blob-service-server"))
+        .transport_config(server_transport_config("zero-rtt-blob-service-server"))
         .secret_key(get_or_generate_secret_key()?)
         .bind()
         .await?;
@@ -240,7 +248,10 @@ async fn handle_request(
 // ---------------------------------------------------------------------------
 
 async fn run_client(args: ClientArgs) -> Result<()> {
-    let ticket = EndpointTicket::from_str(&args.ticket).std_context("invalid ticket")?;
+    let (ticket, n) = match &args.op {
+        ClientOp::Put { common } | ClientOp::Get { common, .. } => (&common.ticket, common.n),
+    };
+    let ticket = EndpointTicket::from_str(ticket).std_context("invalid ticket")?;
     let remote: EndpointAddr = ticket.into();
     if remote.ip_addrs().next().is_none() {
         n0_error::bail_any!("ticket has no IP addresses — this demo requires direct IP paths");
@@ -250,31 +261,23 @@ async fn run_client(args: ClientArgs) -> Result<()> {
         remote.ip_addrs().copied().collect::<Vec<_>>()
     );
 
-    let shared = if args.no_tokens {
-        None
-    } else {
-        Some(client_endpoint().await?)
-    };
+    let endpoint = client_endpoint().await?;
 
     match &args.op {
-        ClientOp::Put => {
-            let endpoint = match &shared {
-                Some(ep) => ep.clone(),
-                None => client_endpoint().await?,
-            };
+        ClientOp::Put { .. } => {
             let t0 = Instant::now();
             let request = build_put_request().await?;
             let hash_bytes = do_round(&endpoint, remote.clone(), request).await?;
             print_hash(&hash_bytes)?;
             eprintln!("put: {} us", t0.elapsed().as_micros());
 
-            if args.n > 1 {
+            if n > 1 {
                 let Ok(bytes): std::result::Result<[u8; 32], _> = hash_bytes.as_slice().try_into() else {
                     n0_error::bail_any!("expected 32-byte hash, got {} bytes", hash_bytes.len());
                 };
                 let hash = Hash::from_bytes(bytes);
                 let request = build_get_request(&hash);
-                for round in 1..args.n {
+                for round in 1..n {
                     let t0 = Instant::now();
                     let resp = do_round(&endpoint, remote.clone(), request.clone()).await?;
                     // Don't dump the (potentially large) blob — just echo its hash so
@@ -283,31 +286,18 @@ async fn run_client(args: ClientArgs) -> Result<()> {
                     eprintln!("get {round}: {} us", t0.elapsed().as_micros());
                 }
             }
-
-            if args.no_tokens {
-                endpoint.close().await;
-            }
         }
-        ClientOp::Get { hash } => {
-            let endpoint = match &shared {
-                Some(ep) => ep.clone(),
-                None => client_endpoint().await?,
-            };
+        ClientOp::Get { hash, .. } => {
             let request = build_get_request(&parse_hash(hash)?);
-            for round in 0..args.n {
+            for round in 0..n {
                 let t0 = Instant::now();
                 let resp = do_round(&endpoint, remote.clone(), request.clone()).await?;
                 tokio::io::stdout().write_all(&resp).await.anyerr()?;
                 eprintln!("get {round}: {} us", t0.elapsed().as_micros());
             }
-            if args.no_tokens {
-                endpoint.close().await;
-            }
         }
     }
-    if let Some(ep) = shared {
-        ep.close().await;
-    }
+    endpoint.close().await;
     Ok(())
 }
 
@@ -327,6 +317,30 @@ fn qlog_transport_config(prefix: &str) -> QuicTransportConfig {
         .build()
 }
 
+/// Server transport config: qlog plus a deliberately huge initial congestion
+/// window.
+///
+/// QUIC's pacer spreads roughly one congestion window over one RTT, and its
+/// per-burst capacity is `window * 2ms / RTT`. At a ~250 ms RTT the default
+/// ~14 KiB window dribbles a multi-packet response out one packet every ~20 ms,
+/// which buries the 0-RTT / token win under congestion-control pacing. Our
+/// responses are bounded at `MAX_BLOB` (16 KiB), so we set a window large enough
+/// (`16 KiB * RTT / 2ms` ≈ 2 MiB; we use a round 8 MiB for margin) that the pacer
+/// bursts the whole response in a single flight. Only ever 16 KiB actually flies.
+///
+/// This is a DEMO setting on a known-good path. A real server facing arbitrary
+/// clients must not do this — see the anti-amplification and congestion-fairness
+/// caveats. It does not affect the token A/B: an unvalidated (no-token) connection
+/// is still capped at the 3x amplification budget regardless of the window.
+fn server_transport_config(prefix: &str) -> QuicTransportConfig {
+    let mut congestion = noq_proto::congestion::NewRenoConfig::default();
+    congestion.initial_window(8 * 1024 * 1024);
+    QuicTransportConfig::builder()
+        .qlog_from_env(prefix)
+        .congestion_controller_factory(Arc::new(congestion))
+        .build()
+}
+
 async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> Result<Vec<u8>> {
     let connecting = endpoint
         .connect_with_opts(remote, ALPN, Default::default())
@@ -343,10 +357,11 @@ async fn do_round(endpoint: &Endpoint, remote: EndpointAddr, request: Bytes) -> 
             // Writing inline and awaiting it guarantees the bytes are buffered as
             // 0-RTT data first. This matches iroh's own 0-RTT test.
             write_request(send, request.clone()).await?;
+            let recv_t0 = Instant::now();
             match zrtt.handshake_completed().await? {
                 ZeroRttStatus::Accepted(conn) => {
                     println!("0-RTT accepted");
-                    (conn, recv.read_to_end(MAX_BLOB).await.anyerr()?)
+                    (conn, read_response(&mut recv, recv_t0).await?)
                 }
                 ZeroRttStatus::Rejected(conn) => {
                     println!("0-RTT rejected; retrying on a fresh stream");
@@ -388,7 +403,31 @@ async fn roundtrip(conn: &Connection, request: &[u8]) -> Result<Vec<u8>> {
     let (mut send, mut recv) = conn.open_bi().await.anyerr()?;
     send.write_all(request).await.anyerr()?;
     send.finish().anyerr()?;
-    recv.read_to_end(MAX_BLOB).await.anyerr()
+    let recv_t0 = Instant::now();
+    read_response(&mut recv, recv_t0).await
+}
+
+/// Read a response to its end, logging each chunk's arrival time relative to `t0`
+/// (when the request was sent). A stall in the response stream — e.g. the
+/// anti-amplification stall when no validation token is presented — shows up as a
+/// gap between consecutive lines, while smooth pacing shows up as evenly spaced
+/// lines a few ms apart.
+async fn read_response(recv: &mut RecvStream, t0: Instant) -> Result<Vec<u8>> {
+    let mut data = Vec::new();
+    let mut buf = [0u8; 4096];
+    while let Some(n) = recv.read(&mut buf).await.anyerr()? {
+        data.extend_from_slice(&buf[..n]);
+        eprintln!(
+            "  recv +{:>6} us | +{:>5} B | {:>6} B total",
+            t0.elapsed().as_micros(),
+            n,
+            data.len()
+        );
+        if data.len() > MAX_BLOB {
+            n0_error::bail_any!("response exceeds {MAX_BLOB} bytes");
+        }
+    }
+    Ok(data)
 }
 
 async fn write_request(mut send: SendStream, request: Bytes) -> Result<()> {
