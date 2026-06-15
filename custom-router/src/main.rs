@@ -147,12 +147,12 @@ pub mod router {
         Endpoint,
         protocol::{DynProtocolHandler, ProtocolHandler},
     };
+    use n0_error::stack_error;
     use n0_future::{
         IterExt,
         task::{self, AbortOnDropHandle},
         time,
     };
-    use snafu::Snafu;
     use tokio::{
         sync::{Mutex, mpsc, oneshot},
         task::JoinSet,
@@ -174,10 +174,9 @@ pub mod router {
     ///
     /// ```no_run
     /// # use std::sync::Arc;
-    /// # use n0_snafu::ResultExt;
     /// # use iroh::{endpoint::Connecting, protocol::{ProtocolHandler, Router}, Endpoint, EndpointAddr};
     /// #
-    /// # async fn test_compile() -> n0_snafu::Result<()> {
+    /// # async fn test_compile() -> n0_error::Result<()> {
     /// let endpoint = Endpoint::bind(presets::N0).await?;
     ///
     /// let router = Router::builder(endpoint)
@@ -218,22 +217,21 @@ pub mod router {
         protocols: ProtocolMap,
     }
 
+    #[stack_error(derive)]
     #[allow(missing_docs)]
-    #[derive(Debug, Snafu)]
     #[non_exhaustive]
     pub enum RouterError {
-        #[snafu(display("Endpoint closed"))]
+        #[error("Endpoint closed")]
         Closed {},
     }
 
     #[allow(missing_docs)]
-    #[derive(Debug, Snafu)]
-    #[snafu(module)]
+    #[stack_error(derive)]
     #[non_exhaustive]
     pub enum StopAcceptingError {
-        #[snafu(display("Endpoint closed"))]
+        #[error("Endpoint closed")]
         Closed {},
-        #[snafu(display("The ALPN requested to be removed is not registered"))]
+        #[error("The ALPN requested to be removed is not registered")]
         UnknownAlpn {},
     }
 
