@@ -1,9 +1,14 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use async_channel::Sender;
 use iroh::{
     Endpoint, EndpointId,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler, Router},
+};
+use iroh_services::{
+    API_SECRET_ENV_VAR_NAME, ApiSecret, CLIENT_HOST_ALPN, ClientHost, caps::NetDiagnosticsCap,
 };
 use n0_future::{Stream, StreamExt, boxed::BoxStream, task};
 use serde::{Deserialize, Serialize};
@@ -15,6 +20,7 @@ use tracing::info;
 pub struct EchoNode {
     router: Router,
     accept_events: broadcast::Sender<AcceptEvent>,
+    _svc_client: Option<iroh_services::Client>,
 }
 
 impl EchoNode {
@@ -23,12 +29,21 @@ impl EchoNode {
             .alpns(vec![Echo::ALPN.to_vec()])
             .bind()
             .await?;
+        let svc = enable_services(endpoint.clone()).await?;
         let (event_sender, _event_receiver) = broadcast::channel(128);
         let echo = Echo::new(event_sender.clone());
-        let router = Router::builder(endpoint).accept(Echo::ALPN, echo).spawn();
+        let mut router_builder = Router::builder(endpoint).accept(Echo::ALPN, echo);
+        let svc_client = if let Some((svc_client, svc_host)) = svc {
+            router_builder = router_builder.accept(CLIENT_HOST_ALPN, svc_host);
+            Some(svc_client)
+        } else {
+            None
+        };
+        let router = router_builder.spawn();
         Ok(Self {
             router,
             accept_events: event_sender,
+            _svc_client: svc_client,
         })
     }
 
@@ -186,4 +201,58 @@ async fn connect(
         .await?;
     send_task.await??;
     Ok(())
+}
+
+async fn enable_services(
+    endpoint: Endpoint,
+) -> Result<Option<(iroh_services::Client, ClientHost)>> {
+    // 2. Parse the ApiSecret separately so we can extract the remote
+    //    EndpointID. Normally we'd pass it straight to the client builder.
+    let secret = match ApiSecret::from_env_var(API_SECRET_ENV_VAR_NAME) {
+        Ok(secret) => Some(secret),
+        Err(_) => match std::option_env!("BUILD_IROH_SERVICES_API_SECRET") {
+            Some(secret) => ApiSecret::from_str(secret).ok(),
+            None => None,
+        },
+    };
+    let Some(secret) = secret else {
+        tracing::info!("iroh services integration disabled: IROH_SERVICES_API_SECRET is not set");
+        return Ok(None);
+    };
+    tracing::info!("iroh services integration enabled");
+
+    // optional: name the endpoint. Here we generate a name from the endpoint id
+    // to keep name unique. in your app this would be used to connect with
+    // something like a userId or machine name
+    let name = format!("wasm-echo-{}", endpoint.id().fmt_short());
+
+    // 3. Build a Client that dials iroh-services (as in all other examples).
+    let client = iroh_services::Client::builder(&endpoint)
+        .api_secret(secret.clone())?
+        .name(name)?
+        .build()
+        .await?;
+
+    // 4. grant the ability to get diagnostics to the remote EndpointID associated
+    //    with our project on iroh-services. This will create a capability token, send it to
+    //    the remote for storage & confirm receipt. We do this in a task to avoid
+    //    blocking the local node startup in the rare case that remote endpoint is
+    //    down when this process starts.
+    let client2 = client.clone();
+    let remote_id = secret.addr().id;
+    let _task = n0_future::task::spawn(async move {
+        if let Err(err) = client2
+            .grant_capability(remote_id, vec![NetDiagnosticsCap::GetAny])
+            .await
+        {
+            tracing::warn!("Failed to grant capability: {err:?}");
+        } else {
+            tracing::info!("Capability granted to services");
+        }
+    });
+
+    // 5. Set up a ClientHost so iroh-services can dial *back* into this endpoint.
+    //    Incoming connections must present an RCAN issued by this endpoint.
+    let host = ClientHost::new(&endpoint);
+    Ok(Some((client, host)))
 }
