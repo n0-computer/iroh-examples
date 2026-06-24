@@ -2084,7 +2084,7 @@ dependencies = [
 [[package]]
 name = "iroh-services"
 version = "1.0.0"
-source = "git+https://github.com/n0-computer/iroh-services?branch=Frando%2Ffix-wasm#9b2151805ff10664c702e5e5b01f7aeaed699e43"
+source = "git+https://github.com/n0-computer/iroh-services?branch=Frando%2Ffix-wasm#136229c3c4688171dff50d1c2acb0f37e0f622cd"
 dependencies = [
  "anyhow",
  "base64",
