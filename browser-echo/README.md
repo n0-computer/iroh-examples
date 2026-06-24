@@ -33,6 +33,15 @@ To initiate a connection:
 cargo run --features cli -- connect <ENDPOINT-ID> <PAYLOAD>
 ```
 
+## Use iroh-services
+
+To send metrics or net reports to iroh-services, set the environment variable `BUILD_IROH_SERVICES_API_SECRET` when building the Wasm bundle to bake an iroh-services secret into the bundle:
+
+```
+export BUILD_IROH_SERVICES_API_SECRET=yourapikey
+npm run build
+```
+
 ## Navigate the code
 
 This folder contains a single Rust crate that can be compiled to both webassembly for the browser and to a commad line.
